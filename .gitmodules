@@ -1,0 +1,3 @@
+[submodule "deps/cpu_features"]
+	path = deps/cpu_features
+	url = https://github.com/google/cpu_features.git

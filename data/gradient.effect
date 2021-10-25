@@ -1,0 +1,45 @@
+uniform float4x4 ViewProj;
+uniform float4 color_base = {1.0, 1.0, 1.0, 1.0};
+uniform float4 color_crest = {1.0, 1.0, 1.0, 1.0};
+uniform float2 center = {0.0, 0.0};
+uniform float distfactor = 1.0;
+
+struct VertInOut {
+	float4 pos : POSITION;
+};
+
+VertInOut VSSimple(VertInOut vert_in)
+{
+	VertInOut vert_out;
+	vert_out.pos = mul(float4(vert_in.pos.xyz, 1.0), ViewProj);
+	return vert_out;
+}
+
+float4 PSSolid(VertInOut vert_in) : TARGET
+{
+	return color_base;
+}
+
+float4 PSGradient(VertInOut vert_in) : TARGET
+{
+    float lerp_t = saturate(mul(distance(vert_in.pos.y, center.y), distfactor));
+	return lerp(color_base, color_crest, lerp_t);
+}
+
+technique Solid
+{
+	pass
+	{
+		vertex_shader = VSSimple(vert_in);
+		pixel_shader  = PSSolid(vert_in);
+	}
+}
+
+technique Gradient
+{
+	pass
+	{
+		vertex_shader = VSSimple(vert_in);
+		pixel_shader  = PSGradient(vert_in);
+	}
+}
