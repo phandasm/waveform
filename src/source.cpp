@@ -632,6 +632,42 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
         else
             continue;
 
+        // skip FFT for silent audio
+        bool silent = true;
+        auto zero = _mm256_set1_ps(0.0);
+        for(auto i = 0u; i < m_fft_size; i += step)
+        {
+            auto mask = _mm256_cmp_ps(zero, _mm256_load_ps(&m_fft_input[i]), _CMP_EQ_OQ);
+            if(_mm256_movemask_ps(mask) != 0xff)
+            {
+                silent = false;
+                break;
+            }
+        }
+
+        // wait for gravity
+        if(silent)
+        {
+            bool outsilent = true;
+            auto floor = _mm256_set1_ps((float)m_floor - 10);
+            for(auto ch = 0; ch < (m_stereo ? 2 : 1); ++ch)
+            {
+                for(size_t i = 0; i < outsz; i += step)
+                {
+                    auto mask = _mm256_cmp_ps(floor, _mm256_load_ps(&m_decibels[ch][i]), _CMP_GT_OQ);
+                    if(_mm256_movemask_ps(mask) != 0xff)
+                    {
+                        outsilent = false;
+                        break;
+                    }
+                }
+                if(!outsilent)
+                    break;
+            }
+            if(outsilent)
+                return;
+        }
+
         // window function
         if(m_window_func != FFTWindow::NONE)
         {
@@ -738,6 +774,40 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
         else
             continue;
 
+        bool silent = true;
+        auto zero = _mm256_set1_ps(0.0);
+        for(auto i = 0u; i < m_fft_size; i += step)
+        {
+            auto mask = _mm256_cmp_ps(zero, _mm256_load_ps(&m_fft_input[i]), _CMP_EQ_OQ);
+            if(_mm256_movemask_ps(mask) != 0xff)
+            {
+                silent = false;
+                break;
+            }
+        }
+
+        if(silent)
+        {
+            bool outsilent = true;
+            auto floor = _mm256_set1_ps((float)m_floor - 10);
+            for(auto ch = 0; ch < (m_stereo ? 2 : 1); ++ch)
+            {
+                for(size_t i = 0; i < outsz; i += step)
+                {
+                    auto mask = _mm256_cmp_ps(floor, _mm256_load_ps(&m_decibels[ch][i]), _CMP_GT_OQ);
+                    if(_mm256_movemask_ps(mask) != 0xff)
+                    {
+                        outsilent = false;
+                        break;
+                    }
+                }
+                if(!outsilent)
+                    break;
+            }
+            if(outsilent)
+                return;
+        }
+
         if(m_window_func != FFTWindow::NONE)
         {
             auto inbuf = m_fft_input.get();
@@ -831,6 +901,40 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
         }
         else
             continue;
+
+        bool silent = true;
+        auto zero = _mm_set1_ps(0.0);
+        for(auto i = 0u; i < m_fft_size; i += step)
+        {
+            auto mask = _mm_cmpeq_ps(zero, _mm_load_ps(&m_fft_input[i]));
+            if(_mm_movemask_ps(mask) != 0xf)
+            {
+                silent = false;
+                break;
+            }
+        }
+
+        if(silent)
+        {
+            bool outsilent = true;
+            auto floor = _mm_set1_ps((float)m_floor - 10);
+            for(auto ch = 0; ch < (m_stereo ? 2 : 1); ++ch)
+            {
+                for(size_t i = 0; i < outsz; i += step)
+                {
+                    auto mask = _mm_cmpgt_ps(floor, _mm_load_ps(&m_decibels[ch][i]));
+                    if(_mm_movemask_ps(mask) != 0xf)
+                    {
+                        outsilent = false;
+                        break;
+                    }
+                }
+                if(!outsilent)
+                    break;
+            }
+            if(outsilent)
+                return;
+        }
 
         if(m_window_func != FFTWindow::NONE)
         {
