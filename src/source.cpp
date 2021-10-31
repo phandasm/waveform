@@ -193,7 +193,7 @@ namespace callbacks {
         auto ceiling = obs_properties_add_int_slider(props, P_CEILING, T(P_CEILING), -240, 0, 1);
         obs_property_int_set_suffix(floor, " dBFS");
         obs_property_int_set_suffix(ceiling, " dBFS");
-        auto slope = obs_properties_add_float_slider(props, P_SLOPE, T(P_SLOPE), 0.0, 5.0, 0.01);
+        auto slope = obs_properties_add_float_slider(props, P_SLOPE, T(P_SLOPE), 0.0, 10.0, 0.01);
         obs_property_set_long_description(slope, T(P_SLOPE_DESC));
         auto renderlist = obs_properties_add_list(props, P_RENDER_MODE, T(P_RENDER_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         obs_property_list_add_string(renderlist, T(P_LINE), P_LINE);
@@ -471,13 +471,26 @@ void WAVSource::update(obs_data_t *settings)
         }
     }
 
+    m_last_silent = false;
+    m_render_silent = false;
+
     recapture_audio(settings);
+    for(auto& i : m_capturebufs)
+    {
+        auto bufsz = m_fft_size * sizeof(float);
+        if(i.size < bufsz)
+            circlebuf_push_back_zero(&i, bufsz - i.size);
+    }
 }
 
 // TODO: optimize this mess
 void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 {
     std::lock_guard lock(m_mtx);
+    if(m_render_silent && m_last_silent) // account for possible dropped frames
+        return;
+    m_render_silent = m_last_silent;
+
     auto filename = obs_module_file("gradient.effect");
     auto m_gradient = gs_effect_create_from_file(filename, nullptr);
     bfree(filename);
@@ -594,7 +607,7 @@ void WAVSource::register_source()
 
 void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio_data *audio, bool muted)
 {
-    if(!m_mtx.try_lock_for(std::chrono::milliseconds(1)))
+    if(!m_mtx.try_lock_for(std::chrono::milliseconds(3)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
     if(m_audio_source == nullptr)
@@ -625,6 +638,19 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
     const auto outsz = m_fft_size / 2; // discard bins at nyquist and above
     constexpr auto step = sizeof(__m256) / sizeof(float);
 
+    if(!m_show)
+    {
+        if(m_last_silent)
+            return;
+        for(auto channel = 0u; channel < m_capture_channels; ++channel)
+            memset(m_tsmooth_buf[channel].get(), 0, outsz * sizeof(float));
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 0; i < outsz; ++i)
+                    m_decibels[channel][i] = DB_MIN;
+        m_last_silent = true;
+        return;
+    }
+
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
         // get captured audio
@@ -645,6 +671,7 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
             if(_mm256_movemask_ps(mask) != 0xff)
             {
                 silent = false;
+                m_last_silent = false;
                 break;
             }
         }
@@ -652,6 +679,8 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
         // wait for gravity
         if(silent)
         {
+            if(m_last_silent)
+                return;
             bool outsilent = true;
             auto floor = _mm256_set1_ps((float)m_floor - 10);
             for(auto ch = 0; ch < (m_stereo ? 2 : 1); ++ch)
@@ -669,7 +698,10 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
                     break;
             }
             if(outsilent)
+            {
+                m_last_silent = true;
                 return;
+            }
         }
 
         // window function
@@ -778,6 +810,19 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
     const auto outsz = m_fft_size / 2;
     constexpr auto step = sizeof(__m256) / sizeof(float);
 
+    if(!m_show)
+    {
+        if(m_last_silent)
+            return;
+        for(auto channel = 0u; channel < m_capture_channels; ++channel)
+            memset(m_tsmooth_buf[channel].get(), 0, outsz * sizeof(float));
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 0; i < outsz; ++i)
+                m_decibels[channel][i] = DB_MIN;
+        m_last_silent = true;
+        return;
+    }
+
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
         if(m_capturebufs[channel].size >= bufsz)
@@ -796,12 +841,15 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
             if(_mm256_movemask_ps(mask) != 0xff)
             {
                 silent = false;
+                m_last_silent = false;
                 break;
             }
         }
 
         if(silent)
         {
+            if(m_last_silent)
+                return;
             bool outsilent = true;
             auto floor = _mm256_set1_ps((float)m_floor - 10);
             for(auto ch = 0; ch < (m_stereo ? 2 : 1); ++ch)
@@ -819,7 +867,10 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
                     break;
             }
             if(outsilent)
+            {
+                m_last_silent = true;
                 return;
+            }
         }
 
         if(m_window_func != FFTWindow::NONE)
@@ -916,6 +967,19 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
     const auto outsz = m_fft_size / 2;
     constexpr auto step = sizeof(__m128) / sizeof(float);
 
+    if(!m_show)
+    {
+        if(m_last_silent)
+            return;
+        for(auto channel = 0u; channel < m_capture_channels; ++channel)
+            memset(m_tsmooth_buf[channel].get(), 0, outsz * sizeof(float));
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 0; i < outsz; ++i)
+                m_decibels[channel][i] = DB_MIN;
+        m_last_silent = true;
+        return;
+    }
+
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
         if(m_capturebufs[channel].size >= bufsz)
@@ -934,12 +998,15 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
             if(_mm_movemask_ps(mask) != 0xf)
             {
                 silent = false;
+                m_last_silent = false;
                 break;
             }
         }
 
         if(silent)
         {
+            if(m_last_silent)
+                return;
             bool outsilent = true;
             auto floor = _mm_set1_ps((float)m_floor - 10);
             for(auto ch = 0; ch < (m_stereo ? 2 : 1); ++ch)
@@ -957,7 +1024,10 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
                     break;
             }
             if(outsilent)
+            {
+                m_last_silent = true;
                 return;
+            }
         }
 
         if(m_window_func != FFTWindow::NONE)
