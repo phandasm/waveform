@@ -50,7 +50,7 @@ T lanczos(T x, T w)
 }
 
 template<typename T>
-T lanczos_interp(double x, double w, const size_t len, T *buf)
+T lanczos_interp(T x, T w, const size_t len, T *buf)
 {
     T val = 0;
     const auto floorx = (intmax_t)x;

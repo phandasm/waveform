@@ -491,16 +491,22 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
         return;
     m_render_silent = m_last_silent;
 
+    const auto num_verts = (m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2);
+    auto vbdata = gs_vbdata_create();
+    vbdata->num = num_verts;
+    vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
+    gs_vertbuffer_t *vbuf = nullptr;
+
     auto filename = obs_module_file("gradient.effect");
-    auto m_gradient = gs_effect_create_from_file(filename, nullptr);
+    auto shader = gs_effect_create_from_file(filename, nullptr);
     bfree(filename);
-    auto color_base = gs_effect_get_param_by_name(m_gradient, "color_base");
-    auto tech = gs_effect_get_technique(m_gradient, (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid");
+    auto color_base = gs_effect_get_param_by_name(shader, "color_base");
+    auto tech = gs_effect_get_technique(shader, (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid");
 
     const auto maxbin = (m_fft_size / 2) - 1;
-    const auto sr = (double)m_audio_info.samples_per_sec;
-    const auto lowbin = std::clamp((double)m_cutoff_low * m_fft_size / sr, 1.0, (double)maxbin);
-    const auto highbin = std::clamp((double)m_cutoff_high * m_fft_size / sr, 1.0, (double)maxbin);
+    const auto sr = (float)m_audio_info.samples_per_sec;
+    const auto lowbin = std::clamp((float)m_cutoff_low * m_fft_size / sr, 1.0f, (float)maxbin);
+    const auto highbin = std::clamp((float)m_cutoff_high * m_fft_size / sr, 1.0f, (float)maxbin);
     const auto center = (float)m_height / 2 + 0.5f;
     const auto right = (float)m_width + 0.5f;
     const auto bottom = (float)m_height + 0.5f;
@@ -511,7 +517,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
         // find highest fft bin and calculate it's y coord
         // used to scale the gradient
         auto miny = DB_MIN;
-        auto color_dist = gs_effect_get_param_by_name(m_gradient, "distfactor");
+        auto color_dist = gs_effect_get_param_by_name(shader, "distfactor");
         for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
             for(auto i = 1; i < m_fft_size / 2; ++i)
                 if(m_decibels[channel][i] > miny)
@@ -519,8 +525,8 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
         miny = lerp(0.5f, m_stereo ? center : bottom, std::clamp(m_ceiling - miny, 0.0f, (float)dbrange) / dbrange);
         gs_effect_set_float(color_dist, 1 / ((m_stereo ? center : bottom) - miny) * m_grad_ratio);
 
-        auto color_crest = gs_effect_get_param_by_name(m_gradient, "color_crest");
-        auto grad_center_pos = gs_effect_get_param_by_name(m_gradient, "center");
+        auto color_crest = gs_effect_get_param_by_name(shader, "color_crest");
+        auto grad_center_pos = gs_effect_get_param_by_name(shader, "center");
         vec2 centervec{ m_width / 2 + 0.5f, (m_stereo ? center : bottom) };
         gs_effect_set_vec4(color_crest, &m_color_crest);
         gs_effect_set_vec2(grad_center_pos, &centervec);
@@ -533,41 +539,50 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
-        gs_render_start(true);
+        auto vertpos = 0u;
+        if(channel)
+            vbdata = gs_vertexbuffer_get_data(vbuf);
         if(m_render_mode != RenderMode::LINE)
-            gs_vertex2f(-0.5, m_stereo ? center : bottom);
+            vec3_set(&vbdata->points[vertpos++], -0.5, m_stereo ? center : bottom, 0);
 
         for(auto i = 0u; i < m_width; ++i)
         {
             if((m_render_mode != RenderMode::LINE) && (i & 1))
             {
-                gs_vertex2f((float)i + 0.5f, m_stereo ? center : bottom);
+                vec3_set(&vbdata->points[vertpos++], (float)i + 0.5f, m_stereo ? center : bottom, 0);
                 continue;
             }
 
-            auto bin = log_interp(lowbin, highbin, (double)i / (double)(m_width - 1));
+            auto bin = log_interp(lowbin, highbin, (float)i / (float)(m_width - 1));
             float val;
             if(m_interp_mode == InterpMode::LANCZOS)
-                val = lanczos_interp(bin, 3, m_fft_size / 2, m_decibels[channel].get());
+                val = lanczos_interp(bin, 3.0f, m_fft_size / 2, m_decibels[channel].get());
             else
                 val = m_decibels[channel][(int)bin];
             val = lerp(0.5f, m_stereo ? center : bottom, std::clamp(m_ceiling - val, 0.0f, (float)dbrange) / dbrange);
             if(channel == 0)
-                gs_vertex2f((float)i + 0.5f, val);
+                vec3_set(&vbdata->points[vertpos++], (float)i + 0.5f, val, 0);
             else
-                gs_vertex2f((float)i + 0.5f, bottom - val);
+                vec3_set(&vbdata->points[vertpos++], (float)i + 0.5f, bottom - val, 0);
         }
 
         if(m_render_mode != RenderMode::LINE)
-            gs_vertex2f(right, m_stereo ? center : bottom);
+            vec3_set(&vbdata->points[vertpos++], right, m_stereo ? center : bottom, 0);
 
-        gs_render_stop((m_render_mode != RenderMode::LINE) ? GS_TRISTRIP : GS_LINESTRIP);
+        if(channel)
+            gs_vertexbuffer_flush(vbuf);
+        else
+            vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
+        gs_load_vertexbuffer(vbuf);
+        gs_load_indexbuffer(nullptr);
+        gs_draw((m_render_mode != RenderMode::LINE) ? GS_TRISTRIP : GS_LINESTRIP, 0, num_verts);
     }
 
+    gs_vertexbuffer_destroy(vbuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
 
-    gs_effect_destroy(m_gradient);
+    gs_effect_destroy(shader);
 }
 
 void WAVSource::register_source()
