@@ -94,7 +94,7 @@ protected:
     bool m_show = true;
 
     // settings
-    RenderMode m_render_mode = RenderMode::GRADIENT;
+    RenderMode m_render_mode = RenderMode::SOLID;
     FFTWindow m_window_func = FFTWindow::HANN;
     InterpMode m_interp_mode = InterpMode::LANCZOS;
     TSmoothingMode m_tsmoothing = TSmoothingMode::EXPONENTIAL;
@@ -109,6 +109,7 @@ protected:
     bool m_fast_peaks = false;
     vec4 m_color_base{ 1.0, 1.0, 1.0, 1.0 };
     vec4 m_color_crest{ 1.0, 1.0, 1.0, 1.0 };
+    float m_slope = 0.0f;
 
     void get_settings(obs_data_t *settings);
 

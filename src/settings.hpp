@@ -55,6 +55,7 @@
 #define P_CUTOFF_HIGH       "cutoff_high"
 #define P_FLOOR             "floor"
 #define P_CEILING           "ceiling"
+#define P_SLOPE             "slope"
 
 #define P_GRAVITY           "gravity"
 #define P_TSMOOTHING        "temporal_smoothing"
@@ -75,6 +76,7 @@
 #define P_GRAVITY_DESC      "gravity_desc"
 #define P_FAST_PEAKS_DESC   "fast_peaks_desc"
 #define P_INTERP_DESC       "interp_desc"
+#define P_SLOPE_DESC        "slope_desc"
 
 // convenience function for testing equality of raw C strings
 static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1, s2) == 0; }
