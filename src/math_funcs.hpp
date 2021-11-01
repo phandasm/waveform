@@ -19,21 +19,22 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 #include <algorithm>
+#include <type_traits>
 
 template<typename T>
-T log_interp(T a, T b, T t)
+std::enable_if_t<std::is_floating_point_v<T>, T> log_interp(T a, T b, T t)
 {
     return a * std::pow(b / a, t);
 }
 
 template<typename T>
-T lerp(T a, T b, T t)
+std::enable_if_t<std::is_floating_point_v<T>, T> lerp(T a, T b, T t)
 {
     return a + t * (b - a);
 }
 
 template<typename T>
-T sinc(T x)
+std::enable_if_t<std::is_floating_point_v<T>, T> sinc(T x)
 {
     if(x == 0.0)
         return 1.0;
@@ -42,20 +43,20 @@ T sinc(T x)
 }
 
 template<typename T>
-T lanczos(T x, T w)
+std::enable_if_t<std::is_floating_point_v<T>, T> lanczos(T x, T w)
 {
     if(-w <= x && x <= w)
         return sinc(x) * sinc(x / w);
     return 0.0;
 }
 
-template<typename T>
-T lanczos_interp(T x, T w, const size_t len, T *buf)
+template<typename T, typename U>
+std::enable_if_t<std::is_floating_point_v<T>, T> lanczos_interp(T x, T w, const size_t len, U *buf)
 {
     T val = 0;
     const auto floorx = (intmax_t)x;
     const auto floorw = (intmax_t)w;
     for(auto i = std::max(floorx - floorw + 1, (intmax_t)0); i <= std::min(floorx + floorw, (intmax_t)len - 1); ++i)
-        val += buf[i] * (T)lanczos(x - i, w);
+        val += (T)buf[i] * (T)lanczos(x - i, w);
     return val;
 }
