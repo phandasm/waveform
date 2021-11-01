@@ -18,6 +18,7 @@
 #include "math_funcs.hpp"
 #include "source.hpp"
 #include "settings.hpp"
+#include <graphics/matrix4.h>
 #include <immintrin.h>
 #include <vector>
 #include <string>
@@ -514,6 +515,9 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 
     if(m_render_mode == RenderMode::GRADIENT)
     {
+        matrix4 mat;
+        gs_matrix_get(&mat); // get position of source on the scene
+
         // find highest fft bin and calculate it's y coord
         // used to scale the gradient
         auto miny = DB_MIN;
@@ -527,7 +531,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 
         auto color_crest = gs_effect_get_param_by_name(shader, "color_crest");
         auto grad_center_pos = gs_effect_get_param_by_name(shader, "center");
-        vec2 centervec{ m_width / 2 + 0.5f, (m_stereo ? center : bottom) };
+        vec2 centervec{ m_width / 2 + 0.5f, (m_stereo ? center : bottom) + mat.t.y };
         gs_effect_set_vec4(color_crest, &m_color_crest);
         gs_effect_set_vec2(grad_center_pos, &centervec);
     }
