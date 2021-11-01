@@ -18,8 +18,10 @@ if(MSVC)
     set(FFTW_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/deps/fftw-3.3.10/include")
     if(CMAKE_SIZEOF_VOID_P EQUAL 4)
         set(FFTW_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/deps/fftw-3.3.10/x86/fftw3f.lib")
+        set(FFTW_DLL "${CMAKE_CURRENT_SOURCE_DIR}/deps/fftw-3.3.10/x86/fftw3f.dll")
     else()
         set(FFTW_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/deps/fftw-3.3.10/x64/fftw3f.lib")
+        set(FFTW_DLL "${CMAKE_CURRENT_SOURCE_DIR}/deps/fftw-3.3.10/x64/fftw3f.dll")
     endif()
 else()
     find_path(FFTW_INCLUDE_DIRS fftw3.h)
@@ -27,7 +29,7 @@ else()
 endif()
 
 set(BUILD_TESTING OFF)
-add_subdirectory(deps/cpu_features)
+add_subdirectory(deps/cpu_features EXCLUDE_FROM_ALL)
 
 set(PLUGIN_SOURCES
     "src/module.hpp"
@@ -45,3 +47,8 @@ target_link_libraries(waveform PRIVATE ${LIBOBS_LIBRARIES} ${FFTW_LIBRARIES} cpu
 if(MSVC)
     target_compile_options(waveform PRIVATE "/W4") # warning level
 endif()
+
+install(TARGETS waveform DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
+install(FILES ${FFTW_DLL} DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
+install(FILES "data/gradient.effect" DESTINATION "data/obs-plugins/waveform")
+install(FILES "data/locale/en-US.ini" DESTINATION "data/obs-plugins/waveform/locale")
