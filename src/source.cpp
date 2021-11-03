@@ -118,7 +118,7 @@ namespace callbacks {
         obs_data_set_default_string(settings, P_RENDER_MODE, P_SOLID);
         obs_data_set_default_int(settings, P_COLOR_BASE, 0xffffffff);
         obs_data_set_default_int(settings, P_COLOR_CREST, 0xffffffff);
-        obs_data_set_default_double(settings, P_GRAD_RATIO, 1.35);
+        obs_data_set_default_double(settings, P_GRAD_RATIO, 0.75);
     }
 
     static obs_properties_t *get_properties([[maybe_unused]] void *data)
@@ -512,6 +512,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
     const auto right = (float)m_width + 0.5f;
     const auto bottom = (float)m_height + 0.5f;
     const auto dbrange = m_ceiling - m_floor;
+    const auto cpos = m_stereo ? center : bottom;
 
     if(m_render_mode == RenderMode::GRADIENT)
     {
@@ -521,19 +522,19 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
         // find highest fft bin and calculate it's y coord
         // used to scale the gradient
         auto miny = DB_MIN;
-        auto color_dist = gs_effect_get_param_by_name(shader, "distfactor");
+        auto grad_height = gs_effect_get_param_by_name(shader, "grad_height");
         for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
             for(auto i = 1; i < m_fft_size / 2; ++i)
                 if(m_decibels[channel][i] > miny)
                     miny = m_decibels[channel][i];
-        miny = lerp(0.5f, m_stereo ? center : bottom, std::clamp(m_ceiling - miny, 0.0f, (float)dbrange) / dbrange);
-        gs_effect_set_float(color_dist, 1 / ((m_stereo ? center : bottom) - miny) * m_grad_ratio);
+
+        miny = lerp(0.5f, cpos, std::clamp(m_ceiling - miny, 0.0f, (float)dbrange) / dbrange);
+        gs_effect_set_float(grad_height, (cpos - miny) * m_grad_ratio);
 
         auto color_crest = gs_effect_get_param_by_name(shader, "color_crest");
-        auto grad_center_pos = gs_effect_get_param_by_name(shader, "center");
-        vec2 centervec{ m_width / 2 + 0.5f, (m_stereo ? center : bottom) + mat.t.y };
+        auto grad_center = gs_effect_get_param_by_name(shader, "grad_center");
         gs_effect_set_vec4(color_crest, &m_color_crest);
-        gs_effect_set_vec2(grad_center_pos, &centervec);
+        gs_effect_set_float(grad_center, cpos);
     }
 
     gs_effect_set_vec4(color_base, &m_color_base);
@@ -547,13 +548,13 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
         if(channel)
             vbdata = gs_vertexbuffer_get_data(vbuf);
         if(m_render_mode != RenderMode::LINE)
-            vec3_set(&vbdata->points[vertpos++], -0.5, m_stereo ? center : bottom, 0);
+            vec3_set(&vbdata->points[vertpos++], -0.5, cpos, 0);
 
         for(auto i = 0u; i < m_width; ++i)
         {
             if((m_render_mode != RenderMode::LINE) && (i & 1))
             {
-                vec3_set(&vbdata->points[vertpos++], (float)i + 0.5f, m_stereo ? center : bottom, 0);
+                vec3_set(&vbdata->points[vertpos++], (float)i + 0.5f, cpos, 0);
                 continue;
             }
 
@@ -563,7 +564,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
                 val = lanczos_interp(bin, 3.0f, m_fft_size / 2, m_decibels[channel].get());
             else
                 val = m_decibels[channel][(int)bin];
-            val = lerp(0.5f, m_stereo ? center : bottom, std::clamp(m_ceiling - val, 0.0f, (float)dbrange) / dbrange);
+            val = lerp(0.5f, cpos, std::clamp(m_ceiling - val, 0.0f, (float)dbrange) / dbrange);
             if(channel == 0)
                 vec3_set(&vbdata->points[vertpos++], (float)i + 0.5f, val, 0);
             else
@@ -571,7 +572,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
         }
 
         if(m_render_mode != RenderMode::LINE)
-            vec3_set(&vbdata->points[vertpos++], right, m_stereo ? center : bottom, 0);
+            vec3_set(&vbdata->points[vertpos++], right, cpos, 0);
 
         if(channel)
             gs_vertexbuffer_flush(vbuf);

@@ -1,11 +1,16 @@
 uniform float4x4 ViewProj;
 uniform float4 color_base = {1.0, 1.0, 1.0, 1.0};
 uniform float4 color_crest = {1.0, 1.0, 1.0, 1.0};
-uniform float2 center = {0.0, 0.0};
-uniform float distfactor = 1.0;
+uniform float grad_center = 0.0;
+uniform float grad_height = 0.0;
 
 struct VertInOut {
 	float4 pos : POSITION;
+};
+
+struct VertGrad {
+	float4 pos : POSITION;
+	float2 tex : TEXCOORD0;
 };
 
 VertInOut VSSimple(VertInOut vert_in)
@@ -15,14 +20,22 @@ VertInOut VSSimple(VertInOut vert_in)
 	return vert_out;
 }
 
+VertGrad VSGradient(VertInOut vert_in)
+{
+	VertGrad vert_out;
+	vert_out.pos = mul(float4(vert_in.pos.xyz, 1.0), ViewProj);
+	vert_out.tex = vert_in.pos.xy;
+	return vert_out;
+}
+
 float4 PSSolid(VertInOut vert_in) : TARGET
 {
 	return color_base;
 }
 
-float4 PSGradient(VertInOut vert_in) : TARGET
+float4 PSGradient(VertGrad vert_in) : TARGET
 {
-    float lerp_t = saturate(mul(distance(vert_in.pos.y, center.y), distfactor));
+    float lerp_t = saturate(distance(vert_in.tex.y, grad_center) / grad_height);
 	return lerp(color_base, color_crest, lerp_t);
 }
 
@@ -39,7 +52,7 @@ technique Gradient
 {
 	pass
 	{
-		vertex_shader = VSSimple(vert_in);
+		vertex_shader = VSGradient(vert_in);
 		pixel_shader  = PSGradient(vert_in);
 	}
 }
