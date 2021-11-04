@@ -490,10 +490,14 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
     if(m_last_silent)
         return;
 
-    const auto num_verts = (m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2);
+    const auto num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2));
     auto vbdata = gs_vbdata_create();
     vbdata->num = num_verts;
     vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
+    vbdata->num_tex = 1;
+    vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
+    vbdata->tvarray->width = 2;
+    vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
     gs_vertbuffer_t *vbuf = nullptr;
 
     auto filename = obs_module_file("gradient.effect");
@@ -575,7 +579,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
             vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
         gs_load_vertexbuffer(vbuf);
         gs_load_indexbuffer(nullptr);
-        gs_draw((m_render_mode != RenderMode::LINE) ? GS_TRISTRIP : GS_LINESTRIP, 0, num_verts);
+        gs_draw((m_render_mode != RenderMode::LINE) ? GS_TRISTRIP : GS_LINESTRIP, 0, (uint32_t)num_verts);
     }
 
     gs_vertexbuffer_destroy(vbuf);
