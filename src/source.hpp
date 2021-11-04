@@ -95,7 +95,6 @@ protected:
 
     // graph was silent last frame
     bool m_last_silent = false;
-    bool m_render_silent = false;
 
     // settings
     RenderMode m_render_mode = RenderMode::SOLID;

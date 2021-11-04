@@ -473,7 +473,6 @@ void WAVSource::update(obs_data_t *settings)
     }
 
     m_last_silent = false;
-    m_render_silent = false;
 
     recapture_audio(settings);
     for(auto& i : m_capturebufs)
@@ -488,9 +487,8 @@ void WAVSource::update(obs_data_t *settings)
 void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 {
     std::lock_guard lock(m_mtx);
-    if(m_render_silent && m_last_silent) // account for possible dropped frames
+    if(m_last_silent)
         return;
-    m_render_silent = m_last_silent;
 
     const auto num_verts = (m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2);
     auto vbdata = gs_vbdata_create();
@@ -516,9 +514,6 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 
     if(m_render_mode == RenderMode::GRADIENT)
     {
-        matrix4 mat;
-        gs_matrix_get(&mat); // get position of source on the scene
-
         // find highest fft bin and calculate it's y coord
         // used to scale the gradient
         auto miny = DB_MIN;
