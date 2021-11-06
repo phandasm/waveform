@@ -63,6 +63,8 @@ else()
     set(DECORATE_SIMD_FUNCS ON)
 endif()
 
+set(CMAKE_REQUIRED_INCLUDES ${LIBOBS_INCLUDE_DIRS})
+set(CMAKE_REQUIRED_LIBRARIES ${LIBOBS_LIBRARIES})
 check_symbol_exists(obs_properties_add_color_alpha "obs-module.h" HAVE_OBS_PROP_ALPHA)
 configure_file("src/waveform_config.hpp.in" "include/waveform_config.hpp")
 
