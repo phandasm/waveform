@@ -15,6 +15,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include "waveform_config.hpp"
 #include "math_funcs.hpp"
 #include "source.hpp"
 #include "settings.hpp"
@@ -26,6 +27,20 @@
 #include <cstring>
 #include <limits>
 #include "cpuinfo_x86.h"
+
+#ifndef HAVE_OBS_PROP_ALPHA
+#define obs_properties_add_color_alpha obs_properties_add_color
+#endif
+
+#ifdef DECORATE_SIMD_FUNCS
+#define DECORATE_AVX2 __attribute__ ((__target__ ("avx2", "fma")))
+#define DECORATE_AVX __attribute__ ((__target__ ("avx", "fma")))
+#define DECORATE_SSE2 __attribute__ ((__target__ ("sse2")))
+#else
+#define DECORATE_AVX2
+#define DECORATE_AVX
+#define DECORATE_SSE2
+#endif
 
 static const float LOG_MIN = std::log10(std::numeric_limits<float>::min());
 static const float DB_MIN = 20.0f * LOG_MIN;
@@ -430,7 +445,7 @@ void WAVSource::update(obs_data_t *settings)
         m_decibels[i].reset(avx_alloc<float>(count));
         if(m_tsmoothing != TSmoothingMode::NONE)
             m_tsmooth_buf[i].reset(avx_alloc<float>(count));
-        for(auto j = 0; j < count; ++j)
+        for(auto j = 0u; j < count; ++j)
         {
             m_decibels[i][j] = DB_MIN;
             if(m_tsmoothing != TSmoothingMode::NONE)
@@ -523,7 +538,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
         auto miny = DB_MIN;
         auto grad_height = gs_effect_get_param_by_name(shader, "grad_height");
         for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
-            for(auto i = 1; i < m_fft_size / 2; ++i)
+            for(auto i = 1u; i < m_fft_size / 2; ++i)
                 if(m_decibels[channel][i] > miny)
                     miny = m_decibels[channel][i];
 
@@ -647,6 +662,7 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     }
 }
 
+DECORATE_AVX2
 void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
 {
     std::lock_guard lock(m_mtx);
@@ -819,6 +835,7 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
 
 // adaptation of WAVSourceAVX2 to support CPUs without AVX2
 // see comments of WAVSourceAVX2
+DECORATE_AVX
 void WAVSourceAVX::tick([[maybe_unused]] float seconds)
 {
     std::lock_guard lock(m_mtx);
@@ -976,6 +993,7 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
 }
 
 // compatibility fallback using at most SSE2 instructions
+DECORATE_SSE2
 void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
 {
     std::lock_guard lock(m_mtx);

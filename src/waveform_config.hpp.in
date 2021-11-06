@@ -1,0 +1,3 @@
+#pragma once
+#cmakedefine HAVE_OBS_PROP_ALPHA
+#cmakedefine DECORATE_SIMD_FUNCS
