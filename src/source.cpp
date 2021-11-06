@@ -591,9 +591,11 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
         if(channel)
             gs_vertexbuffer_flush(vbuf);
         else
+        {
             vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
-        gs_load_vertexbuffer(vbuf);
-        gs_load_indexbuffer(nullptr);
+            gs_load_vertexbuffer(vbuf);
+            gs_load_indexbuffer(nullptr);
+        }
         gs_draw((m_render_mode != RenderMode::LINE) ? GS_TRISTRIP : GS_LINESTRIP, 0, (uint32_t)num_verts);
     }
 
