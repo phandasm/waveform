@@ -16,7 +16,6 @@
 */
 
 #pragma once
-#define _USE_MATH_DEFINES
 #include <cmath>
 #include <algorithm>
 #include <type_traits>
@@ -45,7 +44,7 @@ std::enable_if_t<std::is_floating_point_v<T>, T> sinc(T x)
 template<typename T>
 std::enable_if_t<std::is_floating_point_v<T>, T> lanczos(T x, T w)
 {
-    if(-w <= x && x <= w)
+    if(std::abs(x) < w)
         return sinc(x) * sinc(x / w);
     return 0.0;
 }

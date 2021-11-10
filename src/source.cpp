@@ -32,22 +32,14 @@
 #define obs_properties_add_color_alpha obs_properties_add_color
 #endif
 
-#ifdef DECORATE_SIMD_FUNCS
-#define DECORATE_AVX2 __attribute__ ((__target__ ("avx2", "fma")))
-#define DECORATE_AVX __attribute__ ((__target__ ("avx", "fma")))
-#define DECORATE_SSE2 __attribute__ ((__target__ ("sse2")))
-#else
-#define DECORATE_AVX2
-#define DECORATE_AVX
-#define DECORATE_SSE2
-#endif
-
 static const float LOG_MIN = std::log10(std::numeric_limits<float>::min());
 static const float DB_MIN = 20.0f * LOG_MIN;
 
 static const auto CPU_INFO = cpu_features::GetX86Info();
 static const bool HAVE_AVX2 = CPU_INFO.features.avx2 && CPU_INFO.features.fma3;
 static const bool HAVE_AVX = CPU_INFO.features.avx && CPU_INFO.features.fma3;
+static const bool HAVE_SSE41 = CPU_INFO.features.sse4_1;
+static const bool HAVE_FMA3 = CPU_INFO.features.fma3;
 
 static inline float dbfs(float mag)
 {
@@ -116,18 +108,20 @@ namespace callbacks {
     {
         obs_data_set_default_string(settings, P_AUDIO_SRC, P_NONE);
         obs_data_set_default_int(settings, P_WIDTH, 800);
-        obs_data_set_default_int(settings, P_HEIGHT, 600);
-        obs_data_set_default_string(settings, P_CHANNEL_MODE, P_STEREO);
-        obs_data_set_default_int(settings, P_FFT_SIZE, 1024);
+        obs_data_set_default_int(settings, P_HEIGHT, 225);
+        obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
+        obs_data_set_default_int(settings, P_FFT_SIZE, 2048);
         obs_data_set_default_bool(settings, P_AUTO_FFT_SIZE, false);
         obs_data_set_default_string(settings, P_WINDOW, P_HANN);
         obs_data_set_default_string(settings, P_INTERP_MODE, P_LANCZOS);
+        obs_data_set_default_string(settings, P_FILTER_MODE, P_NONE);
+        obs_data_set_default_double(settings, P_FILTER_RADIUS, 1.5);
         obs_data_set_default_string(settings, P_TSMOOTHING, P_EXPAVG);
         obs_data_set_default_double(settings, P_GRAVITY, 0.65);
         obs_data_set_default_bool(settings, P_FAST_PEAKS, false);
-        obs_data_set_default_int(settings, P_CUTOFF_LOW, 120);
+        obs_data_set_default_int(settings, P_CUTOFF_LOW, 30);
         obs_data_set_default_int(settings, P_CUTOFF_HIGH, 17500);
-        obs_data_set_default_int(settings, P_FLOOR, -95);
+        obs_data_set_default_int(settings, P_FLOOR, -65);
         obs_data_set_default_int(settings, P_CEILING, 0);
         obs_data_set_default_double(settings, P_SLOPE, 0.0);
         obs_data_set_default_string(settings, P_RENDER_MODE, P_SOLID);
@@ -200,13 +194,26 @@ namespace callbacks {
         obs_property_list_add_string(interplist, T(P_LANCZOS), P_LANCZOS);
         obs_property_set_long_description(interplist, T(P_INTERP_DESC));
 
+        // filter
+        auto filterlist = obs_properties_add_list(props, P_FILTER_MODE, T(P_FILTER_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+        obs_property_list_add_string(filterlist, T(P_NONE), P_NONE);
+        obs_property_list_add_string(filterlist, T(P_GAUSS), P_GAUSS);
+        obs_properties_add_float_slider(props, P_FILTER_RADIUS, T(P_FILTER_RADIUS), 0.0, 32.0, 0.01);
+        obs_property_set_long_description(filterlist, T(P_FILTER_DESC));
+        obs_property_set_modified_callback(filterlist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
+            auto enable = !p_equ(obs_data_get_string(settings, P_FILTER_MODE), P_NONE);
+            obs_property_set_enabled(obs_properties_get(props, P_FILTER_RADIUS), enable);
+            obs_property_set_visible(obs_properties_get(props, P_FILTER_RADIUS), enable);
+            return true;
+            });
+
         // display
         auto low_cut = obs_properties_add_int_slider(props, P_CUTOFF_LOW, T(P_CUTOFF_LOW), 0, 24000, 1);
         auto high_cut = obs_properties_add_int_slider(props, P_CUTOFF_HIGH, T(P_CUTOFF_HIGH), 0, 24000, 1);
         obs_property_int_set_suffix(low_cut, " Hz");
         obs_property_int_set_suffix(high_cut, " Hz");
-        auto floor = obs_properties_add_int_slider(props, P_FLOOR, T(P_FLOOR), -240, 0, 1);
-        auto ceiling = obs_properties_add_int_slider(props, P_CEILING, T(P_CEILING), -240, 0, 1);
+        auto floor = obs_properties_add_int_slider(props, P_FLOOR, T(P_FLOOR), -120, 0, 1);
+        auto ceiling = obs_properties_add_int_slider(props, P_CEILING, T(P_CEILING), -120, 0, 1);
         obs_property_int_set_suffix(floor, " dBFS");
         obs_property_int_set_suffix(ceiling, " dBFS");
         auto slope = obs_properties_add_float_slider(props, P_SLOPE, T(P_SLOPE), 0.0, 10.0, 0.01);
@@ -272,6 +279,8 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_gravity = (float)obs_data_get_double(settings, P_GRAVITY);
     m_fast_peaks = obs_data_get_bool(settings, P_FAST_PEAKS);
     auto interp = obs_data_get_string(settings, P_INTERP_MODE);
+    auto filtermode = obs_data_get_string(settings, P_FILTER_MODE);
+    m_filter_radius = (float)obs_data_get_double(settings, P_FILTER_RADIUS);
     m_cutoff_low = (int)obs_data_get_int(settings, P_CUTOFF_LOW);
     m_cutoff_high = (int)obs_data_get_int(settings, P_CUTOFF_HIGH);
     m_floor = (int)obs_data_get_int(settings, P_FLOOR);
@@ -317,6 +326,11 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_interp_mode = InterpMode::LANCZOS;
     else
         m_interp_mode = InterpMode::POINT;
+
+    if(p_equ(filtermode, P_GAUSS))
+        m_filter_mode = FilterMode::GAUSS;
+    else
+        m_filter_mode = FilterMode::NONE;
 
     if(p_equ(tsmoothing, P_EXPAVG))
         m_tsmoothing = TSmoothingMode::EXPONENTIAL;
@@ -496,9 +510,25 @@ void WAVSource::update(obs_data_t *settings)
         if(i.size < bufsz)
             circlebuf_push_back_zero(&i, bufsz - i.size);
     }
+
+    // interpolation
+    const auto maxbin = (m_fft_size / 2) - 1;
+    const auto sr = (float)m_audio_info.samples_per_sec;
+    const auto lowbin = std::clamp((float)m_cutoff_low * m_fft_size / sr, 1.0f, (float)maxbin);
+    const auto highbin = std::clamp((float)m_cutoff_high * m_fft_size / sr, 1.0f, (float)maxbin);
+
+    // precomupte interpolated indices
+    m_interp_indices.resize(m_width);
+    for(auto& i : m_interp_bufs)
+        i.resize(m_width);
+    for(auto i = 0u; i < m_width; ++i)
+        m_interp_indices[i] = log_interp(lowbin, highbin, (float)i / (float)(m_width - 1));
+
+    // filter
+    if(m_filter_mode == FilterMode::GAUSS)
+        m_kernel = make_gauss_kernel(m_filter_radius);
 }
 
-// TODO: optimize this mess
 void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 {
     std::lock_guard lock(m_mtx);
@@ -518,40 +548,51 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
     auto filename = obs_module_file("gradient.effect");
     auto shader = gs_effect_create_from_file(filename, nullptr);
     bfree(filename);
-    auto color_base = gs_effect_get_param_by_name(shader, "color_base");
     auto tech = gs_effect_get_technique(shader, (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid");
-
-    const auto maxbin = (m_fft_size / 2) - 1;
-    const auto sr = (float)m_audio_info.samples_per_sec;
-    const auto lowbin = std::clamp((float)m_cutoff_low * m_fft_size / sr, 1.0f, (float)maxbin);
-    const auto highbin = std::clamp((float)m_cutoff_high * m_fft_size / sr, 1.0f, (float)maxbin);
+    
     const auto center = (float)m_height / 2 + 0.5f;
     const auto right = (float)m_width + 0.5f;
     const auto bottom = (float)m_height + 0.5f;
     const auto dbrange = m_ceiling - m_floor;
     const auto cpos = m_stereo ? center : bottom;
 
-    if(m_render_mode == RenderMode::GRADIENT)
-    {
-        // find highest fft bin and calculate it's y coord
-        // used to scale the gradient
-        auto miny = DB_MIN;
-        auto grad_height = gs_effect_get_param_by_name(shader, "grad_height");
-        for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
-            for(auto i = 1u; i < m_fft_size / 2; ++i)
-                if(m_decibels[channel][i] > miny)
-                    miny = m_decibels[channel][i];
-
-        miny = lerp(0.5f, cpos, std::clamp(m_ceiling - miny, 0.0f, (float)dbrange) / dbrange);
-        gs_effect_set_float(grad_height, (cpos - miny) * m_grad_ratio);
-
-        auto color_crest = gs_effect_get_param_by_name(shader, "color_crest");
-        auto grad_center = gs_effect_get_param_by_name(shader, "grad_center");
-        gs_effect_set_vec4(color_crest, &m_color_crest);
-        gs_effect_set_float(grad_center, cpos);
-    }
-
+    auto grad_center = gs_effect_get_param_by_name(shader, "grad_center");
+    gs_effect_set_float(grad_center, cpos);
+    auto color_base = gs_effect_get_param_by_name(shader, "color_base");
     gs_effect_set_vec4(color_base, &m_color_base);
+    auto color_crest = gs_effect_get_param_by_name(shader, "color_crest");
+    gs_effect_set_vec4(color_crest, &m_color_crest);
+
+    // interpolation
+    auto miny = cpos;
+    for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
+    {
+        if(m_interp_mode == InterpMode::LANCZOS)
+            for(auto i = 0u; i < m_width; ++i)
+                m_interp_bufs[channel][i] = lanczos_interp(m_interp_indices[i], 3.0f, m_fft_size / 2, m_decibels[channel].get());
+        else
+            for(auto i = 0u; i < m_width; ++i)
+                m_interp_bufs[channel][i] = m_decibels[channel][(int)m_interp_indices[i]];
+
+        if(m_filter_mode != FilterMode::NONE)
+        {
+            if(HAVE_SSE41)
+                m_interp_bufs[channel] = apply_filter_sse41(m_interp_bufs[channel], m_kernel);
+            else
+                m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
+        }
+        
+        const auto step = (m_render_mode == RenderMode::LINE) ? 1 : 2;
+        for(auto i = 0u; i < m_width; i += step)
+        {
+            auto val = lerp(0.5f, cpos, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
+            if(val < miny)
+                miny = val;
+            m_interp_bufs[channel][i] = val;
+        }
+    }
+    auto grad_height = gs_effect_get_param_by_name(shader, "grad_height");
+    gs_effect_set_float(grad_height, (cpos - miny) * m_grad_ratio);
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
@@ -572,13 +613,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
                 continue;
             }
 
-            auto bin = log_interp(lowbin, highbin, (float)i / (float)(m_width - 1));
-            float val;
-            if(m_interp_mode == InterpMode::LANCZOS)
-                val = lanczos_interp(bin, 3.0f, m_fft_size / 2, m_decibels[channel].get());
-            else
-                val = m_decibels[channel][(int)bin];
-            val = lerp(0.5f, cpos, std::clamp(m_ceiling - val, 0.0f, (float)dbrange) / dbrange);
+            auto val = m_interp_bufs[channel][i];
             if(channel == 0)
                 vec3_set(&vbdata->points[vertpos++], (float)i + 0.5f, val, 0);
             else
@@ -608,9 +643,16 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 
 void WAVSource::register_source()
 {
-    auto arch = "AVX2, FMA3";
-    if(!HAVE_AVX2)
-        arch = HAVE_AVX ? "AVX, FMA3" : "SSE2";
+    std::string arch;
+    if(HAVE_AVX2)
+        arch += " AVX2";
+    if(HAVE_AVX)
+        arch += " AVX";
+    if(HAVE_SSE41)
+        arch += " SSE4.1";
+    if(HAVE_FMA3)
+        arch += " FMA3";
+    arch += " SSE2";
 #if defined(__x86_64__) || defined(_M_X64)
     blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s 64-bit", VERSION_STRING);
 #elif defined(__i386__) || defined(_M_IX86)
@@ -618,7 +660,7 @@ void WAVSource::register_source()
 #else
     blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s Unknown Arch", VERSION_STRING);
 #endif
-    blog(LOG_INFO, "[" MODULE_NAME "]: Using CPU capabilities: %s", arch);
+    blog(LOG_INFO, "[" MODULE_NAME "]: Using CPU capabilities:%s", arch.c_str());
 
     obs_source_info info{};
     info.id = MODULE_NAME "_source";

@@ -50,12 +50,14 @@ set(PLUGIN_SOURCES
     "src/source.cpp"
     "src/aligned_mem.hpp"
     "src/math_funcs.hpp"
+    "src/filter.hpp"
     "src/settings.hpp"
 )
 
 add_library(waveform MODULE ${PLUGIN_SOURCES})
 target_include_directories(waveform PRIVATE ${LIBOBS_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_link_libraries(waveform PRIVATE ${LIBOBS_LIBRARIES} ${FFTW_LIBRARIES} cpu_features)
+target_compile_definitions(waveform PRIVATE _USE_MATH_DEFINES)
 if(MSVC)
     target_compile_options(waveform PRIVATE "/W4") # warning level
 else()

@@ -51,6 +51,10 @@
 #define P_POINT             "point"
 #define P_LANCZOS           "lanczos"
 
+#define P_FILTER_MODE       "filter_mode"
+#define P_FILTER_RADIUS     "filter_radius"
+#define P_GAUSS             "gauss"
+
 #define P_CUTOFF_LOW        "cutoff_low"
 #define P_CUTOFF_HIGH       "cutoff_high"
 #define P_FLOOR             "floor"
@@ -76,6 +80,7 @@
 #define P_GRAVITY_DESC      "gravity_desc"
 #define P_FAST_PEAKS_DESC   "fast_peaks_desc"
 #define P_INTERP_DESC       "interp_desc"
+#define P_FILTER_DESC       "filter_desc"
 #define P_SLOPE_DESC        "slope_desc"
 
 // convenience function for testing equality of raw C strings

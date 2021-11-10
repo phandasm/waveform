@@ -23,6 +23,7 @@
 #include <memory>
 #include "module.hpp"
 #include "aligned_mem.hpp"
+#include "filter.hpp"
 
 using AVXBufR = std::unique_ptr<float[], AVXDeleter>;
 using AVXBufC = std::unique_ptr<fftwf_complex[], AVXDeleter>;
@@ -40,6 +41,12 @@ enum class InterpMode
 {
     POINT,
     LANCZOS
+};
+
+enum class FilterMode
+{
+    NONE,
+    GAUSS
 };
 
 // temporal smoothing
@@ -88,7 +95,7 @@ protected:
 
     // video size
     unsigned int m_width = 800;
-    unsigned int m_height = 600;
+    unsigned int m_height = 225;
 
     // show video source
     bool m_show = true;
@@ -100,6 +107,7 @@ protected:
     RenderMode m_render_mode = RenderMode::SOLID;
     FFTWindow m_window_func = FFTWindow::HANN;
     InterpMode m_interp_mode = InterpMode::LANCZOS;
+    FilterMode m_filter_mode = FilterMode::GAUSS;
     TSmoothingMode m_tsmoothing = TSmoothingMode::EXPONENTIAL;
     bool m_stereo = false;
     bool m_auto_fft_size = true;
@@ -113,6 +121,14 @@ protected:
     vec4 m_color_base{ 1.0, 1.0, 1.0, 1.0 };
     vec4 m_color_crest{ 1.0, 1.0, 1.0, 1.0 };
     float m_slope = 0.0f;
+
+    // interpolation
+    std::vector<float> m_interp_indices;
+    std::vector<float> m_interp_bufs[2];
+
+    // filter
+    Kernel<float> m_kernel;
+    float m_filter_radius = 0.0f;
 
     void get_settings(obs_data_t *settings);
 
