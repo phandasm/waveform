@@ -43,7 +43,7 @@ Kernel<T> make_gauss_kernel(T sigma)
     ret.weights.reserve(size);
     ret.radius = w;
     ret.size = size;
-    ret.sse_size = size & -(sizeof(__m128) / sizeof(T));
+    ret.sse_size = size & -(int)(sizeof(__m128) / sizeof(T));
     constexpr auto pi2 = (T)M_PI * (T)2;
     const auto sigsqr = sigma * sigma;
     const auto expdenom = (T)2 * sigsqr;
