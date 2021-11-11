@@ -17,16 +17,39 @@
 
 #pragma once
 #include "waveform_config.hpp"
+#include "aligned_mem.hpp"
 #include <cmath>
 #include <cstdint>
 #include <vector>
 #include <type_traits>
 #include <immintrin.h>
 
+DECORATE_SSE41
+static inline float sum_product_sse41(const float *a, const float *b) // b must be 16-byte aligned
+{
+    return _mm_cvtss_f32(_mm_dp_ps(_mm_loadu_ps(a), _mm_load_ps(b), 0xf1));
+}
+
+DECORATE_SSE41
+static inline double sum_product_sse41(const double *a, const double *b) // b must be 16-byte aligned
+{
+    return _mm_cvtsd_f64(_mm_dp_pd(_mm_loadu_pd(a), _mm_load_pd(b), 0xf1));
+}
+
+#if 0
+DECORATE_AVX
+static inline float sum_product_avx(const float *a, const float *b) // b must be 32-byte aligned
+{
+    auto tmp = _mm256_dp_ps(_mm256_loadu_ps(a), _mm256_load_ps(b), 0xf1);
+    auto sum = _mm_add_ss(_mm256_extractf128_ps(tmp, 1), _mm256_castps256_ps128(tmp));
+    return _mm_cvtss_f32(sum);
+}
+#endif
+
 template<typename T>
 struct Kernel
 {
-    std::vector<T> weights;
+    std::unique_ptr<T[], AVXDeleter> weights;
     int radius = 0;
     int size = 0;
     int sse_size = 0;
@@ -40,7 +63,7 @@ Kernel<T> make_gauss_kernel(T sigma)
     sigma = std::abs(sigma) + 1;
     auto w = (int)std::ceil((T)3 * sigma);
     auto size = (2 * w) - 1;
-    ret.weights.reserve(size);
+    ret.weights.reset(avx_alloc<T>(size));
     ret.radius = w;
     ret.size = size;
     ret.sse_size = size & -(int)(sizeof(__m128) / sizeof(T));
@@ -48,11 +71,12 @@ Kernel<T> make_gauss_kernel(T sigma)
     const auto sigsqr = sigma * sigma;
     const auto expdenom = (T)2 * sigsqr;
     const auto coeff = ((T)1 / (pi2 * sigsqr));
+    auto j = 0;
     for(auto i = -w + 1; i < w; ++i)
     {
         auto exponent = -((i * i) / expdenom);
         auto weight = coeff * std::exp(exponent);
-        ret.weights.push_back(weight);
+        ret.weights[j++] = weight;
         ret.sum += weight;
     }
     return ret;
@@ -81,18 +105,6 @@ T weighted_avg(const std::vector<T>& samples, const Kernel<T>& kernel, intmax_t 
             sum += samples[i] * kernel.weights[i - start];
         return sum / kernel.sum;
     }
-}
-
-DECORATE_SSE41
-static inline float sum_product_sse41(const float *a, const float *b)
-{
-    return _mm_cvtss_f32(_mm_dp_ps(_mm_loadu_ps(a), _mm_loadu_ps(b), 0xff));
-}
-
-DECORATE_SSE41
-static inline double sum_product_sse41(const double *a, const double *b)
-{
-    return _mm_cvtsd_f64(_mm_dp_pd(_mm_loadu_pd(a), _mm_loadu_pd(b), 0xff));
 }
 
 template<typename T>
