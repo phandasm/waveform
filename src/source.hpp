@@ -121,6 +121,7 @@ protected:
     vec4 m_color_base{ 1.0, 1.0, 1.0, 1.0 };
     vec4 m_color_crest{ 1.0, 1.0, 1.0, 1.0 };
     float m_slope = 0.0f;
+    bool m_log_scale = true;
 
     // interpolation
     std::vector<float> m_interp_indices;

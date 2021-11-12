@@ -109,6 +109,7 @@ namespace callbacks {
         obs_data_set_default_string(settings, P_AUDIO_SRC, P_NONE);
         obs_data_set_default_int(settings, P_WIDTH, 800);
         obs_data_set_default_int(settings, P_HEIGHT, 225);
+        obs_data_set_default_bool(settings, P_LOG_SCALE, true);
         obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
         obs_data_set_default_int(settings, P_FFT_SIZE, 2048);
         obs_data_set_default_bool(settings, P_AUTO_FFT_SIZE, false);
@@ -144,6 +145,9 @@ namespace callbacks {
         // video size
         obs_properties_add_int(props, P_WIDTH, T(P_WIDTH), 32, 3840, 1);
         obs_properties_add_int(props, P_HEIGHT, T(P_HEIGHT), 32, 2160, 1);
+
+        // log scale
+        obs_properties_add_bool(props, P_LOG_SCALE, T(P_LOG_SCALE));
 
         // channels
         auto chanlst = obs_properties_add_list(props, P_CHANNEL_MODE, T(P_CHANNEL_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
@@ -271,6 +275,7 @@ void WAVSource::get_settings(obs_data_t *settings)
 {
     m_width = (unsigned int)obs_data_get_int(settings, P_WIDTH);
     m_height = (unsigned int)obs_data_get_int(settings, P_HEIGHT);
+    m_log_scale = obs_data_get_bool(settings, P_LOG_SCALE);
     m_stereo = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO);
     m_fft_size = (size_t)obs_data_get_int(settings, P_FFT_SIZE);
     m_auto_fft_size = obs_data_get_bool(settings, P_AUTO_FFT_SIZE);
@@ -521,8 +526,16 @@ void WAVSource::update(obs_data_t *settings)
     m_interp_indices.resize(m_width);
     for(auto& i : m_interp_bufs)
         i.resize(m_width);
-    for(auto i = 0u; i < m_width; ++i)
-        m_interp_indices[i] = log_interp(lowbin, highbin, (float)i / (float)(m_width - 1));
+    if(m_log_scale)
+    {
+        for(auto i = 0u; i < m_width; ++i)
+            m_interp_indices[i] = log_interp(lowbin, highbin, (float)i / (float)(m_width - 1));
+    }
+    else
+    {
+        for(auto i = 0u; i < m_width; ++i)
+            m_interp_indices[i] = lerp(lowbin, highbin, (float)i / (float)(m_width - 1));
+    }
 
     // filter
     if(m_filter_mode == FilterMode::GAUSS)

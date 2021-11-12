@@ -34,6 +34,8 @@
 #define P_WIDTH             "width"
 #define P_HEIGHT            "height"
 
+#define P_LOG_SCALE         "log_scale"
+
 #define P_WINDOW            "window"
 #define P_HANN              "hann"
 #define P_HAMMING           "hamming"
