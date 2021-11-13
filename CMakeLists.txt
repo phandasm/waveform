@@ -12,7 +12,7 @@ if(UNIX AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "~/.config/obs-studio/plugins" CACHE PATH "default install path" FORCE)
 endif()
 
-option(BUILD_SHARED_LIBS "Build shared libraries" OFF) # static link cpu_features
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF) # static link dependencies
 
 if(WIN32)
     list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -22,14 +22,31 @@ find_package(LibObs REQUIRED)
 if(MSVC)
     add_definitions(/MP) # parallel builds
 
-    set(FFTW_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/deps/fftw-3.3.10/include")
-    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-        set(FFTW_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/deps/fftw-3.3.10/x86/fftw3f.lib")
-        set(FFTW_DLL "${CMAKE_CURRENT_SOURCE_DIR}/deps/fftw-3.3.10/x86/fftw3f.dll")
-    else()
-        set(FFTW_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/deps/fftw-3.3.10/x64/fftw3f.lib")
-        set(FFTW_DLL "${CMAKE_CURRENT_SOURCE_DIR}/deps/fftw-3.3.10/x64/fftw3f.dll")
+    option(EXTRA_OPTIMIZATIONS "Enable additional compiler optimizations" OFF)
+    if(EXTRA_OPTIMIZATIONS)
+        add_compile_options("$<$<CONFIG:Release>:/GL>" "$<$<CONFIG:Release>:/Oi>")
+        add_link_options("$<$<CONFIG:Release>:/LTCG>")
     endif()
+
+    # build fftw
+    # fftw's CMakeLists mishandles MSVC arch flags
+    # so we will skip the autodetection and clear the flags
+    # since they are not needed nor desired for a multiarch binary
+    set(HAVE_SSE TRUE)
+    set(SSE_FLAG "")
+    set(HAVE_SSE2 TRUE)
+    set(SSE2_FLAG "")
+    set(HAVE_AVX TRUE)
+    set(AVX_FLAG "")
+    set(HAVE_AVX2 TRUE)
+    set(AVX2_FLAG "")
+    
+    option(ENABLE_THREADS "Use pthread for multithreading" ON)
+    option(WITH_COMBINED_THREADS "Merge thread library" ON)
+    option(ENABLE_FLOAT "single-precision" ON)
+    add_subdirectory("deps/fftw-3.3.10" EXCLUDE_FROM_ALL)
+    set(FFTW_LIBRARIES fftw3f)
+    set(FFTW_INCLUDE_DIRS "deps/fftw-3.3.10/api")
 else()
     find_path(FFTW_INCLUDE_DIRS fftw3.h)
     find_library(FFTW_LIBRARIES fftw3f)
@@ -72,7 +89,8 @@ configure_file("src/waveform_config.hpp.in" "include/waveform_config.hpp")
 
 if(WIN32)
     install(TARGETS waveform DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
-    install(FILES ${FFTW_DLL} DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
+    install(FILES $<TARGET_PDB_FILE:waveform> DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>" OPTIONAL)
+    #install(TARGETS fftw3f DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
     install(FILES "data/gradient.effect" DESTINATION "data/obs-plugins/waveform")
     install(FILES "data/locale/en-US.ini" DESTINATION "data/obs-plugins/waveform/locale")
 else()

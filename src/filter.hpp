@@ -23,6 +23,7 @@
 #include <vector>
 #include <type_traits>
 #include <immintrin.h>
+#include <memory>
 
 DECORATE_SSE41
 static inline float sum_product_sse41(const float *a, const float *b) // b must be 16-byte aligned
