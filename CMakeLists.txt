@@ -8,8 +8,13 @@ include(CheckSymbolExists)
 project(waveform)
 
 # set default install prefix to OBS plugin path on linux
-if(UNIX AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "~/.config/obs-studio/plugins" CACHE PATH "default install path" FORCE)
+# otherwise set it to the windows installer source folder
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    if(UNIX)
+        set(CMAKE_INSTALL_PREFIX "~/.config/obs-studio/plugins" CACHE PATH "default install path" FORCE)
+    elseif(WIN32)
+        set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_SOURCE_DIR}/installer/bin" CACHE PATH "default install path" FORCE)
+    endif()
 endif()
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF) # static link dependencies

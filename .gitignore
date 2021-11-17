@@ -1,2 +1,5 @@
 build*/*
 .vscode/*
+installer/bin/*
+installer/redist/*
+installer/Output/*
