@@ -1,7 +1,7 @@
 # Waveform
 Waveform is an audio spectral analysis plugin for [OBS Studio](https://obsproject.com/).  
 It is based on [FFTW](https://www.fftw.org/) and optimized for AVX2/FMA3.  
-![Screenshot](https://i.imgur.com/1nUHTyt.png)
+![Screenshot](https://i.imgur.com/y40gfQB.png)
 
 # Compiling
 ## Prerequisites
