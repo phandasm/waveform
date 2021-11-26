@@ -145,16 +145,16 @@ public:
     WAVSource(const WAVSource&) = delete;
     WAVSource& operator=(const WAVSource&) = delete;
 
-    constexpr unsigned int width() { return m_width; }
-    constexpr unsigned int height() { return m_height; }
+    inline unsigned int width() { return m_width; }
+    inline unsigned int height() { return m_height; }
 
     // main callbacks
     virtual void update(obs_data_t *settings);
     virtual void tick(float seconds) = 0;
     virtual void render(gs_effect_t *effect);
 
-    constexpr void show() { m_show = true; }
-    constexpr void hide() { m_show = false; }
+    inline void show() { m_show = true; }
+    inline void hide() { m_show = false; }
 
     static void register_source();
 
