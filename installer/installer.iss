@@ -39,20 +39,24 @@ Source: "{#SourcePath}\bin\*"; DestDir: "{app}"; Flags: ignoreversion recursesub
 Source: "{#SourcePath}\redist\*"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Run]
-Filename: "{tmp}\vc_redist.x86.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing MSVC x86 Redistributable..."; Flags: runhidden
-Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing MSVC x64 Redistributable..."; Flags: runhidden
+Filename: "{tmp}\vc_redist.x86.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing MSVC x86 Redistributable..."; Flags: runhidden skipifdoesntexist
+Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing MSVC x64 Redistributable..."; Flags: runhidden skipifdoesntexist
 
 [Code]
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
-  Result := True;
+  Result := False;
   if (CurPageID = wpSelectDir) then begin
-    if not DirExists(ExpandConstant('{app}\obs-plugins\64bit')) then
-      Result := False;
-    if not DirExists(ExpandConstant('{app}\obs-plugins\32bit')) then
-      Result := False;
+    if DirExists(ExpandConstant('{app}\obs-plugins\64bit')) then
+      Result := True;
+    if DirExists(ExpandConstant('{app}\obs-plugins\32bit')) then
+      Result := True;
     if not Result then
       MsgBox('Could not locate obs-plugins folders. Please select the OBS root install directory.', mbError, MB_OK);
+  end
+  else
+  begin
+    Result := True;
   end;
 end; 
 
