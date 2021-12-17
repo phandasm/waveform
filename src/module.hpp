@@ -17,6 +17,6 @@
 
 #pragma once
 
-#define MODULE_DISPLAY_NAME "Waveform"
-#define MODULE_NAME "waveform"
+#define MODULE_DISPLAY_NAME "Waveform Visualizer"
+#define MODULE_NAME "phandasm_waveform"
 #define VERSION_STRING "1.0.0"
