@@ -430,6 +430,18 @@ WAVSource::~WAVSource()
         circlebuf_free(&i);
 }
 
+unsigned int WAVSource::width()
+{
+    std::lock_guard lock(m_mtx);
+    return m_width;
+}
+
+unsigned int WAVSource::height()
+{
+    std::lock_guard lock(m_mtx);
+    return m_height;
+}
+
 void WAVSource::update(obs_data_t *settings)
 {
     std::lock_guard lock(m_mtx);
@@ -652,6 +664,18 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
     gs_technique_end(tech);
 
     gs_effect_destroy(shader);
+}
+
+void WAVSource::show()
+{
+    std::lock_guard lock(m_mtx);
+    m_show = true;
+}
+
+void WAVSource::hide()
+{
+    std::lock_guard lock(m_mtx);
+    m_show = false;
 }
 
 void WAVSource::register_source()

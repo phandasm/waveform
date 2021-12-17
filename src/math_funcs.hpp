@@ -50,7 +50,7 @@ std::enable_if_t<std::is_floating_point_v<T>, T> lanczos(T x, T w)
 }
 
 template<typename T, typename U>
-std::enable_if_t<std::is_floating_point_v<T>, T> lanczos_interp(T x, T w, const size_t len, U *buf)
+std::enable_if_t<std::is_floating_point_v<T>, T> lanczos_interp(T x, T w, const size_t len, const U *buf)
 {
     T val = 0;
     const auto floorx = (intmax_t)x;
