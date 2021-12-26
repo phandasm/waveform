@@ -496,25 +496,28 @@ void WAVSource::update(obs_data_t *settings)
         constexpr auto pi2 = 2 * (float)M_PI;
         constexpr auto pi4 = 4 * (float)M_PI;
         constexpr auto pi6 = 6 * (float)M_PI;
-        if(m_window_func == FFTWindow::HANN)
+        switch(m_window_func)
         {
-            for(size_t i = 0; i < m_fft_size; ++i)
-                m_window_coefficients[i] = 0.5f * (1 - std::cos((pi2 * i) / N));
-        }
-        else if(m_window_func == FFTWindow::HAMMING)
-        {
+        case FFTWindow::HAMMING:
             for(size_t i = 0; i < m_fft_size; ++i)
                 m_window_coefficients[i] = 0.53836f - (0.46164f * std::cos((pi2 * i) / N));
-        }
-        else if(m_window_func == FFTWindow::BLACKMAN)
-        {
+            break;
+
+        case FFTWindow::BLACKMAN:
             for(size_t i = 0; i < m_fft_size; ++i)
                 m_window_coefficients[i] = 0.42f - (0.5f * std::cos((pi2 * i) / N)) + (0.08f * std::cos((pi4 * i) / N));
-        }
-        else if(m_window_func == FFTWindow::BLACKMAN_HARRIS)
-        {
+            break;
+
+        case FFTWindow::BLACKMAN_HARRIS:
             for(size_t i = 0; i < m_fft_size; ++i)
                 m_window_coefficients[i] = 0.35875f - (0.48829f * std::cos((pi2 * i) / N)) + (0.14128f * std::cos((pi4 * i) / N)) - (0.01168f * std::cos((pi6 * i) / N));
+            break;
+
+        case FFTWindow::HANN:
+        default:
+            for(size_t i = 0; i < m_fft_size; ++i)
+                m_window_coefficients[i] = 0.5f * (1 - std::cos((pi2 * i) / N));
+            break;
         }
     }
 
@@ -837,7 +840,6 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
 
         // normalize FFT output and convert to dBFS
         const auto shuffle_mask = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
-        //const auto abs_mask = _mm256_set1_ps(-0.0);
         const auto mag_coefficient = _mm256_div_ps(_mm256_set1_ps(2.0f), _mm256_set1_ps((float)m_fft_size));
         for(size_t i = 0; i < outsz; i += step)
         {
@@ -850,10 +852,6 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
             // pack the real and imaginary components into separate vectors
             auto rvec = _mm256_permute2f128_ps(chunk1, chunk2, 0 | (2 << 4));
             auto ivec = _mm256_permute2f128_ps(chunk1, chunk2, 1 | (3 << 4));
-
-            // absoulte value (set sign bit = 0)
-            //rvec = _mm256_andnot_ps(abs_mask, rvec);
-            //ivec = _mm256_andnot_ps(abs_mask, ivec);
 
             // calculate normalized magnitude
             // 2 * magnitude / N
