@@ -888,26 +888,29 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
     if(m_stereo)
     {
         for(auto channel = 0; channel < 2; ++channel)
-            for(size_t i = 0; i < outsz; ++i)
-                if(slope)
+            if(slope)
+                for(size_t i = 0; i < outsz; ++i)
                     m_decibels[channel][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
-                else
+            else
+                for(size_t i = 0; i < outsz; ++i)
                     m_decibels[channel][i] = dbfs(m_decibels[channel][i]);
     }
     else if(m_capture_channels > 1)
     {
-        for(size_t i = 0; i < outsz; ++i)
-            if(slope)
+        if(slope)
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
-            else
+        else
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
     }
     else
     {
-        for(size_t i = 0; i < outsz; ++i)
-            if(slope)
+        if(slope)
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
-            else
+        else
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 }
@@ -1047,26 +1050,29 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
     if(m_stereo)
     {
         for(auto channel = 0; channel < 2; ++channel)
-            for(size_t i = 0; i < outsz; ++i)
-                if(slope)
+            if(slope)
+                for(size_t i = 0; i < outsz; ++i)
                     m_decibels[channel][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
-                else
+            else
+                for(size_t i = 0; i < outsz; ++i)
                     m_decibels[channel][i] = dbfs(m_decibels[channel][i]);
     }
     else if(m_capture_channels > 1)
     {
-        for(size_t i = 0; i < outsz; ++i)
-            if(slope)
+        if(slope)
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
-            else
+        else
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
     }
     else
     {
-        for(size_t i = 0; i < outsz; ++i)
-            if(slope)
+        if(slope)
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
-            else
+        else
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 }
@@ -1199,26 +1205,29 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
     if(m_stereo)
     {
         for(auto channel = 0; channel < 2; ++channel)
-            for(size_t i = 0; i < outsz; ++i)
-                if(slope)
+            if(slope)
+                for(size_t i = 0; i < outsz; ++i)
                     m_decibels[channel][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
-                else
+            else
+                for(size_t i = 0; i < outsz; ++i)
                     m_decibels[channel][i] = dbfs(m_decibels[channel][i]);
     }
     else if(m_capture_channels > 1)
     {
-        for(size_t i = 0; i < outsz; ++i)
-            if(slope)
+        if(slope)
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
-            else
+        else
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
     }
     else
     {
-        for(size_t i = 0; i < outsz; ++i)
-            if(slope)
+        if(slope)
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
-            else
+        else
+            for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 }
