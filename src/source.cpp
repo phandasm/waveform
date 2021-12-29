@@ -848,6 +848,8 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
         // normalize FFT output and convert to dBFS
         const auto shuffle_mask = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
         const auto mag_coefficient = _mm256_div_ps(_mm256_set1_ps(2.0f), _mm256_set1_ps((float)m_fft_size));
+        const auto g = _mm256_set1_ps(m_gravity);
+        const auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g); // 1 - gravity
         for(size_t i = 0; i < outsz; i += step)
         {
             // this *should* be faster than 2x vgatherxxx instructions
@@ -874,8 +876,6 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
                     auto mask = _mm256_cmp_ps(mag, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _CMP_GT_OQ);
                     _mm256_maskstore_ps(&m_tsmooth_buf[channel][i], _mm256_castps_si256(mask), mag);
                 }
-                auto g = _mm256_set1_ps(m_gravity);
-                auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g); // 1 - gravity
 
                 // (gravity * oldval) + ((1 - gravity) * newval)
                 mag = _mm256_fmadd_ps(g, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _mm256_mul_ps(g2, mag));
@@ -1014,6 +1014,8 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
         constexpr auto shuffle_mask_r = 0 | (2 << 2) | (0 << 4) | (2 << 6);
         constexpr auto shuffle_mask_i = 1 | (3 << 2) | (1 << 4) | (3 << 6);
         const auto mag_coefficient = _mm256_div_ps(_mm256_set1_ps(2.0f), _mm256_set1_ps((float)m_fft_size));
+        const auto g = _mm256_set1_ps(m_gravity);
+        const auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g);
         for(size_t i = 0; i < outsz; i += step)
         {
             // load 8 real/imaginary pairs and group the r/i components in the low/high halves
@@ -1039,8 +1041,6 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
                     auto mask = _mm256_cmp_ps(mag, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _CMP_GT_OQ);
                     _mm256_maskstore_ps(&m_tsmooth_buf[channel][i], _mm256_castps_si256(mask), mag);
                 }
-                auto g = _mm256_set1_ps(m_gravity);
-                auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g);
 
                 mag = _mm256_fmadd_ps(g, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _mm256_mul_ps(g2, mag));
                 _mm256_store_ps(&m_tsmooth_buf[channel][i], mag);
@@ -1175,6 +1175,8 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
         constexpr auto shuffle_mask_r = 0 | (2 << 2) | (0 << 4) | (2 << 6);
         constexpr auto shuffle_mask_i = 1 | (3 << 2) | (1 << 4) | (3 << 6);
         const auto mag_coefficient = _mm_div_ps(_mm_set1_ps(2.0f), _mm_set1_ps((float)m_fft_size));
+        const auto g = _mm_set1_ps(m_gravity);
+        const auto g2 = _mm_sub_ps(_mm_set1_ps(1.0), g);
         for(size_t i = 0; i < outsz; i += step)
         {
             // load 4 real/imaginary pairs and pack the r/i components into separate vectors
@@ -1194,8 +1196,6 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
                     auto mask = _mm_cmpgt_ps(mag, _mm_load_ps(&m_tsmooth_buf[channel][i]));
                     _mm_maskmoveu_si128(_mm_castps_si128(mag), _mm_castps_si128(mask), (char*)&m_tsmooth_buf[channel][i]);
                 }
-                auto g = _mm_set1_ps(m_gravity);
-                auto g2 = _mm_sub_ps(_mm_set1_ps(1.0), g);
 
                 mag = _mm_add_ps(_mm_mul_ps(g, _mm_load_ps(&m_tsmooth_buf[channel][i])), _mm_mul_ps(g2, mag));
                 _mm_store_ps(&m_tsmooth_buf[channel][i], mag);
