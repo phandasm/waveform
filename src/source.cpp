@@ -555,6 +555,13 @@ void WAVSource::update(obs_data_t *settings)
     // filter
     if(m_filter_mode == FilterMode::GAUSS)
         m_kernel = make_gauss_kernel(m_filter_radius);
+
+    // slope
+    const auto num_mods = m_fft_size / 2;
+    m_slope_modifiers.resize(num_mods);
+    m_slope_modifiers[0] = 0.0f;
+    for(size_t i = 1; i < num_mods; ++i)
+        m_slope_modifiers[i] = m_slope * std::log10((float)i);
 }
 
 void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
@@ -890,7 +897,7 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
         for(auto channel = 0; channel < 2; ++channel)
             if(slope)
                 for(size_t i = 0; i < outsz; ++i)
-                    m_decibels[channel][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
+                    m_decibels[channel][i] = std::clamp(m_slope_modifiers[i] + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
             else
                 for(size_t i = 0; i < outsz; ++i)
                     m_decibels[channel][i] = dbfs(m_decibels[channel][i]);
@@ -899,7 +906,7 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
     {
         if(slope)
             for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
+                m_decibels[0][i] = std::clamp(m_slope_modifiers[i] + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
         else
             for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
@@ -908,7 +915,7 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
     {
         if(slope)
             for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
+                m_decibels[0][i] = std::clamp(m_slope_modifiers[i] + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
         else
             for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs(m_decibels[0][i]);
@@ -1052,7 +1059,7 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
         for(auto channel = 0; channel < 2; ++channel)
             if(slope)
                 for(size_t i = 0; i < outsz; ++i)
-                    m_decibels[channel][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
+                    m_decibels[channel][i] = std::clamp(m_slope_modifiers[i] + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
             else
                 for(size_t i = 0; i < outsz; ++i)
                     m_decibels[channel][i] = dbfs(m_decibels[channel][i]);
@@ -1061,7 +1068,7 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
     {
         if(slope)
             for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
+                m_decibels[0][i] = std::clamp(m_slope_modifiers[i] + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
         else
             for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
@@ -1070,7 +1077,7 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
     {
         if(slope)
             for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
+                m_decibels[0][i] = std::clamp(m_slope_modifiers[i] + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
         else
             for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs(m_decibels[0][i]);
@@ -1207,7 +1214,7 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
         for(auto channel = 0; channel < 2; ++channel)
             if(slope)
                 for(size_t i = 0; i < outsz; ++i)
-                    m_decibels[channel][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
+                    m_decibels[channel][i] = std::clamp(m_slope_modifiers[i] + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
             else
                 for(size_t i = 0; i < outsz; ++i)
                     m_decibels[channel][i] = dbfs(m_decibels[channel][i]);
@@ -1216,7 +1223,7 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
     {
         if(slope)
             for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
+                m_decibels[0][i] = std::clamp(m_slope_modifiers[i] + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
         else
             for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
@@ -1225,7 +1232,7 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
     {
         if(slope)
             for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = std::clamp(m_slope * std::log10(i ? (float)i : 1.0f) + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
+                m_decibels[0][i] = std::clamp(m_slope_modifiers[i] + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
         else
             for(size_t i = 0; i < outsz; ++i)
                 m_decibels[0][i] = dbfs(m_decibels[0][i]);

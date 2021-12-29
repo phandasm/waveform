@@ -131,6 +131,9 @@ protected:
     Kernel<float> m_kernel;
     float m_filter_radius = 0.0f;
 
+    // slope
+    std::vector<float> m_slope_modifiers;
+
     void get_settings(obs_data_t *settings);
 
     void recapture_audio(obs_data_t *settings);
