@@ -140,6 +140,17 @@ protected:
     void release_audio_capture();
     void free_fft();
 
+    // constants
+    static const float DB_MIN;
+
+    inline float dbfs(float mag)
+    {
+        if(mag > 0.0f)
+            return 20.0f * std::log10(mag);
+        else
+            return DB_MIN;
+    }
+
 public:
     WAVSource(obs_data_t *settings, obs_source_t *source);
     virtual ~WAVSource();
@@ -163,6 +174,12 @@ public:
 
     // audio capture callback
     void capture_audio(obs_source_t *source, const audio_data *audio, bool muted);
+
+    // constants
+    static const bool HAVE_AVX2;
+    static const bool HAVE_AVX;
+    static const bool HAVE_SSE41;
+    static const bool HAVE_FMA3;
 };
 
 class WAVSourceAVX2 : public WAVSource
