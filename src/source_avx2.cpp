@@ -118,6 +118,7 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
         const auto mag_coefficient = _mm256_div_ps(_mm256_set1_ps(2.0f), _mm256_set1_ps((float)m_fft_size));
         const auto g = _mm256_set1_ps(m_gravity);
         const auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g); // 1 - gravity
+        const bool slope = m_slope > 0.0f;
         for(size_t i = 0; i < outsz; i += step)
         {
             // this *should* be faster than 2x vgatherxxx instructions
@@ -134,6 +135,10 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
             // 2 * magnitude / N
             auto mag = _mm256_sqrt_ps(_mm256_fmadd_ps(ivec, ivec, _mm256_mul_ps(rvec, rvec))); // magnitude sqrt(r^2 + i^2)
             mag = _mm256_mul_ps(mag, mag_coefficient); // 2 * magnitude / N with precomputed quotient
+
+            // boost high frequencies
+            if(slope)
+                mag = _mm256_mul_ps(mag, _mm256_load_ps(&m_slope_modifiers[i]));
 
             // time domain smoothing
             if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
@@ -159,33 +164,20 @@ void WAVSourceAVX2::tick([[maybe_unused]] float seconds)
 
     // dBFS conversion
     // 20 * log(2 * magnitude / N)
-    const bool slope = m_slope != 0.0f;
     if(m_stereo)
     {
         for(auto channel = 0; channel < 2; ++channel)
-            if(slope)
-                for(size_t i = 0; i < outsz; ++i)
-                    m_decibels[channel][i] = std::clamp(m_slope_modifiers[i] + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
-            else
-                for(size_t i = 0; i < outsz; ++i)
-                    m_decibels[channel][i] = dbfs(m_decibels[channel][i]);
+            for(size_t i = 0; i < outsz; ++i)
+                m_decibels[channel][i] = dbfs(m_decibels[channel][i]);
     }
     else if(m_capture_channels > 1)
     {
-        if(slope)
-            for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = std::clamp(m_slope_modifiers[i] + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
-        else
-            for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
+        for(size_t i = 0; i < outsz; ++i)
+            m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
     }
     else
     {
-        if(slope)
-            for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = std::clamp(m_slope_modifiers[i] + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
-        else
-            for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = dbfs(m_decibels[0][i]);
+        for(size_t i = 0; i < outsz; ++i)
+            m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 }

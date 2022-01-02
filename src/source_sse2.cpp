@@ -22,6 +22,7 @@
 #include <cstring>
 
 // compatibility fallback using at most SSE2 instructions
+// see comments of WAVSourceAVX2
 DECORATE_SSE2
 void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
 {
@@ -114,6 +115,7 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
         const auto mag_coefficient = _mm_div_ps(_mm_set1_ps(2.0f), _mm_set1_ps((float)m_fft_size));
         const auto g = _mm_set1_ps(m_gravity);
         const auto g2 = _mm_sub_ps(_mm_set1_ps(1.0), g);
+        const bool slope = m_slope > 0.0f;
         for(size_t i = 0; i < outsz; i += step)
         {
             // load 4 real/imaginary pairs and pack the r/i components into separate vectors
@@ -125,6 +127,9 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
 
             auto mag = _mm_sqrt_ps(_mm_add_ps(_mm_mul_ps(ivec, ivec), _mm_mul_ps(rvec, rvec)));
             mag = _mm_mul_ps(mag, mag_coefficient);
+
+            if(slope)
+                mag = _mm_mul_ps(mag, _mm_load_ps(&m_slope_modifiers[i]));
 
             if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
             {
@@ -145,33 +150,20 @@ void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
     if(m_output_channels > m_capture_channels)
         memcpy(m_decibels[1].get(), m_decibels[0].get(), outsz * sizeof(float));
 
-    const bool slope = m_slope != 0.0f;
     if(m_stereo)
     {
         for(auto channel = 0; channel < 2; ++channel)
-            if(slope)
-                for(size_t i = 0; i < outsz; ++i)
-                    m_decibels[channel][i] = std::clamp(m_slope_modifiers[i] + dbfs(m_decibels[channel][i]), DB_MIN, 0.0f);
-            else
-                for(size_t i = 0; i < outsz; ++i)
-                    m_decibels[channel][i] = dbfs(m_decibels[channel][i]);
+            for(size_t i = 0; i < outsz; ++i)
+                m_decibels[channel][i] = dbfs(m_decibels[channel][i]);
     }
     else if(m_capture_channels > 1)
     {
-        if(slope)
-            for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = std::clamp(m_slope_modifiers[i] + dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2), DB_MIN, 0.0f);
-        else
-            for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
+        for(size_t i = 0; i < outsz; ++i)
+            m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
     }
     else
     {
-        if(slope)
-            for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = std::clamp(m_slope_modifiers[i] + dbfs(m_decibels[0][i]), DB_MIN, 0.0f);
-        else
-            for(size_t i = 0; i < outsz; ++i)
-                m_decibels[0][i] = dbfs(m_decibels[0][i]);
+        for(size_t i = 0; i < outsz; ++i)
+            m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 }

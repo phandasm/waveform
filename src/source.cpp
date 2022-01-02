@@ -391,6 +391,7 @@ void WAVSource::free_fft()
     m_fft_input.reset();
     m_fft_output.reset();
     m_window_coefficients.reset();
+    m_slope_modifiers.reset();
 
     if(m_fft_plan != nullptr)
     {
@@ -547,10 +548,10 @@ void WAVSource::update(obs_data_t *settings)
 
     // slope
     const auto num_mods = m_fft_size / 2;
-    m_slope_modifiers.resize(num_mods);
-    m_slope_modifiers[0] = 0.0f;
-    for(size_t i = 1; i < num_mods; ++i)
-        m_slope_modifiers[i] = m_slope * std::log10((float)i);
+    const auto maxmod = (float)(num_mods - 1);
+    m_slope_modifiers.reset(avx_alloc<float>(num_mods));
+    for(size_t i = 0; i < num_mods; ++i)
+        m_slope_modifiers[i] = log10(log_interp(10.0f, 50000.0f, ((float)i * m_slope) / maxmod));
 }
 
 void WAVSource::render([[maybe_unused]] gs_effect_t *effect)

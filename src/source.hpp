@@ -132,7 +132,7 @@ protected:
     float m_filter_radius = 0.0f;
 
     // slope
-    std::vector<float> m_slope_modifiers;
+    AVXBufR m_slope_modifiers;
 
     void get_settings(obs_data_t *settings);
 
