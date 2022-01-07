@@ -355,6 +355,14 @@ void WAVSource::recapture_audio(obs_data_t *settings)
             m_audio_source = obs_source_get_weak_source(asrc);
             obs_source_release(asrc);
         }
+        else if(!p_equ(src_name, "none"))
+        {
+            blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to get audio source: \"%s\"", src_name);
+        }
+    }
+    else
+    {
+        blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to read audio source from settings");
     }
 }
 
@@ -443,6 +451,8 @@ void WAVSource::update(obs_data_t *settings)
     // get current audio settings
     update_audio_info(&m_audio_info);
     m_capture_channels = get_audio_channels(m_audio_info.speakers);
+    if(m_capture_channels == 0)
+        blog(LOG_WARNING, "[" MODULE_NAME "]: Could not determine audio channel count");
 
     // calculate FFT size based on video FPS
     obs_video_info vinfo = {};
