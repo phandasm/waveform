@@ -450,7 +450,7 @@ void WAVSource::update(obs_data_t *settings)
 
     // get current audio settings
     update_audio_info(&m_audio_info);
-    m_capture_channels = get_audio_channels(m_audio_info.speakers);
+    m_capture_channels = std::min(get_audio_channels(m_audio_info.speakers), 2u);
     if(m_capture_channels == 0)
         blog(LOG_WARNING, "[" MODULE_NAME "]: Could not determine audio channel count");
 
@@ -739,7 +739,7 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
         return;
 
     auto sz = size_t(audio->frames * sizeof(float));
-    for(auto i = 0u; i < std::min(m_capture_channels, 2u); ++i)
+    for(auto i = 0u; i < m_capture_channels; ++i)
     {
         if(muted)
             circlebuf_push_back_zero(&m_capturebufs[i], sz);
