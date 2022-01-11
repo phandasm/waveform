@@ -75,7 +75,7 @@ void WAVSourceAVX::tick([[maybe_unused]] float seconds)
             if(m_last_silent)
                 return;
             bool outsilent = true;
-            auto floor = _mm256_set1_ps((float)m_floor - 10);
+            auto floor = _mm256_set1_ps((float)(m_floor - 10));
             for(auto ch = 0; ch < (m_stereo ? 2 : 1); ++ch)
             {
                 for(size_t i = 0; i < outsz; i += step)

@@ -522,6 +522,7 @@ void WAVSource::update(obs_data_t *settings)
     }
 
     m_last_silent = false;
+    m_show = true;
 
     recapture_audio(settings);
     for(auto& i : m_capturebufs)
@@ -712,7 +713,7 @@ void WAVSource::register_source()
     obs_source_info info{};
     info.id = MODULE_NAME "_source";
     info.type = OBS_SOURCE_TYPE_INPUT;
-    info.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_DO_NOT_DUPLICATE;
+    info.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_CUSTOM_DRAW;
     info.get_name = &callbacks::get_name;
     info.create = &callbacks::create;
     info.destroy = &callbacks::destroy;
