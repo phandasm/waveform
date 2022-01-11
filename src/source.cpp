@@ -262,6 +262,7 @@ namespace callbacks {
 
 void WAVSource::get_settings(obs_data_t *settings)
 {
+    auto src_name = obs_data_get_string(settings, P_AUDIO_SRC);
     m_width = (unsigned int)obs_data_get_int(settings, P_WIDTH);
     m_height = (unsigned int)obs_data_get_int(settings, P_HEIGHT);
     m_log_scale = obs_data_get_bool(settings, P_LOG_SCALE);
@@ -305,6 +306,11 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_floor = -120;
     }
 
+    if(src_name != nullptr)
+        m_audio_source_name = src_name;
+    else
+        m_audio_source_name.clear();
+
     if(p_equ(wnd, P_HANN))
         m_window_func = FFTWindow::HANN;
     else if(p_equ(wnd, P_HAMMING))
@@ -339,15 +345,15 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_render_mode = RenderMode::GRADIENT;
 }
 
-void WAVSource::recapture_audio(obs_data_t *settings)
+void WAVSource::recapture_audio()
 {
     // release old capture
     release_audio_capture();
 
     // add new capture
-    auto src_name = obs_data_get_string(settings, P_AUDIO_SRC);
-    if(src_name != nullptr)
+    if(m_retries < MAX_RETRIES)
     {
+        auto src_name = m_audio_source_name.c_str();
         auto asrc = obs_get_source_by_name(src_name);
         if(asrc != nullptr)
         {
@@ -357,12 +363,11 @@ void WAVSource::recapture_audio(obs_data_t *settings)
         }
         else if(!p_equ(src_name, "none"))
         {
-            blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to get audio source: \"%s\"", src_name);
+            if(m_retries++ == 0)
+                blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to get audio source: \"%s\"", src_name);
+            else if(m_retries >= MAX_RETRIES)
+                blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to get audio source with max retries: \"%s\"", src_name);
         }
-    }
-    else
-    {
-        blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to read audio source from settings");
     }
 }
 
@@ -371,6 +376,7 @@ void WAVSource::release_audio_capture()
     if(m_audio_source != nullptr)
     {
         auto src = obs_weak_source_get_source(m_audio_source);
+        obs_weak_source_release(m_audio_source);
         m_audio_source = nullptr;
         if(src != nullptr)
         {
@@ -523,8 +529,10 @@ void WAVSource::update(obs_data_t *settings)
 
     m_last_silent = false;
     m_show = true;
+    m_retries = 0;
+    m_next_retry = 0.0f;
 
-    recapture_audio(settings);
+    recapture_audio();
     for(auto& i : m_capturebufs)
     {
         auto bufsz = m_fft_size * sizeof(float);

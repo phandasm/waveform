@@ -24,9 +24,22 @@
 // compatibility fallback using at most SSE2 instructions
 // see comments of WAVSourceAVX2
 DECORATE_SSE2
-void WAVSourceSSE2::tick([[maybe_unused]] float seconds)
+void WAVSourceSSE2::tick(float seconds)
 {
     std::lock_guard lock(m_mtx);
+    if(m_audio_source == nullptr)
+    {
+        if(m_next_retry > 0.0f)
+            m_next_retry -= seconds;
+        if((m_retries < MAX_RETRIES) && (m_next_retry <= 0.0f))
+        {
+            m_next_retry = m_retries * RETRY_DELAY;
+            recapture_audio();
+        }
+        else
+            return;
+    }
+
     if(m_capture_channels == 0)
         return;
 

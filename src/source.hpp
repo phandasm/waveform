@@ -74,6 +74,7 @@ protected:
     // obs sources
     obs_source_t *m_source = nullptr;               // our source
     obs_weak_source_t *m_audio_source = nullptr;    // captured audio source
+    std::string m_audio_source_name;
 
     // audio capture
     obs_audio_info m_audio_info{};
@@ -102,6 +103,10 @@ protected:
 
     // graph was silent last frame
     bool m_last_silent = false;
+
+    // audio capture retries
+    int m_retries = 0;
+    float m_next_retry = 0.0f;
 
     // settings
     RenderMode m_render_mode = RenderMode::SOLID;
@@ -136,12 +141,14 @@ protected:
 
     void get_settings(obs_data_t *settings);
 
-    void recapture_audio(obs_data_t *settings);
+    void recapture_audio();
     void release_audio_capture();
     void free_fft();
 
     // constants
     static const float DB_MIN;
+    static constexpr auto MAX_RETRIES = 5;
+    static constexpr auto RETRY_DELAY = 2.0f;
 
     inline float dbfs(float mag)
     {
