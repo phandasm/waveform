@@ -8,22 +8,23 @@ on:
     paths-ignore: ['**.md']
 
 jobs:
-  name: 'Ubuntu x64'
-  runs-on: [ubuntu-latest]
-  steps:
-    - name: 'Checkout'
-      uses: actions/checkout@v2
-      with:
-        submodules: recursive
-    
-    - name: 'Install dependencies'
-      run: |
-        sudo apt-get -qq update
-        sudo apt-get install -y libobs-dev libfftw3-dev
-    
-    - name: 'Cmake'
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
-    
-    - name: 'Build'
-      working-directory: ${{github.workspace}}/build
-      run: make
+  ubuntu64:
+    name: 'Ubuntu x64'
+    runs-on: [ubuntu-latest]
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      
+      - name: 'Install dependencies'
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get install -y libobs-dev libfftw3-dev
+      
+      - name: 'Cmake'
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
+      
+      - name: 'Build'
+        working-directory: ${{github.workspace}}/build
+        run: make
