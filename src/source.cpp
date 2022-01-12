@@ -41,7 +41,7 @@ const bool WAVSource::HAVE_FMA3 = CPU_INFO.features.fma3;
 static bool enum_callback(void *data, obs_source_t *src)
 {
     if(obs_source_get_output_flags(src) & OBS_SOURCE_AUDIO) // filter sources without audio
-        reinterpret_cast<std::vector<std::string>*>(data)->push_back(obs_source_get_name(src));
+        static_cast<std::vector<std::string>*>(data)->push_back(obs_source_get_name(src));
     return true;
 }
 
@@ -71,26 +71,26 @@ namespace callbacks {
     static void *create(obs_data_t *settings, obs_source_t *source)
     {
         if(WAVSource::HAVE_AVX2)
-            return reinterpret_cast<void*>(new WAVSourceAVX2(settings, source));
+            return static_cast<void*>(new WAVSourceAVX2(settings, source));
         else if(WAVSource::HAVE_AVX)
-            return reinterpret_cast<void*>(new WAVSourceAVX(settings, source));
+            return static_cast<void*>(new WAVSourceAVX(settings, source));
         else
-            return reinterpret_cast<void*>(new WAVSourceSSE2(settings, source));
+            return static_cast<void*>(new WAVSourceSSE2(settings, source));
     }
 
     static void destroy(void *data)
     {
-        delete reinterpret_cast<WAVSource*>(data);
+        delete static_cast<WAVSource*>(data);
     }
 
     static uint32_t get_width(void *data)
     {
-        return reinterpret_cast<WAVSource*>(data)->width();
+        return static_cast<WAVSource*>(data)->width();
     }
 
     static uint32_t get_height(void *data)
     {
-        return reinterpret_cast<WAVSource*>(data)->height();
+        return static_cast<WAVSource*>(data)->height();
     }
 
     static void get_defaults(obs_data_t *settings)
@@ -231,32 +231,32 @@ namespace callbacks {
 
     static void update(void *data, obs_data_t *settings)
     {
-        reinterpret_cast<WAVSource*>(data)->update(settings);
+        static_cast<WAVSource*>(data)->update(settings);
     }
 
     static void show(void *data)
     {
-        reinterpret_cast<WAVSource*>(data)->show();
+        static_cast<WAVSource*>(data)->show();
     }
 
     static void hide(void *data)
     {
-        reinterpret_cast<WAVSource*>(data)->hide();
+        static_cast<WAVSource*>(data)->hide();
     }
 
     static void tick(void *data, float seconds)
     {
-        reinterpret_cast<WAVSource*>(data)->tick(seconds);
+        static_cast<WAVSource*>(data)->tick(seconds);
     }
 
     static void render(void *data, gs_effect_t *effect)
     {
-        reinterpret_cast<WAVSource*>(data)->render(effect);
+        static_cast<WAVSource*>(data)->render(effect);
     }
 
     static void capture_audio(void *data, obs_source_t *source, const audio_data *audio, bool muted)
     {
-        reinterpret_cast<WAVSource*>(data)->capture_audio(source, audio, muted);
+        static_cast<WAVSource*>(data)->capture_audio(source, audio, muted);
     }
 }
 
