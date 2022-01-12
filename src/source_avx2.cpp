@@ -27,11 +27,10 @@ void WAVSourceAVX2::tick(float seconds)
     std::lock_guard lock(m_mtx);
     if(m_audio_source == nullptr)
     {
-        if(m_next_retry > 0.0f)
-            m_next_retry -= seconds;
-        if((m_retries < MAX_RETRIES) && (m_next_retry <= 0.0f))
+        m_next_retry -= seconds;
+        if(m_next_retry <= 0.0f)
         {
-            m_next_retry = m_retries * RETRY_DELAY;
+            m_next_retry = RETRY_DELAY;
             recapture_audio();
         }
         else

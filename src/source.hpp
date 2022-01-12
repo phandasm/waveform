@@ -147,7 +147,6 @@ protected:
 
     // constants
     static const float DB_MIN;
-    static constexpr auto MAX_RETRIES = 5;
     static constexpr auto RETRY_DELAY = 2.0f;
 
     inline float dbfs(float mag)

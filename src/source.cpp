@@ -351,23 +351,18 @@ void WAVSource::recapture_audio()
     release_audio_capture();
 
     // add new capture
-    if(m_retries < MAX_RETRIES)
+    auto src_name = m_audio_source_name.c_str();
+    auto asrc = obs_get_source_by_name(src_name);
+    if(asrc != nullptr)
     {
-        auto src_name = m_audio_source_name.c_str();
-        auto asrc = obs_get_source_by_name(src_name);
-        if(asrc != nullptr)
-        {
-            obs_source_add_audio_capture_callback(asrc, &callbacks::capture_audio, this);
-            m_audio_source = obs_source_get_weak_source(asrc);
-            obs_source_release(asrc);
-        }
-        else if(!p_equ(src_name, "none"))
-        {
-            if(m_retries++ == 0)
-                blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to get audio source: \"%s\"", src_name);
-            else if(m_retries >= MAX_RETRIES)
-                blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to get audio source with max retries: \"%s\"", src_name);
-        }
+        obs_source_add_audio_capture_callback(asrc, &callbacks::capture_audio, this);
+        m_audio_source = obs_source_get_weak_source(asrc);
+        obs_source_release(asrc);
+    }
+    else if(!p_equ(src_name, "none"))
+    {
+        if(m_retries++ == 0)
+            blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to get audio source: \"%s\"", src_name);
     }
 }
 
@@ -741,7 +736,7 @@ void WAVSource::register_source()
 
 void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio_data *audio, bool muted)
 {
-    if(!m_mtx.try_lock_for(std::chrono::milliseconds(3)))
+    if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
     if(m_audio_source == nullptr)
