@@ -570,7 +570,7 @@ void WAVSource::update(obs_data_t *settings)
     const auto maxmod = (float)(num_mods - 1);
     m_slope_modifiers.reset(avx_alloc<float>(num_mods));
     for(size_t i = 0; i < num_mods; ++i)
-        m_slope_modifiers[i] = log10(log_interp(10.0f, 50000.0f, ((float)i * m_slope) / maxmod));
+        m_slope_modifiers[i] = log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
 }
 
 void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
