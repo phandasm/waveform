@@ -63,6 +63,13 @@ enum class RenderMode
     GRADIENT
 };
 
+enum class DisplayMode
+{
+    CURVE,
+    BAR,
+    STEPPED_BAR
+};
+
 class WAVSource
 {
 protected:
@@ -114,6 +121,7 @@ protected:
     InterpMode m_interp_mode = InterpMode::LANCZOS;
     FilterMode m_filter_mode = FilterMode::GAUSS;
     TSmoothingMode m_tsmoothing = TSmoothingMode::EXPONENTIAL;
+    DisplayMode m_display_mode = DisplayMode::CURVE;
     bool m_stereo = false;
     bool m_auto_fft_size = true;
     int m_cutoff_low = 0;
@@ -127,6 +135,11 @@ protected:
     vec4 m_color_crest{ 1.0, 1.0, 1.0, 1.0 };
     float m_slope = 0.0f;
     bool m_log_scale = true;
+    int m_bar_width = 0;
+    int m_bar_gap = 0;
+    int m_step_width = 0;
+    int m_step_gap = 0;
+    int m_num_bars = 0;
 
     // interpolation
     std::vector<float> m_interp_indices;
@@ -144,6 +157,8 @@ protected:
     void recapture_audio();
     void release_audio_capture();
     void free_fft();
+
+    void init_interp(unsigned int sz);
 
     // constants
     static const float DB_MIN;
@@ -172,6 +187,9 @@ public:
     virtual void update(obs_data_t *settings);
     virtual void tick(float seconds) = 0;
     virtual void render(gs_effect_t *effect);
+
+    void render_curve(gs_effect_t *effect);
+    void render_bars(gs_effect_t *effect);
 
     void show();
     void hide();

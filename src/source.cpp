@@ -96,6 +96,7 @@ namespace callbacks {
     static void get_defaults(obs_data_t *settings)
     {
         obs_data_set_default_string(settings, P_AUDIO_SRC, P_NONE);
+        obs_data_set_default_string(settings, P_DISPLAY_MODE, P_CURVE);
         obs_data_set_default_int(settings, P_WIDTH, 800);
         obs_data_set_default_int(settings, P_HEIGHT, 225);
         obs_data_set_default_bool(settings, P_LOG_SCALE, true);
@@ -118,6 +119,10 @@ namespace callbacks {
         obs_data_set_default_int(settings, P_COLOR_BASE, 0xffffffff);
         obs_data_set_default_int(settings, P_COLOR_CREST, 0xffffffff);
         obs_data_set_default_double(settings, P_GRAD_RATIO, 0.75);
+        obs_data_set_default_int(settings, P_BAR_WIDTH, 24);
+        obs_data_set_default_int(settings, P_BAR_GAP, 6);
+        obs_data_set_default_int(settings, P_STEP_WIDTH, 8);
+        obs_data_set_default_int(settings, P_STEP_GAP, 4);
     }
 
     static obs_properties_t *get_properties([[maybe_unused]] void *data)
@@ -130,6 +135,30 @@ namespace callbacks {
 
         for(const auto& str : enumerate_audio_sources())
             obs_property_list_add_string(srclist, str.c_str(), str.c_str());
+
+        // display type
+        auto displaylist = obs_properties_add_list(props, P_DISPLAY_MODE, T(P_DISPLAY_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+        obs_property_list_add_string(displaylist, T(P_CURVE), P_CURVE);
+        obs_property_list_add_string(displaylist, T(P_BARS), P_BARS);
+        obs_property_list_add_string(displaylist, T(P_STEP_BARS), P_STEP_BARS);
+        obs_properties_add_int(props, P_BAR_WIDTH, T(P_BAR_WIDTH), 1, 256, 1);
+        obs_properties_add_int(props, P_BAR_GAP, T(P_BAR_GAP), 0, 256, 1);
+        obs_properties_add_int(props, P_STEP_WIDTH, T(P_STEP_WIDTH), 1, 256, 1);
+        obs_properties_add_int(props, P_STEP_GAP, T(P_STEP_GAP), 0, 256, 1);
+        obs_property_set_modified_callback(displaylist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
+            auto disp = obs_data_get_string(settings, P_DISPLAY_MODE);
+            auto bar = p_equ(disp, P_BARS);
+            auto step = p_equ(disp, P_STEP_BARS);
+            obs_property_set_enabled(obs_properties_get(props, P_BAR_WIDTH), bar || step);
+            obs_property_set_enabled(obs_properties_get(props, P_BAR_GAP), bar || step);
+            obs_property_set_visible(obs_properties_get(props, P_BAR_WIDTH), bar || step);
+            obs_property_set_visible(obs_properties_get(props, P_BAR_GAP), bar || step);
+            obs_property_set_enabled(obs_properties_get(props, P_STEP_WIDTH), step);
+            obs_property_set_enabled(obs_properties_get(props, P_STEP_GAP), step);
+            obs_property_set_visible(obs_properties_get(props, P_STEP_WIDTH), step);
+            obs_property_set_visible(obs_properties_get(props, P_STEP_GAP), step);
+            return true;
+            });
 
         // video size
         obs_properties_add_int(props, P_WIDTH, T(P_WIDTH), 32, 3840, 1);
@@ -285,6 +314,11 @@ void WAVSource::get_settings(obs_data_t *settings)
     auto color_base = obs_data_get_int(settings, P_COLOR_BASE);
     auto color_crest = obs_data_get_int(settings, P_COLOR_CREST);
     m_grad_ratio = (float)obs_data_get_double(settings, P_GRAD_RATIO);
+    auto display = obs_data_get_string(settings, P_DISPLAY_MODE);
+    m_bar_width = (int)obs_data_get_int(settings, P_BAR_WIDTH);
+    m_bar_gap = (int)obs_data_get_int(settings, P_BAR_GAP);
+    m_step_width = (int)obs_data_get_int(settings, P_STEP_WIDTH);
+    m_step_gap = (int)obs_data_get_int(settings, P_STEP_GAP);
 
     m_color_base = { (uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f };
     m_color_crest = { (uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f };
@@ -343,6 +377,13 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_render_mode = RenderMode::SOLID;
     else
         m_render_mode = RenderMode::GRADIENT;
+
+    if(p_equ(display, P_BARS))
+        m_display_mode = DisplayMode::BAR;
+    else if(p_equ(display, P_STEP_BARS))
+        m_display_mode = DisplayMode::STEPPED_BAR;
+    else
+        m_display_mode = DisplayMode::CURVE;
 }
 
 void WAVSource::recapture_audio()
@@ -409,6 +450,26 @@ void WAVSource::free_fft()
     }
 
     m_fft_size = 0;
+}
+
+void WAVSource::init_interp(unsigned int sz)
+{
+    const auto maxbin = (m_fft_size / 2) - 1;
+    const auto sr = (float)m_audio_info.samples_per_sec;
+    const auto lowbin = std::clamp((float)m_cutoff_low * m_fft_size / sr, 1.0f, (float)maxbin);
+    const auto highbin = std::clamp((float)m_cutoff_high * m_fft_size / sr, 1.0f, (float)maxbin);
+
+    m_interp_indices.resize(sz);
+    if(m_log_scale)
+    {
+        for(auto i = 0u; i < sz; ++i)
+            m_interp_indices[i] = log_interp(lowbin, highbin, (float)i / (float)(sz - 1));
+    }
+    else
+    {
+        for(auto i = 0u; i < sz; ++i)
+            m_interp_indices[i] = lerp(lowbin, highbin, (float)i / (float)(sz - 1));
+    }
 }
 
 WAVSource::WAVSource(obs_data_t *settings, obs_source_t *source)
@@ -535,25 +596,22 @@ void WAVSource::update(obs_data_t *settings)
             circlebuf_push_back_zero(&i, bufsz - i.size);
     }
 
-    // interpolation
-    const auto maxbin = (m_fft_size / 2) - 1;
-    const auto sr = (float)m_audio_info.samples_per_sec;
-    const auto lowbin = std::clamp((float)m_cutoff_low * m_fft_size / sr, 1.0f, (float)maxbin);
-    const auto highbin = std::clamp((float)m_cutoff_high * m_fft_size / sr, 1.0f, (float)maxbin);
-
     // precomupte interpolated indices
-    m_interp_indices.resize(m_width);
-    for(auto& i : m_interp_bufs)
-        i.resize(m_width);
-    if(m_log_scale)
+    if(m_display_mode == DisplayMode::CURVE)
     {
-        for(auto i = 0u; i < m_width; ++i)
-            m_interp_indices[i] = log_interp(lowbin, highbin, (float)i / (float)(m_width - 1));
+        init_interp(m_width);
+        for(auto& i : m_interp_bufs)
+            i.resize(m_width);
     }
     else
     {
-        for(auto i = 0u; i < m_width; ++i)
-            m_interp_indices[i] = lerp(lowbin, highbin, (float)i / (float)(m_width - 1));
+        const auto bar_stride = m_bar_width + m_bar_gap;
+        m_num_bars = (int)(m_width / bar_stride);
+        if(((int)m_width - (m_num_bars * bar_stride)) >= m_bar_width)
+            ++m_num_bars;
+        init_interp(m_num_bars + 1); // make extra band for last bar
+        for(auto& i : m_interp_bufs)
+            i.resize(m_num_bars);
     }
 
     // filter
@@ -567,8 +625,15 @@ void WAVSource::update(obs_data_t *settings)
     for(size_t i = 0; i < num_mods; ++i)
         m_slope_modifiers[i] = log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
 }
-
 void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
+{
+    if(m_display_mode == DisplayMode::CURVE)
+        render_curve(effect);
+    else
+        render_bars(effect);
+}
+
+void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 {
     std::lock_guard lock(m_mtx);
     if(m_last_silent)
@@ -674,6 +739,196 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
     }
 
     gs_vertexbuffer_destroy(vbuf);
+    gs_technique_end_pass(tech);
+    gs_technique_end(tech);
+
+    gs_effect_destroy(shader);
+}
+
+void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
+{
+    std::lock_guard lock(m_mtx);
+    if(m_last_silent)
+        return;
+
+    auto filename = obs_module_file("gradient.effect");
+    auto shader = gs_effect_create_from_file(filename, nullptr);
+    bfree(filename);
+    auto tech = gs_effect_get_technique(shader, (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid");
+
+    const auto bar_stride = m_bar_width + m_bar_gap;
+    const auto step_stride = m_step_width + m_step_gap;
+    const auto center = (float)m_height / 2 + 0.5f;
+    const auto bottom = (float)m_height + 0.5f;
+    const auto dbrange = m_ceiling - m_floor;
+    const auto cpos = m_stereo ? center : bottom;
+
+    auto max_steps = (size_t)(cpos / step_stride);
+    if(((int)cpos - (max_steps * step_stride)) >= m_step_width)
+        ++max_steps;
+
+    // vertex buffer
+    auto num_verts = (size_t)(m_num_bars * 4);
+    if(m_display_mode == DisplayMode::STEPPED_BAR)
+        num_verts *= max_steps;
+    auto vbdata = gs_vbdata_create();
+    vbdata->num = num_verts;
+    vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
+    vbdata->num_tex = 1;
+    vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
+    vbdata->tvarray->width = 2;
+    vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
+    gs_vertbuffer_t *vbuf = nullptr;
+
+    // index buffer
+    auto num_idx = m_num_bars * 6;
+    if(m_display_mode == DisplayMode::STEPPED_BAR)
+        num_idx *= (int)max_steps;
+    auto idata = (uint16_t*)bmalloc(num_idx * sizeof(uint16_t));
+    uint16_t vert = 0u;
+    for(auto i = 0; i < num_idx; i += 6)
+    {
+        idata[i] = vert;
+        idata[i + 1] = vert + 1;
+        idata[i + 2] = vert + 2;
+        idata[i + 3] = vert + 2;
+        idata[i + 4] = vert + 1;
+        idata[i + 5] = vert + 3;
+        vert += 4;
+    }
+    auto ibuf = gs_indexbuffer_create(GS_UNSIGNED_SHORT, idata, num_idx, 0);
+
+    auto grad_center = gs_effect_get_param_by_name(shader, "grad_center");
+    gs_effect_set_float(grad_center, cpos);
+    auto color_base = gs_effect_get_param_by_name(shader, "color_base");
+    gs_effect_set_vec4(color_base, &m_color_base);
+    auto color_crest = gs_effect_get_param_by_name(shader, "color_crest");
+    gs_effect_set_vec4(color_crest, &m_color_crest);
+
+    // interpolation
+    auto miny = cpos;
+    for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
+    {
+        if(m_interp_mode == InterpMode::LANCZOS)
+        {
+            for(auto i = 0; i < m_num_bars; ++i)
+            {
+                auto pos = m_interp_indices[i];
+                float sum = 0.0f;
+                int count = 0;
+                float stop = m_interp_indices[i + 1];
+                do
+                {
+                    sum += lanczos_interp(pos, 3.0f, m_fft_size / 2, m_decibels[channel].get());
+                    ++count;
+                    pos += 1.0f;
+                } while(pos < stop);
+                m_interp_bufs[channel][i] = sum / (float)count;
+            }
+        }
+        else
+        {
+            for(auto i = 0; i < m_num_bars; ++i)
+            {
+                auto pos = (int)m_interp_indices[i];
+                float sum = 0.0f;
+                int count = 0;
+                int stop = (int)m_interp_indices[i + 1];
+                do
+                {
+                    sum += m_decibels[channel][pos];
+                    ++count;
+                    ++pos;
+                } while(pos < stop);
+                m_interp_bufs[channel][i] = sum / (float)count;
+            }
+        }
+
+        if(m_filter_mode != FilterMode::NONE)
+        {
+            if(HAVE_SSE41)
+                m_interp_bufs[channel] = apply_filter_sse41(m_interp_bufs[channel], m_kernel);
+            else
+                m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
+        }
+
+        for(auto i = 0; i < m_num_bars; ++i)
+        {
+            auto val = lerp(0.5f, cpos, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
+            if(val < miny)
+                miny = val;
+            m_interp_bufs[channel][i] = val;
+        }
+    }
+    auto grad_height = gs_effect_get_param_by_name(shader, "grad_height");
+    gs_effect_set_float(grad_height, (cpos - miny) * m_grad_ratio);
+
+    gs_technique_begin(tech);
+    gs_technique_begin_pass(tech, 0);
+
+    for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
+    {
+        auto vertpos = 0u;
+        if(channel)
+            vbdata = gs_vertexbuffer_get_data(vbuf);
+
+        for(auto i = 0; i < m_num_bars; ++i)
+        {
+            auto x1 = (float)(i * bar_stride) + 0.5f;
+            auto x2 = x1 + m_bar_width;
+            auto val = m_interp_bufs[channel][i];
+
+            if(m_display_mode == DisplayMode::STEPPED_BAR)
+            {
+                for(auto j = 0; j < max_steps; ++j)
+                {
+                    auto y1 = (float)(j * step_stride);
+                    auto y2 = y1 + m_step_width;
+                    if((cpos - val) < y2)
+                        break;
+                    if(channel)
+                    {
+                        y1 = cpos + y1;
+                        y2 = cpos + y2;
+                    }
+                    else
+                    {
+                        y1 = cpos - y1;
+                        y2 = cpos - y2;
+                    }
+                    vec3_set(&vbdata->points[vertpos++], x1, y1, 0);
+                    vec3_set(&vbdata->points[vertpos++], x2, y1, 0);
+                    vec3_set(&vbdata->points[vertpos++], x1, y2, 0);
+                    vec3_set(&vbdata->points[vertpos++], x2, y2, 0);
+                }
+            }
+            else
+            {
+                if(channel)
+                    val = bottom - val;
+                vec3_set(&vbdata->points[vertpos++], x1, val, 0);
+                vec3_set(&vbdata->points[vertpos++], x2, val, 0);
+                vec3_set(&vbdata->points[vertpos++], x1, cpos, 0);
+                vec3_set(&vbdata->points[vertpos++], x2, cpos, 0);
+            }
+        }
+
+        if(channel)
+            gs_vertexbuffer_flush(vbuf);
+        else
+        {
+            vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
+            gs_load_vertexbuffer(vbuf);
+            gs_load_indexbuffer(ibuf);
+        }
+
+        auto total_verts = (uint32_t)(vertpos / 4u) * 6u;
+        if(total_verts > 0)
+            gs_draw(GS_TRIS, 0, total_verts);
+    }
+
+    gs_vertexbuffer_destroy(vbuf);
+    gs_indexbuffer_destroy(ibuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
 

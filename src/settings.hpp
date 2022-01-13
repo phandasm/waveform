@@ -72,6 +72,16 @@
 #define P_COLOR_CREST       "color_crest"
 #define P_GRAD_RATIO        "grad_ratio"
 
+#define P_DISPLAY_MODE      "display_mode"
+#define P_CURVE             "curve"
+#define P_BARS              "bars"
+#define P_STEP_BARS         "stepped_bars"
+
+#define P_BAR_WIDTH         "bar_width"
+#define P_BAR_GAP           "bar_gap"
+#define P_STEP_WIDTH        "step_width"
+#define P_STEP_GAP          "step_gap"
+
 
 // tooltip descriptions
 #define P_CHAN_DESC         "chan_desc"
