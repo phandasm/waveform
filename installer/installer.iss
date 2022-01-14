@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Waveform"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0-rc1"
 #define MyAppURL "https://github.com/phandasm/waveform"
 
 [Setup]
