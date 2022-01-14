@@ -21,7 +21,6 @@ or
 ### Linux (Ubuntu 20.04)
 #### Prebuilt Binaries
 - Extract Waveform\_v#.#.#\_Ubuntu\_x64.tar.gz to your `~/.config/obs-studio/plugins` folder.  
-- Install FFTW `sudo apt-get install libfftw3-3`  
 
 #### Source Build
 - Step-by-step instructions in the [readme](https://github.com/phandasm/waveform/blob/master/README.md#linux-ubuntu-20043-lts).

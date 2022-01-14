@@ -18,6 +18,9 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF) # static link dependencies
+if(NOT MSVC)
+    option(STATIC_FFTW "Static link FFTW" OFF) # allow static linking FFTW on non-windows platforms
+endif()
 
 if(WIN32)
     list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -54,7 +57,11 @@ if(MSVC)
     set(FFTW_INCLUDE_DIRS "deps/fftw-3.3.10/api")
 else()
     find_path(FFTW_INCLUDE_DIRS fftw3.h)
-    find_library(FFTW_LIBRARIES fftw3f)
+    if(STATIC_FFTW)
+        find_library(FFTW_LIBRARIES libfftw3f.a)
+    else()
+        find_library(FFTW_LIBRARIES fftw3f)
+    endif()
     if(NOT FFTW_INCLUDE_DIRS)
         message(FATAL_ERROR "Could not locate FFTW header.")
     endif()

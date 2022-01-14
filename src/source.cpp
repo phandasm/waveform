@@ -764,7 +764,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     const auto cpos = m_stereo ? center : bottom;
 
     auto max_steps = (size_t)(cpos / step_stride);
-    if(((int)cpos - (max_steps * step_stride)) >= m_step_width)
+    if(((int)cpos - (int)(max_steps * step_stride)) >= m_step_width)
         ++max_steps;
 
     // vertex buffer
@@ -880,7 +880,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
             if(m_display_mode == DisplayMode::STEPPED_BAR)
             {
-                for(auto j = 0; j < max_steps; ++j)
+                for(auto j = 0u; j < max_steps; ++j)
                 {
                     auto y1 = (float)(j * step_stride);
                     auto y2 = y1 + m_step_width;
