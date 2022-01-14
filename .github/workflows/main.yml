@@ -23,8 +23,23 @@ jobs:
           sudo apt-get install -y libobs-dev libfftw3-dev
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/bin
       
       - name: 'Build'
         working-directory: ${{github.workspace}}/build
-        run: make
+        run: make && make install
+      
+      - name: 'Package Binaries'
+        if: success() && github.ref_type == 'tag' && github.event_name != 'pull_request'
+        working-directory: ${{github.workspace}}/bin
+        run: tar -czf Waveform_${{github.ref_name}}_Ubuntu_${{runner.arch}}.tar.gz *
+      
+      - name: 'Publish Release'
+        if: success() && github.ref_type == 'tag' && github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{github.workspace}}/bin/*.tar.gz
+          body_path: ${{github.workspace}}/changelog.md
+          tag_name: ${{github.ref_name}}
+          name: ${{github.ref_name}}
+          prerelease: ${{ endsWith(github.ref_name, '-rc*') }}
