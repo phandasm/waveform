@@ -42,4 +42,4 @@ jobs:
           body_path: ${{github.workspace}}/changelog.md
           tag_name: ${{github.ref_name}}
           name: ${{github.ref_name}}
-          prerelease: ${{ endsWith(github.ref_name, '-rc*') }}
+          prerelease: ${{ contains(github.ref_name, '-rc') }}
