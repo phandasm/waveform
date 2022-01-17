@@ -157,6 +157,7 @@ namespace callbacks {
             obs_property_set_enabled(obs_properties_get(props, P_STEP_GAP), step);
             obs_property_set_visible(obs_properties_get(props, P_STEP_WIDTH), step);
             obs_property_set_visible(obs_properties_get(props, P_STEP_GAP), step);
+            obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, bar || step);
             return true;
             });
 
