@@ -59,6 +59,7 @@ void WAVSourceSSE2::tick(float seconds)
         return;
     }
 
+    auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
         if(m_capturebufs[channel].size >= bufsz)
@@ -70,7 +71,7 @@ void WAVSourceSSE2::tick(float seconds)
             continue;
 
         bool silent = true;
-        auto zero = _mm_set1_ps(0.0);
+        const auto zero = _mm_setzero_ps();
         for(auto i = 0u; i < m_fft_size; i += step)
         {
             auto mask = _mm_cmpeq_ps(zero, _mm_load_ps(&m_fft_input[i]));
@@ -85,27 +86,24 @@ void WAVSourceSSE2::tick(float seconds)
         if(silent)
         {
             if(m_last_silent)
-                return;
+                continue;
             bool outsilent = true;
             auto floor = _mm_set1_ps((float)(m_floor - 10));
-            for(auto ch = 0; ch < (m_stereo ? 2 : 1); ++ch)
+            for(size_t i = 0; i < outsz; i += step)
             {
-                for(size_t i = 0; i < outsz; i += step)
+                const auto ch = (m_stereo) ? channel : 0u;
+                auto mask = _mm_cmpgt_ps(floor, _mm_load_ps(&m_decibels[ch][i]));
+                if(_mm_movemask_ps(mask) != 0xf)
                 {
-                    auto mask = _mm_cmpgt_ps(floor, _mm_load_ps(&m_decibels[ch][i]));
-                    if(_mm_movemask_ps(mask) != 0xf)
-                    {
-                        outsilent = false;
-                        break;
-                    }
-                }
-                if(!outsilent)
+                    outsilent = false;
                     break;
+                }
             }
             if(outsilent)
             {
-                m_last_silent = true;
-                return;
+                if(++silent_channels >= m_capture_channels)
+                    m_last_silent = true;
+                continue;
             }
         }
 
@@ -158,6 +156,9 @@ void WAVSourceSSE2::tick(float seconds)
             _mm_store_ps(&m_decibels[channel][i], mag);
         }
     }
+
+    if(m_last_silent)
+        return;
 
     if(m_output_channels > m_capture_channels)
         memcpy(m_decibels[1].get(), m_decibels[0].get(), outsz * sizeof(float));
