@@ -36,11 +36,6 @@ Name: create_uninstaller; Description: "Create Uninstaller"
 
 [Files]
 Source: "{#SourcePath}\bin\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#SourcePath}\redist\*"; DestDir: "{tmp}"; Flags: deleteafterinstall
-
-[Run]
-Filename: "{tmp}\vc_redist.x86.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing MSVC x86 Redistributable..."; Flags: runhidden skipifdoesntexist
-Filename: "{tmp}\vc_redist.x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing MSVC x64 Redistributable..."; Flags: runhidden skipifdoesntexist
 
 [Code]
 function NextButtonClick(CurPageID: Integer): Boolean;
