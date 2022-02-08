@@ -36,6 +36,26 @@ if(MSVC)
         add_link_options("$<$<CONFIG:Release>:/LTCG>")
     endif()
 
+    # enable SSE2 globally for 32-bit build
+    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+        add_compile_options("/arch:SSE2")
+    endif()
+    
+    # allow static linked CRT
+    option(STATIC_RUNTIME "Static link CRT" OFF)
+    if(STATIC_RUNTIME)
+        foreach(flag
+            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+            CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+            CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+            CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+            if(${flag} MATCHES "/MD") # older versions of CMake used to specify this by default, paranoia check
+                string(REGEX REPLACE "/MD" "" ${flag} "${${flag}}")
+            endif()
+        endforeach()
+        add_compile_options("$<$<CONFIG:Release>:/MT>") # release builds only
+    endif()
+
     # build fftw
     # fftw's CMakeLists mishandles MSVC arch flags
     # so we will skip the autodetection and clear the flags
