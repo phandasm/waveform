@@ -626,6 +626,7 @@ void WAVSource::update(obs_data_t *settings)
     for(size_t i = 0; i < num_mods; ++i)
         m_slope_modifiers[i] = log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
 }
+
 void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 {
     if(m_display_mode == DisplayMode::CURVE)
@@ -643,11 +644,11 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     const auto num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2));
     auto vbdata = gs_vbdata_create();
     vbdata->num = num_verts;
-    vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
+    vbdata->points = (vec3*)bzalloc(num_verts * sizeof(vec3));
     vbdata->num_tex = 1;
     vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
     vbdata->tvarray->width = 2;
-    vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
+    vbdata->tvarray->array = bzalloc(2 * num_verts * sizeof(float));
     gs_vertbuffer_t *vbuf = nullptr;
 
     auto filename = obs_module_file("gradient.effect");
@@ -769,35 +770,17 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         ++max_steps;
 
     // vertex buffer
-    auto num_verts = (size_t)(m_num_bars * 4);
+    auto num_verts = (size_t)(m_num_bars * 6);
     if(m_display_mode == DisplayMode::STEPPED_BAR)
         num_verts *= max_steps;
     auto vbdata = gs_vbdata_create();
     vbdata->num = num_verts;
-    vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
+    vbdata->points = (vec3*)bzalloc(num_verts * sizeof(vec3));
     vbdata->num_tex = 1;
     vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
     vbdata->tvarray->width = 2;
-    vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
+    vbdata->tvarray->array = bzalloc(2 * num_verts * sizeof(float));
     gs_vertbuffer_t *vbuf = nullptr;
-
-    // index buffer
-    auto num_idx = m_num_bars * 6;
-    if(m_display_mode == DisplayMode::STEPPED_BAR)
-        num_idx *= (int)max_steps;
-    auto idata = (uint16_t*)bmalloc(num_idx * sizeof(uint16_t));
-    uint16_t vert = 0u;
-    for(auto i = 0; i < num_idx; i += 6)
-    {
-        idata[i] = vert;
-        idata[i + 1] = vert + 1;
-        idata[i + 2] = vert + 2;
-        idata[i + 3] = vert + 2;
-        idata[i + 4] = vert + 1;
-        idata[i + 5] = vert + 3;
-        vert += 4;
-    }
-    auto ibuf = gs_indexbuffer_create(GS_UNSIGNED_SHORT, idata, num_idx, 0);
 
     auto grad_center = gs_effect_get_param_by_name(shader, "grad_center");
     gs_effect_set_float(grad_center, cpos);
@@ -897,20 +880,26 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                         y1 = cpos - y1;
                         y2 = cpos - y2;
                     }
-                    vec3_set(&vbdata->points[vertpos++], x1, y1, 0);
-                    vec3_set(&vbdata->points[vertpos++], x2, y1, 0);
-                    vec3_set(&vbdata->points[vertpos++], x1, y2, 0);
-                    vec3_set(&vbdata->points[vertpos++], x2, y2, 0);
+                    vec3_set(&vbdata->points[vertpos], x1, y1, 0);
+                    vec3_set(&vbdata->points[vertpos + 1], x2, y1, 0);
+                    vec3_set(&vbdata->points[vertpos + 2], x1, y2, 0);
+                    vec3_set(&vbdata->points[vertpos + 3], x2, y1, 0);
+                    vec3_set(&vbdata->points[vertpos + 4], x1, y2, 0);
+                    vec3_set(&vbdata->points[vertpos + 5], x2, y2, 0);
+                    vertpos += 6;
                 }
             }
             else
             {
                 if(channel)
                     val = bottom - val;
-                vec3_set(&vbdata->points[vertpos++], x1, val, 0);
-                vec3_set(&vbdata->points[vertpos++], x2, val, 0);
-                vec3_set(&vbdata->points[vertpos++], x1, cpos, 0);
-                vec3_set(&vbdata->points[vertpos++], x2, cpos, 0);
+                vec3_set(&vbdata->points[vertpos], x1, val, 0);
+                vec3_set(&vbdata->points[vertpos + 1], x2, val, 0);
+                vec3_set(&vbdata->points[vertpos + 2], x1, cpos, 0);
+                vec3_set(&vbdata->points[vertpos + 3], x2, val, 0);
+                vec3_set(&vbdata->points[vertpos + 4], x1, cpos, 0);
+                vec3_set(&vbdata->points[vertpos + 5], x2, cpos, 0);
+                vertpos += 6;
             }
         }
 
@@ -920,16 +909,14 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         {
             vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
             gs_load_vertexbuffer(vbuf);
-            gs_load_indexbuffer(ibuf);
+            gs_load_indexbuffer(nullptr);
         }
 
-        auto total_verts = (uint32_t)(vertpos / 4u) * 6u;
-        if(total_verts > 0)
-            gs_draw(GS_TRIS, 0, total_verts);
+        if(vertpos > 0)
+            gs_draw(GS_TRIS, 0, vertpos);
     }
 
     gs_vertexbuffer_destroy(vbuf);
-    gs_indexbuffer_destroy(ibuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
 
