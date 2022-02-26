@@ -1,12 +1,6 @@
-- Fix crash when using audio configurations with more than 2 channels
-- Fix name conflict with other plugins
-- Add bar and "stepped" bar visualizers
-- Minor performance improvements
-
-# **IMPORTANT**
-Due to being renamed to avoid conflicts with other plugins, *sources made with version 1.0.0 will no longer be recognized.*  
-If you would like to preserve those sources you can edit your scene files in `%appdata%/obs-studio/basic/scenes` and replace occurances of `waveform_source` with `phandasm_waveform_source`.  
-Apologies for the inconvenience.
+- Fix crash that can occur in certain configurations
+- Fix potential installation issues
+- Auto recapture audio sources that have been removed and re-added
 
 ## Installation
 ### Windows
@@ -15,8 +9,7 @@ Either
 or  
 - Extract Waveform\_v#.#.#\_x86\_64.zip to the *root* of your OBS folder (e.g. `C:\Program Files (x86)\obs-studio`).
 
-#### Requirements (included with installer)
-- [Visual Studio 2019 Redistributable](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
+Both methods include 32-bit and 64-bit binaries.
 
 ### Linux (Ubuntu 20.04)
 #### Prebuilt Binaries
