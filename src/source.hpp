@@ -160,6 +160,9 @@ protected:
 
     void init_interp(unsigned int sz);
 
+    void render_curve(gs_effect_t *effect);
+    void render_bars(gs_effect_t *effect);
+
     // constants
     static const float DB_MIN;
     static constexpr auto RETRY_DELAY = 2.0f;
@@ -187,9 +190,6 @@ public:
     virtual void update(obs_data_t *settings);
     virtual void tick(float seconds) = 0;
     virtual void render(gs_effect_t *effect);
-
-    void render_curve(gs_effect_t *effect);
-    void render_bars(gs_effect_t *effect);
 
     void show();
     void hide();

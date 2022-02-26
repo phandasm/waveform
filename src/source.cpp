@@ -740,6 +740,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         gs_draw((m_render_mode != RenderMode::LINE) ? GS_TRISTRIP : GS_LINESTRIP, 0, (uint32_t)num_verts);
     }
 
+    gs_load_vertexbuffer(nullptr);
     gs_vertexbuffer_destroy(vbuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
@@ -916,6 +917,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             gs_draw(GS_TRIS, 0, vertpos);
     }
 
+    gs_load_vertexbuffer(nullptr);
     gs_vertexbuffer_destroy(vbuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
