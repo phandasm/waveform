@@ -156,6 +156,7 @@ protected:
 
     void recapture_audio();
     void release_audio_capture();
+    bool check_audio_capture(float seconds);
     void free_fft();
 
     void init_interp(unsigned int sz);

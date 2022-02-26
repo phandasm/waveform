@@ -431,6 +431,32 @@ void WAVSource::release_audio_capture()
     }
 }
 
+bool WAVSource::check_audio_capture(float seconds)
+{
+    if(m_audio_source == nullptr)
+    {
+        m_next_retry -= seconds;
+        if(m_next_retry <= 0.0f)
+        {
+            m_next_retry = RETRY_DELAY;
+            recapture_audio();
+            if(m_audio_source != nullptr)
+                return true;
+        }
+        return false;
+    }
+
+    // check if the source still exists
+    auto src = obs_weak_source_get_source(m_audio_source);
+    if(src == nullptr)
+    {
+        release_audio_capture();
+        return false;
+    }
+    obs_source_release(src);
+    return true;
+}
+
 void WAVSource::free_fft()
 {
     for(auto i = 0; i < 2; ++i)

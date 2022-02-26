@@ -25,17 +25,8 @@ DECORATE_AVX2
 void WAVSourceAVX2::tick(float seconds)
 {
     std::lock_guard lock(m_mtx);
-    if(m_audio_source == nullptr)
-    {
-        m_next_retry -= seconds;
-        if(m_next_retry <= 0.0f)
-        {
-            m_next_retry = RETRY_DELAY;
-            recapture_audio();
-        }
-        else
-            return;
-    }
+    if(!check_audio_capture(seconds))
+        return;
 
     if(m_capture_channels == 0)
         return;
