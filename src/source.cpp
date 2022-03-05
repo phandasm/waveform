@@ -457,7 +457,7 @@ bool WAVSource::check_audio_capture(float seconds)
     return true;
 }
 
-void WAVSource::free_fft()
+void WAVSource::free_bufs()
 {
     for(auto i = 0; i < 2; ++i)
     {
@@ -469,6 +469,11 @@ void WAVSource::free_fft()
     m_fft_output.reset();
     m_window_coefficients.reset();
     m_slope_modifiers.reset();
+    if(m_vbuf != nullptr)
+    {
+        gs_vertexbuffer_destroy(m_vbuf);
+        m_vbuf = nullptr;
+    }
 
     if(m_fft_plan != nullptr)
     {
@@ -511,7 +516,7 @@ WAVSource::~WAVSource()
 {
     std::lock_guard lock(m_mtx);
     release_audio_capture();
-    free_fft();
+    free_bufs();
 
     for(auto& i : m_capturebufs)
         circlebuf_free(&i);
@@ -534,7 +539,7 @@ void WAVSource::update(obs_data_t *settings)
     std::lock_guard lock(m_mtx);
 
     release_audio_capture();
-    free_fft();
+    free_bufs();
     get_settings(settings);
 
     // get current audio settings
@@ -667,15 +672,19 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     if(m_last_silent)
         return;
 
+    // vertex buffer
     const auto num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2));
-    auto vbdata = gs_vbdata_create();
-    vbdata->num = num_verts;
-    vbdata->points = (vec3*)bzalloc(num_verts * sizeof(vec3));
-    vbdata->num_tex = 1;
-    vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
-    vbdata->tvarray->width = 2;
-    vbdata->tvarray->array = bzalloc(2 * num_verts * sizeof(float));
-    gs_vertbuffer_t *vbuf = nullptr;
+    if(m_vbuf == nullptr)
+    {
+        auto vbdata = gs_vbdata_create();
+        vbdata->num = num_verts;
+        vbdata->points = (vec3*)bzalloc(num_verts * sizeof(vec3));
+        vbdata->num_tex = 1;
+        vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
+        vbdata->tvarray->width = 2;
+        vbdata->tvarray->array = bzalloc(2 * num_verts * sizeof(float));
+        m_vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
+    }
 
     auto filename = obs_module_file("gradient.effect");
     auto shader = gs_effect_create_from_file(filename, nullptr);
@@ -728,12 +737,13 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
+    gs_load_vertexbuffer(m_vbuf);
+    gs_load_indexbuffer(nullptr);
 
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         auto vertpos = 0u;
-        if(channel)
-            vbdata = gs_vertexbuffer_get_data(vbuf);
+        auto vbdata = gs_vertexbuffer_get_data(m_vbuf);
         if(m_render_mode != RenderMode::LINE)
             vec3_set(&vbdata->points[vertpos++], -0.5, cpos, 0);
 
@@ -755,19 +765,12 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         if(m_render_mode != RenderMode::LINE)
             vec3_set(&vbdata->points[vertpos++], right, cpos, 0);
 
-        if(channel)
-            gs_vertexbuffer_flush(vbuf);
-        else
-        {
-            vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
-            gs_load_vertexbuffer(vbuf);
-            gs_load_indexbuffer(nullptr);
-        }
+        gs_vertexbuffer_flush(m_vbuf);
+
         gs_draw((m_render_mode != RenderMode::LINE) ? GS_TRISTRIP : GS_LINESTRIP, 0, (uint32_t)num_verts);
     }
 
     gs_load_vertexbuffer(nullptr);
-    gs_vertexbuffer_destroy(vbuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
 
@@ -797,17 +800,20 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         ++max_steps;
 
     // vertex buffer
-    auto num_verts = (size_t)(m_num_bars * 6);
-    if(m_display_mode == DisplayMode::STEPPED_BAR)
-        num_verts *= max_steps;
-    auto vbdata = gs_vbdata_create();
-    vbdata->num = num_verts;
-    vbdata->points = (vec3*)bzalloc(num_verts * sizeof(vec3));
-    vbdata->num_tex = 1;
-    vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
-    vbdata->tvarray->width = 2;
-    vbdata->tvarray->array = bzalloc(2 * num_verts * sizeof(float));
-    gs_vertbuffer_t *vbuf = nullptr;
+    if(m_vbuf == nullptr)
+    {
+        auto num_verts = (size_t)(m_num_bars * 6);
+        if(m_display_mode == DisplayMode::STEPPED_BAR)
+            num_verts *= max_steps;
+        auto vbdata = gs_vbdata_create();
+        vbdata->num = num_verts;
+        vbdata->points = (vec3*)bzalloc(num_verts * sizeof(vec3));
+        vbdata->num_tex = 1;
+        vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
+        vbdata->tvarray->width = 2;
+        vbdata->tvarray->array = bzalloc(2 * num_verts * sizeof(float));
+        m_vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
+    }
 
     auto grad_center = gs_effect_get_param_by_name(shader, "grad_center");
     gs_effect_set_float(grad_center, cpos);
@@ -876,12 +882,13 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
+    gs_load_vertexbuffer(m_vbuf);
+    gs_load_indexbuffer(nullptr);
 
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         auto vertpos = 0u;
-        if(channel)
-            vbdata = gs_vertexbuffer_get_data(vbuf);
+        auto vbdata = gs_vertexbuffer_get_data(m_vbuf);
 
         for(auto i = 0; i < m_num_bars; ++i)
         {
@@ -930,21 +937,13 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             }
         }
 
-        if(channel)
-            gs_vertexbuffer_flush(vbuf);
-        else
-        {
-            vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
-            gs_load_vertexbuffer(vbuf);
-            gs_load_indexbuffer(nullptr);
-        }
+        gs_vertexbuffer_flush(m_vbuf);
 
         if(vertpos > 0)
             gs_draw(GS_TRIS, 0, vertpos);
     }
 
     gs_load_vertexbuffer(nullptr);
-    gs_vertexbuffer_destroy(vbuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
 

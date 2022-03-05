@@ -115,6 +115,9 @@ protected:
     int m_retries = 0;
     float m_next_retry = 0.0f;
 
+    // vertex buffer
+    gs_vertbuffer_t *m_vbuf = nullptr;
+
     // settings
     RenderMode m_render_mode = RenderMode::SOLID;
     FFTWindow m_window_func = FFTWindow::HANN;
@@ -157,7 +160,7 @@ protected:
     void recapture_audio();
     void release_audio_capture();
     bool check_audio_capture(float seconds);
-    void free_fft();
+    void free_bufs();
 
     void init_interp(unsigned int sz);
 
