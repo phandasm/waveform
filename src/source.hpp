@@ -88,6 +88,7 @@ protected:
     circlebuf m_capturebufs[2]{};
     uint32_t m_capture_channels = 0;    // audio input channels
     uint32_t m_output_channels = 0;     // fft output channels (*not* display channels)
+    bool m_output_bus_captured = false;   // do we have an active audio output callback? (via audio_output_connect())
 
     // 32-byte aligned buffers for FFT/AVX processing
     AVXBufR m_fft_input;
@@ -202,6 +203,9 @@ public:
 
     // audio capture callback
     void capture_audio(obs_source_t *source, const audio_data *audio, bool muted);
+
+    // for capturing the final OBS audio output stream
+    void capture_output_bus(size_t mix_idx, const audio_data *audio);
 
     // constants
     static const bool HAVE_AVX2;

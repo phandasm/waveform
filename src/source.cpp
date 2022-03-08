@@ -132,6 +132,7 @@ namespace callbacks {
         // audio source
         auto srclist = obs_properties_add_list(props, P_AUDIO_SRC, T(P_AUDIO_SRC), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         obs_property_list_add_string(srclist, T(P_NONE), P_NONE);
+        obs_property_list_add_string(srclist, T(P_OUTPUT_BUS), P_OUTPUT_BUS);
 
         for(const auto& str : enumerate_audio_sources())
             obs_property_list_add_string(srclist, str.c_str(), str.c_str());
@@ -288,6 +289,11 @@ namespace callbacks {
     {
         static_cast<WAVSource*>(data)->capture_audio(source, audio, muted);
     }
+
+    static void capture_output_bus(void *param, size_t mix_idx, audio_data *data)
+    {
+        static_cast<WAVSource*>(param)->capture_output_bus(mix_idx, data);
+    }
 }
 
 void WAVSource::get_settings(obs_data_t *settings)
@@ -394,17 +400,28 @@ void WAVSource::recapture_audio()
 
     // add new capture
     auto src_name = m_audio_source_name.c_str();
-    auto asrc = obs_get_source_by_name(src_name);
-    if(asrc != nullptr)
+    if(p_equ(src_name, P_OUTPUT_BUS))
     {
-        obs_source_add_audio_capture_callback(asrc, &callbacks::capture_audio, this);
-        m_audio_source = obs_source_get_weak_source(asrc);
-        obs_source_release(asrc);
+        audio_convert_info cvt{};
+        cvt.format = audio_format::AUDIO_FORMAT_FLOAT_PLANAR;
+        cvt.samples_per_sec = m_audio_info.samples_per_sec;
+        cvt.speakers = (m_audio_info.speakers != speaker_layout::SPEAKERS_UNKNOWN) ? m_audio_info.speakers : speaker_layout::SPEAKERS_STEREO;
+        m_output_bus_captured = audio_output_connect(obs_get_audio(), 0, &cvt, &callbacks::capture_output_bus, this);
     }
-    else if(!p_equ(src_name, "none"))
+    else
     {
-        if(m_retries++ == 0)
-            blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to get audio source: \"%s\"", src_name);
+        auto asrc = obs_get_source_by_name(src_name);
+        if(asrc != nullptr)
+        {
+            obs_source_add_audio_capture_callback(asrc, &callbacks::capture_audio, this);
+            m_audio_source = obs_source_get_weak_source(asrc);
+            obs_source_release(asrc);
+        }
+        else if(!p_equ(src_name, "none"))
+        {
+            if(m_retries++ == 0)
+                blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to get audio source: \"%s\"", src_name);
+        }
     }
 }
 
@@ -422,6 +439,12 @@ void WAVSource::release_audio_capture()
         }
     }
 
+    if(m_output_bus_captured)
+    {
+        audio_output_disconnect(obs_get_audio(), 0, &callbacks::capture_output_bus, this);
+        m_output_bus_captured = false;
+    }
+
     // reset circular buffers
     for(auto& i : m_capturebufs)
     {
@@ -433,6 +456,9 @@ void WAVSource::release_audio_capture()
 
 bool WAVSource::check_audio_capture(float seconds)
 {
+    if(m_output_bus_captured)
+        return true;
+
     if(m_audio_source == nullptr)
     {
         m_next_retry -= seconds;
@@ -1019,6 +1045,24 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
             circlebuf_push_back_zero(&m_capturebufs[i], sz);
         else
             circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
+
+        auto total = m_capturebufs[i].size;
+        auto max = m_fft_size * sizeof(float) * 2;
+        if(total > max)
+            circlebuf_pop_front(&m_capturebufs[i], nullptr, total - max);
+    }
+}
+
+void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_data *audio)
+{
+    if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
+        return;
+    std::lock_guard lock(m_mtx, std::adopt_lock);
+
+    auto sz = size_t(audio->frames * sizeof(float));
+    for(auto i = 0u; i < m_capture_channels; ++i)
+    {
+        circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
 
         auto total = m_capturebufs[i].size;
         auto max = m_fft_size * sizeof(float) * 2;

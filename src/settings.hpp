@@ -25,6 +25,7 @@
 // localizable property strings
 #define P_AUDIO_SRC         "audio_source"
 #define P_NONE              "none"
+#define P_OUTPUT_BUS        "output_bus"
 
 #define P_RENDER_MODE       "render_mode"
 #define P_LINE              "line"
