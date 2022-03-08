@@ -147,8 +147,7 @@ void WAVSourceAVX2::tick(float seconds)
                 // take new values immediately if larger
                 if(m_fast_peaks)
                 {
-                    auto mask = _mm256_cmp_ps(mag, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _CMP_GT_OQ);
-                    _mm256_maskstore_ps(&m_tsmooth_buf[channel][i], _mm256_castps_si256(mask), mag);
+                    _mm256_store_ps(&m_tsmooth_buf[channel][i], _mm256_max_ps(mag, _mm256_load_ps(&m_tsmooth_buf[channel][i])));
                 }
 
                 // (gravity * oldval) + ((1 - gravity) * newval)

@@ -136,8 +136,7 @@ void WAVSourceSSE2::tick(float seconds)
             {
                 if(m_fast_peaks)
                 {
-                    auto mask = _mm_cmpgt_ps(mag, _mm_load_ps(&m_tsmooth_buf[channel][i]));
-                    _mm_maskmoveu_si128(_mm_castps_si128(mag), _mm_castps_si128(mask), (char*)&m_tsmooth_buf[channel][i]);
+                    _mm_store_ps(&m_tsmooth_buf[channel][i], _mm_max_ps(mag, _mm_load_ps(&m_tsmooth_buf[channel][i])));
                 }
 
                 mag = _mm_add_ps(_mm_mul_ps(g, _mm_load_ps(&m_tsmooth_buf[channel][i])), _mm_mul_ps(g2, mag));

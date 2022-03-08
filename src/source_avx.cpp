@@ -142,8 +142,7 @@ void WAVSourceAVX::tick(float seconds)
             {
                 if(m_fast_peaks)
                 {
-                    auto mask = _mm256_cmp_ps(mag, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _CMP_GT_OQ);
-                    _mm256_maskstore_ps(&m_tsmooth_buf[channel][i], _mm256_castps_si256(mask), mag);
+                    _mm256_store_ps(&m_tsmooth_buf[channel][i], _mm256_max_ps(mag, _mm256_load_ps(&m_tsmooth_buf[channel][i])));
                 }
 
                 mag = _mm256_fmadd_ps(g, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _mm256_mul_ps(g2, mag));
