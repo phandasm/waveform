@@ -61,7 +61,7 @@ template<typename T>
 Kernel<T> make_gauss_kernel(T sigma)
 {
     Kernel<T> ret;
-    sigma = std::abs(sigma) + 1;
+    sigma = std::max(std::abs(sigma), (T)0.01);
     auto w = (int)std::ceil((T)3 * sigma);
     auto size = (2 * w) - 1;
     ret.weights.reset(avx_alloc<T>(size));
