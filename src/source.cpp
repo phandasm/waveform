@@ -102,7 +102,7 @@ namespace callbacks {
         obs_data_set_default_bool(settings, P_LOG_SCALE, true);
         obs_data_set_default_bool(settings, P_RADIAL, false);
         obs_data_set_default_bool(settings, P_INVERT, false);
-        obs_data_set_default_double(settings, P_DEADZONE, 0.0);
+        obs_data_set_default_double(settings, P_DEADZONE, 20.0);
         obs_data_set_default_bool(settings, P_CAPS, false);
         obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
         obs_data_set_default_int(settings, P_FFT_SIZE, 2048);
