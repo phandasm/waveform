@@ -178,7 +178,8 @@ namespace callbacks {
         // radial layout
         auto rad = obs_properties_add_bool(props, P_RADIAL, T(P_RADIAL));
         obs_properties_add_bool(props, P_INVERT, T(P_INVERT));
-        auto deadzone = obs_properties_add_float_slider(props, P_DEADZONE, T(P_DEADZONE), 0.0, 100.0, 0.01);
+        auto deadzone = obs_properties_add_float_slider(props, P_DEADZONE, T(P_DEADZONE), 0.0, 100.0, 0.1);
+        obs_property_float_set_suffix(deadzone, "%");
         obs_property_set_long_description(deadzone, T(P_DEADZONE_DESC));
         obs_property_set_modified_callback(rad, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto enable = obs_data_get_bool(settings, P_RADIAL) && obs_property_enabled(obs_properties_get(props, P_RADIAL));
@@ -328,7 +329,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_log_scale = obs_data_get_bool(settings, P_LOG_SCALE);
     m_radial = obs_data_get_bool(settings, P_RADIAL);
     m_invert = obs_data_get_bool(settings, P_INVERT);
-    m_deadzone = (float)obs_data_get_double(settings, P_DEADZONE);
+    auto deadzone = (float)obs_data_get_double(settings, P_DEADZONE) / 100.0f;
     m_rounded_caps = obs_data_get_bool(settings, P_CAPS);
     m_stereo = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO);
     m_fft_size = (size_t)obs_data_get_int(settings, P_FFT_SIZE);
@@ -374,9 +375,6 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_ceiling = 0;
         m_floor = -120;
     }
-
-    if(m_radial)
-        m_height /= 2; // fit diameter to hieght of bounding box
 
     if(src_name != nullptr)
         m_audio_source_name = src_name;
@@ -425,6 +423,16 @@ void WAVSource::get_settings(obs_data_t *settings)
 
     if(m_display_mode != DisplayMode::BAR)
         m_rounded_caps = false;
+
+    if(m_radial)
+    {
+        m_height /= 2; // fit diameter to hieght of bounding box
+        auto max_deadzone = (float)(m_height - 16);
+        if(m_rounded_caps)
+            max_deadzone = std::max(max_deadzone - m_bar_width, 0.0f);
+        m_deadzone = std::min(std::floor((float)m_height * deadzone), max_deadzone);
+        m_height -= (int)m_deadzone;
+    }
 }
 
 void WAVSource::recapture_audio()
@@ -587,7 +595,7 @@ unsigned int WAVSource::width()
     std::lock_guard lock(m_mtx);
 
     if(m_radial)
-        return m_height * 2;
+        return (m_height + m_deadzone) * 2;
     return m_width;
 }
 
@@ -596,7 +604,7 @@ unsigned int WAVSource::height()
     std::lock_guard lock(m_mtx);
 
     if(m_radial)
-        return m_height * 2;
+        return (m_height + m_deadzone) * 2;
     return m_height;
 }
 
@@ -735,8 +743,8 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 {
     std::lock_guard lock(m_mtx);
-    if(m_last_silent)
-        return;
+    //if(m_last_silent)
+    //    return;
 
     // vertex buffer
     const auto num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2));
@@ -780,13 +788,15 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     {
         auto graph_width = gs_effect_get_param_by_name(shader, "graph_width");
         gs_effect_set_float(graph_width, (float)m_width);
-        auto graph_scale = gs_effect_get_param_by_name(shader, "graph_scale");
-        gs_effect_set_float(graph_scale, (float)(1.0 - (m_deadzone / 100.0)));
+        auto graph_height = gs_effect_get_param_by_name(shader, "graph_height");
+        gs_effect_set_float(graph_height, (float)m_height);
+        auto graph_deadzone = gs_effect_get_param_by_name(shader, "graph_deadzone");
+        gs_effect_set_float(graph_deadzone, m_deadzone);
         auto graph_invert = gs_effect_get_param_by_name(shader, "graph_invert");
         gs_effect_set_bool(graph_invert, m_invert);
         auto radial_center = gs_effect_get_param_by_name(shader, "radial_center");
         vec2 rc;
-        vec2_set(&rc, (float)m_height, (float)m_height);
+        vec2_set(&rc, (float)m_height + m_deadzone, (float)m_height + m_deadzone);
         gs_effect_set_vec2(radial_center, &rc);
     }
 
@@ -867,8 +877,8 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 {
     std::lock_guard lock(m_mtx);
-    if(m_last_silent)
-        return;
+    //if(m_last_silent)
+    //    return;
 
     auto filename = obs_module_file("gradient.effect");
     auto shader = gs_effect_create_from_file(filename, nullptr);
@@ -888,7 +898,8 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     const auto dbrange = m_ceiling - m_floor;
     const auto cpos = m_stereo ? center : bottom;
     const auto cap_radius = (float)m_bar_width / 2.0f;
-    const auto cap_points = (int)((float)M_PI * cap_radius) + 1;
+    // caps are full circles to avoid distortion issues in radial mode
+    const auto cap_points = std::max((int)((2 * (float)M_PI * cap_radius) / 3.0f), 4);
 
     auto max_steps = (size_t)(cpos / step_stride);
     if(((int)cpos - (int)(max_steps * step_stride)) >= m_step_width)
@@ -923,13 +934,15 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     {
         auto graph_width = gs_effect_get_param_by_name(shader, "graph_width");
         gs_effect_set_float(graph_width, (float)m_width);
-        auto graph_scale = gs_effect_get_param_by_name(shader, "graph_scale");
-        gs_effect_set_float(graph_scale, (float)(1.0 - (m_deadzone / 100.0)));
+        auto graph_height = gs_effect_get_param_by_name(shader, "graph_height");
+        gs_effect_set_float(graph_height, (float)m_height);
+        auto graph_deadzone = gs_effect_get_param_by_name(shader, "graph_deadzone");
+        gs_effect_set_float(graph_deadzone, m_deadzone);
         auto graph_invert = gs_effect_get_param_by_name(shader, "graph_invert");
         gs_effect_set_bool(graph_invert, m_invert);
         auto radial_center = gs_effect_get_param_by_name(shader, "radial_center");
         vec2 rc;
-        vec2_set(&rc, (float)m_height, (float)m_height);
+        vec2_set(&rc, (float)m_height + m_deadzone, (float)m_height + m_deadzone);
         gs_effect_set_vec2(radial_center, &rc);
     }
 
@@ -1051,7 +1064,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
                 if(m_rounded_caps)
                 {
-                    auto angle = (float)M_PI / (float)cap_points;
+                    auto angle = (2 * (float)M_PI) / (float)cap_points;
                     if(channel == 0)
                         angle = -angle;
                     auto ccx = x1 + cap_radius; // cap center x
@@ -1071,7 +1084,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                     if(!m_stereo)
                     {
                         auto ccy = cpos - cap_radius;
-                        angle = (float)M_PI / (float)cap_points;
+                        angle = (2 * (float)M_PI) / (float)cap_points;
                         for(auto j = 0; j < cap_points; ++j)
                         {
                             auto a1 = j * angle;

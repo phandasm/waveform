@@ -5,7 +5,8 @@ uniform float grad_center = 0.0;
 uniform float grad_height = 0.0;
 
 uniform float graph_width = 0.0;
-uniform float graph_scale = 1.0;
+uniform float graph_height = 0.0;
+uniform float graph_deadzone = 0.0;
 uniform bool graph_invert = false;
 uniform float2 radial_center = {0.0, 0.0};
 
@@ -40,9 +41,9 @@ VertGrad VSRadial(VertInOut vert_in)
 	vert_out.pos = float4(vert_in.pos.xyz, 1.0);
 	if(graph_invert)
 	{
-		vert_out.pos.y = radial_center.y - vert_out.pos.y;
+		vert_out.pos.y = graph_height - vert_out.pos.y;
 	}
-	vert_out.pos.y = (vert_out.pos.y * graph_scale) + ((1.0f - graph_scale) * radial_center.y);
+	vert_out.pos.y += graph_deadzone;
 	vert_out.pos.x = -(vert_out.pos.y * sin(angle));
 	vert_out.pos.y = vert_out.pos.y * cos(angle);
 	vert_out.pos.xy += radial_center;
