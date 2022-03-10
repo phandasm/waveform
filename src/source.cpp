@@ -100,6 +100,9 @@ namespace callbacks {
         obs_data_set_default_int(settings, P_WIDTH, 800);
         obs_data_set_default_int(settings, P_HEIGHT, 225);
         obs_data_set_default_bool(settings, P_LOG_SCALE, true);
+        obs_data_set_default_bool(settings, P_RADIAL, false);
+        obs_data_set_default_bool(settings, P_INVERT, false);
+        obs_data_set_default_double(settings, P_DEADZONE, 0.0);
         obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
         obs_data_set_default_int(settings, P_FFT_SIZE, 2048);
         obs_data_set_default_bool(settings, P_AUTO_FFT_SIZE, false);
@@ -168,6 +171,20 @@ namespace callbacks {
 
         // log scale
         obs_properties_add_bool(props, P_LOG_SCALE, T(P_LOG_SCALE));
+
+        // radial layout
+        auto rad = obs_properties_add_bool(props, P_RADIAL, T(P_RADIAL));
+        obs_properties_add_bool(props, P_INVERT, T(P_INVERT));
+        auto deadzone = obs_properties_add_float_slider(props, P_DEADZONE, T(P_DEADZONE), 0.0, 100.0, 0.01);
+        obs_property_set_long_description(deadzone, T(P_DEADZONE_DESC));
+        obs_property_set_modified_callback(rad, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
+            auto enable = obs_data_get_bool(settings, P_RADIAL) && obs_property_enabled(obs_properties_get(props, P_RADIAL));
+            obs_property_set_enabled(obs_properties_get(props, P_DEADZONE), enable);
+            obs_property_set_enabled(obs_properties_get(props, P_INVERT), enable);
+            obs_property_set_visible(obs_properties_get(props, P_DEADZONE), enable);
+            obs_property_set_visible(obs_properties_get(props, P_INVERT), enable);
+            return true;
+            });
 
         // channels
         auto chanlst = obs_properties_add_list(props, P_CHANNEL_MODE, T(P_CHANNEL_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
@@ -302,6 +319,9 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_width = (unsigned int)obs_data_get_int(settings, P_WIDTH);
     m_height = (unsigned int)obs_data_get_int(settings, P_HEIGHT);
     m_log_scale = obs_data_get_bool(settings, P_LOG_SCALE);
+    m_radial = obs_data_get_bool(settings, P_RADIAL);
+    m_invert = obs_data_get_bool(settings, P_INVERT);
+    m_deadzone = (float)obs_data_get_double(settings, P_DEADZONE);
     m_stereo = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO);
     m_fft_size = (size_t)obs_data_get_int(settings, P_FFT_SIZE);
     m_auto_fft_size = obs_data_get_bool(settings, P_AUTO_FFT_SIZE);
@@ -346,6 +366,9 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_ceiling = 0;
         m_floor = -120;
     }
+
+    if(m_radial)
+        m_height /= 2; // fit diameter to hieght of bounding box
 
     if(src_name != nullptr)
         m_audio_source_name = src_name;
@@ -551,12 +574,18 @@ WAVSource::~WAVSource()
 unsigned int WAVSource::width()
 {
     std::lock_guard lock(m_mtx);
+
+    if(m_radial)
+        return m_height * 2;
     return m_width;
 }
 
 unsigned int WAVSource::height()
 {
     std::lock_guard lock(m_mtx);
+
+    if(m_radial)
+        return m_height * 2;
     return m_height;
 }
 
@@ -715,7 +744,13 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     auto filename = obs_module_file("gradient.effect");
     auto shader = gs_effect_create_from_file(filename, nullptr);
     bfree(filename);
-    auto tech = gs_effect_get_technique(shader, (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid");
+
+    const char *techname;
+    if(m_radial)
+        techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
+    else
+        techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
+    auto tech = gs_effect_get_technique(shader, techname);
     
     const auto center = (float)m_height / 2 + 0.5f;
     const auto right = (float)m_width + 0.5f;
@@ -729,6 +764,20 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     gs_effect_set_vec4(color_base, &m_color_base);
     auto color_crest = gs_effect_get_param_by_name(shader, "color_crest");
     gs_effect_set_vec4(color_crest, &m_color_crest);
+
+    if(m_radial)
+    {
+        auto graph_width = gs_effect_get_param_by_name(shader, "graph_width");
+        gs_effect_set_float(graph_width, (float)m_width);
+        auto graph_scale = gs_effect_get_param_by_name(shader, "graph_scale");
+        gs_effect_set_float(graph_scale, (float)(1.0 - (m_deadzone / 100.0)));
+        auto graph_invert = gs_effect_get_param_by_name(shader, "graph_invert");
+        gs_effect_set_bool(graph_invert, m_invert);
+        auto radial_center = gs_effect_get_param_by_name(shader, "radial_center");
+        vec2 rc;
+        vec2_set(&rc, (float)m_height, (float)m_height);
+        gs_effect_set_vec2(radial_center, &rc);
+    }
 
     // interpolation
     auto miny = cpos;
@@ -812,7 +861,13 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     auto filename = obs_module_file("gradient.effect");
     auto shader = gs_effect_create_from_file(filename, nullptr);
     bfree(filename);
-    auto tech = gs_effect_get_technique(shader, (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid");
+
+    const char *techname;
+    if(m_radial)
+        techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
+    else
+        techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
+    auto tech = gs_effect_get_technique(shader, techname);
 
     const auto bar_stride = m_bar_width + m_bar_gap;
     const auto step_stride = m_step_width + m_step_gap;
@@ -847,6 +902,20 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     gs_effect_set_vec4(color_base, &m_color_base);
     auto color_crest = gs_effect_get_param_by_name(shader, "color_crest");
     gs_effect_set_vec4(color_crest, &m_color_crest);
+
+    if(m_radial)
+    {
+        auto graph_width = gs_effect_get_param_by_name(shader, "graph_width");
+        gs_effect_set_float(graph_width, (float)m_width);
+        auto graph_scale = gs_effect_get_param_by_name(shader, "graph_scale");
+        gs_effect_set_float(graph_scale, (float)(1.0 - (m_deadzone / 100.0)));
+        auto graph_invert = gs_effect_get_param_by_name(shader, "graph_invert");
+        gs_effect_set_bool(graph_invert, m_invert);
+        auto radial_center = gs_effect_get_param_by_name(shader, "radial_center");
+        vec2 rc;
+        vec2_set(&rc, (float)m_height, (float)m_height);
+        gs_effect_set_vec2(radial_center, &rc);
+    }
 
     // interpolation
     auto miny = cpos;

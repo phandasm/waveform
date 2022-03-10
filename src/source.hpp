@@ -144,6 +144,9 @@ protected:
     int m_step_width = 0;
     int m_step_gap = 0;
     int m_num_bars = 0;
+    bool m_radial = false;
+    bool m_invert = false;
+    float m_deadzone = 0.0f; // radial display deadzone
 
     // interpolation
     std::vector<float> m_interp_indices;

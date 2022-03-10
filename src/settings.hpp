@@ -22,6 +22,9 @@
 // convenience macro for getting localized text
 #define T(text) obs_module_text(text)
 
+// convenience function for testing equality of raw C strings
+static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1, s2) == 0; }
+
 // localizable property strings
 #define P_AUDIO_SRC         "audio_source"
 #define P_NONE              "none"
@@ -36,6 +39,10 @@
 #define P_HEIGHT            "height"
 
 #define P_LOG_SCALE         "log_scale"
+
+#define P_RADIAL            "radial_layout"
+#define P_INVERT            "invert_direction"
+#define P_DEADZONE          "deadzone"
 
 #define P_WINDOW            "window"
 #define P_HANN              "hann"
@@ -95,6 +102,4 @@
 #define P_INTERP_DESC       "interp_desc"
 #define P_FILTER_DESC       "filter_desc"
 #define P_SLOPE_DESC        "slope_desc"
-
-// convenience function for testing equality of raw C strings
-static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1, s2) == 0; }
+#define P_DEADZONE_DESC     "deadzone_desc"
