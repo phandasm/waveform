@@ -147,6 +147,7 @@ protected:
     bool m_radial = false;
     bool m_invert = false;
     float m_deadzone = 0.0f; // radial display deadzone
+    bool m_rounded_caps = false;
 
     // interpolation
     std::vector<float> m_interp_indices;

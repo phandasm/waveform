@@ -103,6 +103,7 @@ namespace callbacks {
         obs_data_set_default_bool(settings, P_RADIAL, false);
         obs_data_set_default_bool(settings, P_INVERT, false);
         obs_data_set_default_double(settings, P_DEADZONE, 0.0);
+        obs_data_set_default_bool(settings, P_CAPS, false);
         obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
         obs_data_set_default_int(settings, P_FFT_SIZE, 2048);
         obs_data_set_default_bool(settings, P_AUTO_FFT_SIZE, false);
@@ -161,6 +162,8 @@ namespace callbacks {
             obs_property_set_enabled(obs_properties_get(props, P_STEP_GAP), step);
             obs_property_set_visible(obs_properties_get(props, P_STEP_WIDTH), step);
             obs_property_set_visible(obs_properties_get(props, P_STEP_GAP), step);
+            obs_property_set_enabled(obs_properties_get(props, P_CAPS), bar);
+            obs_property_set_visible(obs_properties_get(props, P_CAPS), bar);
             obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, bar || step);
             return true;
             });
@@ -185,6 +188,10 @@ namespace callbacks {
             obs_property_set_visible(obs_properties_get(props, P_INVERT), enable);
             return true;
             });
+
+        // rounded caps
+        auto caps = obs_properties_add_bool(props, P_CAPS, T(P_CAPS));
+        obs_property_set_long_description(caps, T(P_CAPS_DESC));
 
         // channels
         auto chanlst = obs_properties_add_list(props, P_CHANNEL_MODE, T(P_CHANNEL_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
@@ -322,6 +329,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_radial = obs_data_get_bool(settings, P_RADIAL);
     m_invert = obs_data_get_bool(settings, P_INVERT);
     m_deadzone = (float)obs_data_get_double(settings, P_DEADZONE);
+    m_rounded_caps = obs_data_get_bool(settings, P_CAPS);
     m_stereo = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO);
     m_fft_size = (size_t)obs_data_get_int(settings, P_FFT_SIZE);
     m_auto_fft_size = obs_data_get_bool(settings, P_AUTO_FFT_SIZE);
@@ -414,6 +422,9 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_display_mode = DisplayMode::STEPPED_BAR;
     else
         m_display_mode = DisplayMode::CURVE;
+
+    if(m_display_mode != DisplayMode::BAR)
+        m_rounded_caps = false;
 }
 
 void WAVSource::recapture_audio()
@@ -852,6 +863,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     gs_effect_destroy(shader);
 }
 
+// FIXME: DESPERATELY needs cleanup
 void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 {
     std::lock_guard lock(m_mtx);
@@ -875,6 +887,8 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     const auto bottom = (float)m_height + 0.5f;
     const auto dbrange = m_ceiling - m_floor;
     const auto cpos = m_stereo ? center : bottom;
+    const auto cap_radius = (float)m_bar_width / 2.0f;
+    const auto cap_points = (int)((float)M_PI * cap_radius) + 1;
 
     auto max_steps = (size_t)(cpos / step_stride);
     if(((int)cpos - (int)(max_steps * step_stride)) >= m_step_width)
@@ -886,6 +900,8 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         auto num_verts = (size_t)(m_num_bars * 6);
         if(m_display_mode == DisplayMode::STEPPED_BAR)
             num_verts *= max_steps;
+        else if(m_rounded_caps)
+            num_verts += cap_points * 6 * m_num_bars;
         auto vbdata = gs_vbdata_create();
         vbdata->num = num_verts;
         vbdata->points = (vec3*)bzalloc(num_verts * sizeof(vec3));
@@ -964,9 +980,11 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                 m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
         }
 
+        auto border_top = (m_rounded_caps) ? cap_radius : 0.5f;
+        auto border_bottom = (m_rounded_caps && !m_stereo) ? cpos - cap_radius : cpos;
         for(auto i = 0; i < m_num_bars; ++i)
         {
-            auto val = lerp(0.5f, cpos, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
+            auto val = lerp(border_top, border_bottom, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
             if(val < miny)
                 miny = val;
             m_interp_bufs[channel][i] = val;
@@ -1022,13 +1040,53 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             {
                 if(channel)
                     val = bottom - val;
+                auto bot = (m_rounded_caps && !m_stereo) ? cpos - cap_radius : cpos;
                 vec3_set(&vbdata->points[vertpos], x1, val, 0);
                 vec3_set(&vbdata->points[vertpos + 1], x2, val, 0);
-                vec3_set(&vbdata->points[vertpos + 2], x1, cpos, 0);
+                vec3_set(&vbdata->points[vertpos + 2], x1, bot, 0);
                 vec3_set(&vbdata->points[vertpos + 3], x2, val, 0);
-                vec3_set(&vbdata->points[vertpos + 4], x1, cpos, 0);
-                vec3_set(&vbdata->points[vertpos + 5], x2, cpos, 0);
+                vec3_set(&vbdata->points[vertpos + 4], x1, bot, 0);
+                vec3_set(&vbdata->points[vertpos + 5], x2, bot, 0);
                 vertpos += 6;
+
+                if(m_rounded_caps)
+                {
+                    auto angle = (float)M_PI / (float)cap_points;
+                    if(channel == 0)
+                        angle = -angle;
+                    auto ccx = x1 + cap_radius; // cap center x
+                    for(auto j = 0; j < cap_points; ++j)
+                    {
+                        auto a1 = j * angle;
+                        auto a2 = (j + 1) * angle;
+                        auto cx1 = cap_radius * std::cos(a1);
+                        auto cy1 = cap_radius * std::sin(a1);
+                        auto cx2 = cap_radius * std::cos(a2);
+                        auto cy2 = cap_radius * std::sin(a2);
+                        vec3_set(&vbdata->points[vertpos], cx1 + ccx, cy1 + val, 0);
+                        vec3_set(&vbdata->points[vertpos + 1], cx2 + ccx, cy2 + val, 0);
+                        vec3_set(&vbdata->points[vertpos + 2], ccx, val, 0);
+                        vertpos += 3;
+                    }
+                    if(!m_stereo)
+                    {
+                        auto ccy = cpos - cap_radius;
+                        angle = (float)M_PI / (float)cap_points;
+                        for(auto j = 0; j < cap_points; ++j)
+                        {
+                            auto a1 = j * angle;
+                            auto a2 = (j + 1) * angle;
+                            auto cx1 = cap_radius * std::cos(a1);
+                            auto cy1 = cap_radius * std::sin(a1);
+                            auto cx2 = cap_radius * std::cos(a2);
+                            auto cy2 = cap_radius * std::sin(a2);
+                            vec3_set(&vbdata->points[vertpos], cx1 + ccx, cy1 + ccy, 0);
+                            vec3_set(&vbdata->points[vertpos + 1], cx2 + ccx, cy2 + ccy, 0);
+                            vec3_set(&vbdata->points[vertpos + 2], ccx, ccy, 0);
+                            vertpos += 3;
+                        }
+                    }
+                }
             }
         }
 

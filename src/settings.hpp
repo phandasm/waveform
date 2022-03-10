@@ -44,6 +44,8 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_INVERT            "invert_direction"
 #define P_DEADZONE          "deadzone"
 
+#define P_CAPS              "rounded_caps"
+
 #define P_WINDOW            "window"
 #define P_HANN              "hann"
 #define P_HAMMING           "hamming"
@@ -103,3 +105,4 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_FILTER_DESC       "filter_desc"
 #define P_SLOPE_DESC        "slope_desc"
 #define P_DEADZONE_DESC     "deadzone_desc"
+#define P_CAPS_DESC         "caps_desc"
