@@ -24,9 +24,9 @@
 // adaptation of WAVSourceAVX2 to support CPUs without AVX2
 // see comments of WAVSourceAVX2
 DECORATE_AVX
-void WAVSourceAVX::tick(float seconds)
+void WAVSourceAVX::tick_spectrum(float seconds)
 {
-    std::lock_guard lock(m_mtx);
+    //std::lock_guard lock(m_mtx); // now locked in tick()
     if(!check_audio_capture(seconds))
         return;
 
@@ -122,7 +122,7 @@ void WAVSourceAVX::tick(float seconds)
             // load 8 real/imaginary pairs and group the r/i components in the low/high halves
             // de-interleaving 256-bit float vectors is nigh impossible without AVX2, so we'll
             // use 128-bit vectors and merge them, but i question if this is better than a 128-bit loop
-            const auto buf = (float*)&m_fft_output[i];
+            const float *buf = &m_fft_output[i][0];
             auto chunk1 = _mm_load_ps(buf);
             auto chunk2 = _mm_load_ps(&buf[4]);
             auto rvec = _mm256_castps128_ps256(_mm_shuffle_ps(chunk1, chunk2, shuffle_mask_r)); // group octwords
@@ -141,9 +141,7 @@ void WAVSourceAVX::tick(float seconds)
             if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
             {
                 if(m_fast_peaks)
-                {
                     _mm256_store_ps(&m_tsmooth_buf[channel][i], _mm256_max_ps(mag, _mm256_load_ps(&m_tsmooth_buf[channel][i])));
-                }
 
                 mag = _mm256_fmadd_ps(g, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _mm256_mul_ps(g2, mag));
                 _mm256_store_ps(&m_tsmooth_buf[channel][i], mag);
@@ -168,7 +166,7 @@ void WAVSourceAVX::tick(float seconds)
     else if(m_capture_channels > 1)
     {
         for(size_t i = 0; i < outsz; ++i)
-            m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
+            m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) * 0.5f);
     }
     else
     {

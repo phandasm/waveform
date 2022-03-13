@@ -22,9 +22,9 @@
 #include <cstring>
 
 DECORATE_AVX2
-void WAVSourceAVX2::tick(float seconds)
+void WAVSourceAVX2::tick_spectrum(float seconds)
 {
-    std::lock_guard lock(m_mtx);
+    //std::lock_guard lock(m_mtx); // now locked in tick()
     if(!check_audio_capture(seconds))
         return;
 
@@ -35,6 +35,7 @@ void WAVSourceAVX2::tick(float seconds)
     const auto outsz = m_fft_size / 2; // discard bins at nyquist and above
     constexpr auto step = sizeof(__m256) / sizeof(float);
 
+    // reset and stop processing when source is not being displayed
     if(!m_show)
     {
         if(m_last_silent)
@@ -124,7 +125,7 @@ void WAVSourceAVX2::tick(float seconds)
         {
             // this *should* be faster than 2x vgatherxxx instructions
             // load 8 real/imaginary pairs and group the r/i components in the low/high halves
-            const auto buf = (float*)&m_fft_output[i];
+            const float *buf = &m_fft_output[i][0]; // first element of complex (float[2])
             auto chunk1 = _mm256_permutevar8x32_ps(_mm256_load_ps(buf), shuffle_mask);
             auto chunk2 = _mm256_permutevar8x32_ps(_mm256_load_ps(&buf[step]), shuffle_mask);
 
@@ -146,9 +147,7 @@ void WAVSourceAVX2::tick(float seconds)
             {
                 // take new values immediately if larger
                 if(m_fast_peaks)
-                {
                     _mm256_store_ps(&m_tsmooth_buf[channel][i], _mm256_max_ps(mag, _mm256_load_ps(&m_tsmooth_buf[channel][i])));
-                }
 
                 // (gravity * oldval) + ((1 - gravity) * newval)
                 mag = _mm256_fmadd_ps(g, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _mm256_mul_ps(g2, mag));
@@ -176,7 +175,7 @@ void WAVSourceAVX2::tick(float seconds)
     else if(m_capture_channels > 1)
     {
         for(size_t i = 0; i < outsz; ++i)
-            m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
+            m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) * 0.5f);
     }
     else
     {

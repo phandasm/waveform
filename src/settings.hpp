@@ -86,6 +86,11 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_CURVE             "curve"
 #define P_BARS              "bars"
 #define P_STEP_BARS         "stepped_bars"
+#define P_LEVEL_METER       "level_meter"
+#define P_STEPPED_METER     "stepped_level_meter"
+
+#define P_RMS_MODE          "rms_mode"
+#define P_METER_BUF         "meter_buf"
 
 #define P_BAR_WIDTH         "bar_width"
 #define P_BAR_GAP           "bar_gap"

@@ -67,7 +67,9 @@ enum class DisplayMode
 {
     CURVE,
     BAR,
-    STEPPED_BAR
+    STEPPED_BAR,
+    METER,
+    STEPPED_METER
 };
 
 class WAVSource
@@ -88,7 +90,7 @@ protected:
     circlebuf m_capturebufs[2]{};
     uint32_t m_capture_channels = 0;    // audio input channels
     uint32_t m_output_channels = 0;     // fft output channels (*not* display channels)
-    bool m_output_bus_captured = false;   // do we have an active audio output callback? (via audio_output_connect())
+    bool m_output_bus_captured = false; // do we have an active audio output callback? (via audio_output_connect())
 
     // 32-byte aligned buffers for FFT/AVX processing
     AVXBufR m_fft_input;
@@ -96,8 +98,17 @@ protected:
     fftwf_plan m_fft_plan{};
     AVXBufR m_window_coefficients;
     AVXBufR m_tsmooth_buf[2];   // last frames magnitudes
-    AVXBufR m_decibels[2];      // dBFS
-    size_t m_fft_size = 0;      // number of fft elements (not bytes, multiple of 16)
+    AVXBufR m_decibels[2];      // dBFS, or audio sample buffer in meter mode
+    size_t m_fft_size = 0;      // number of fft elements, or audio samples in meter mode (not bytes, multiple of 16)
+                                // in meter mode m_fft_size is the size of of the circular buffer in samples
+
+    // meter mode
+    size_t m_meter_pos[2] = { 0, 0 };       // circular buffer position (per channel)
+    float m_meter_val[2] = { 0.0f, 0.0f };  // dBFS
+    float m_meter_buf[2] = { 0.0f, 0.0f };  // EMA
+    bool m_meter_rms = false;               // RMS mode
+    bool m_meter_mode = false;              // either meter or stepped meter display mode is selected
+    int m_meter_ms = 100;                   // milliseconds of audio data to buffer
 
     // video fps
     double m_fps = 0.0;
@@ -115,9 +126,6 @@ protected:
     // audio capture retries
     int m_retries = 0;
     float m_next_retry = 0.0f;
-
-    // vertex buffer
-    gs_vertbuffer_t *m_vbuf = nullptr;
 
     // settings
     RenderMode m_render_mode = RenderMode::SOLID;
@@ -160,17 +168,25 @@ protected:
     // slope
     AVXBufR m_slope_modifiers;
 
+    // rounded caps
+    float m_cap_radius = 0.0f;
+    int m_cap_tris = 4;             // number of triangles each cap is composed of (4 min)
+    std::vector<vec2> m_cap_verts;  // pre-rotated cap vertices (to be translated to final pos)
+
     void get_settings(obs_data_t *settings);
 
     void recapture_audio();
     void release_audio_capture();
-    bool check_audio_capture(float seconds);
+    bool check_audio_capture(float seconds); // check if capture is valid and retry if not
     void free_bufs();
 
     void init_interp(unsigned int sz);
 
     void render_curve(gs_effect_t *effect);
     void render_bars(gs_effect_t *effect);
+
+    virtual void tick_spectrum(float) = 0;  // process audio data in frequency spectrum mode
+    virtual void tick_meter(float);         // process audio data in meter mode
 
     // constants
     static const float DB_MIN;
@@ -197,7 +213,7 @@ public:
 
     // main callbacks
     virtual void update(obs_data_t *settings);
-    virtual void tick(float seconds) = 0;
+    virtual void tick(float seconds);
     virtual void render(gs_effect_t *effect);
 
     void show();
@@ -224,7 +240,7 @@ public:
     using WAVSource::WAVSource;
     ~WAVSourceAVX2() override {}
 
-    void tick(float seconds) override;
+    void tick_spectrum(float seconds) override;
 };
 
 class WAVSourceAVX : public WAVSource
@@ -233,7 +249,7 @@ public:
     using WAVSource::WAVSource;
     ~WAVSourceAVX() override {}
 
-    void tick(float seconds) override;
+    void tick_spectrum(float seconds) override;
 };
 
 class WAVSourceSSE2 : public WAVSource
@@ -242,5 +258,6 @@ public:
     using WAVSource::WAVSource;
     ~WAVSourceSSE2() override {}
 
-    void tick(float seconds) override;
+    void tick_spectrum(float seconds) override;
+    void tick_meter(float seconds) override;
 };

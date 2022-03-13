@@ -24,9 +24,9 @@
 // compatibility fallback using at most SSE2 instructions
 // see comments of WAVSourceAVX2
 DECORATE_SSE2
-void WAVSourceSSE2::tick(float seconds)
+void WAVSourceSSE2::tick_spectrum(float seconds)
 {
-    std::lock_guard lock(m_mtx);
+    //std::lock_guard lock(m_mtx); // now locked in tick()
     if(!check_audio_capture(seconds))
         return;
 
@@ -120,7 +120,7 @@ void WAVSourceSSE2::tick(float seconds)
         for(size_t i = 0; i < outsz; i += step)
         {
             // load 4 real/imaginary pairs and pack the r/i components into separate vectors
-            const auto buf = (float*)&m_fft_output[i];
+            const float *buf = &m_fft_output[i][0];
             auto chunk1 = _mm_load_ps(buf);
             auto chunk2 = _mm_load_ps(&buf[4]);
             auto rvec = _mm_shuffle_ps(chunk1, chunk2, shuffle_mask_r);
@@ -135,9 +135,7 @@ void WAVSourceSSE2::tick(float seconds)
             if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
             {
                 if(m_fast_peaks)
-                {
                     _mm_store_ps(&m_tsmooth_buf[channel][i], _mm_max_ps(mag, _mm_load_ps(&m_tsmooth_buf[channel][i])));
-                }
 
                 mag = _mm_add_ps(_mm_mul_ps(g, _mm_load_ps(&m_tsmooth_buf[channel][i])), _mm_mul_ps(g2, mag));
                 _mm_store_ps(&m_tsmooth_buf[channel][i], mag);
@@ -162,11 +160,86 @@ void WAVSourceSSE2::tick(float seconds)
     else if(m_capture_channels > 1)
     {
         for(size_t i = 0; i < outsz; ++i)
-            m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) / 2);
+            m_decibels[0][i] = dbfs((m_decibels[0][i] + m_decibels[1][i]) * 0.5f);
     }
     else
     {
         for(size_t i = 0; i < outsz; ++i)
             m_decibels[0][i] = dbfs(m_decibels[0][i]);
+    }
+}
+
+void WAVSourceSSE2::tick_meter(float seconds)
+{
+    if(!check_audio_capture(seconds))
+        return;
+
+    if(m_capture_channels == 0)
+        return;
+
+    const auto outsz = m_fft_size;
+
+    for(auto channel = 0u; channel < m_capture_channels; ++channel)
+    {
+        while(m_capturebufs[channel].size > 0)
+        {
+            auto consume = m_capturebufs[channel].size;
+            auto max = (m_fft_size - m_meter_pos[channel]) * sizeof(float);
+            if(consume >= max)
+            {
+                circlebuf_pop_front(&m_capturebufs[channel], &m_decibels[channel][m_meter_pos[channel]], max);
+                m_meter_pos[channel] = 0;
+            }
+            else
+            {
+                circlebuf_pop_front(&m_capturebufs[channel], &m_decibels[channel][m_meter_pos[channel]], consume);
+                m_meter_pos[channel] += consume / sizeof(float);
+            }
+        }
+    }
+
+    if(!m_show)
+        return;
+
+    for(auto channel = 0u; channel < m_capture_channels; ++channel)
+    {
+        if(m_meter_rms)
+        {
+            float sum = 0.0f;
+            for(size_t i = 0; i < outsz; ++i)
+            {
+                auto val = m_decibels[channel][i];
+                sum += val * val;
+            }
+            const auto g = m_gravity;
+            const auto g2 = 1.0f - g;
+            auto rms = std::sqrt(sum / m_fft_size);
+            if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
+            {
+                if(!m_fast_peaks || (rms <= m_meter_buf[channel]))
+                    rms = (g * m_meter_buf[channel]) + (g2 * rms);
+            }
+            m_meter_buf[channel] = rms;
+            m_meter_val[channel] = dbfs(rms);
+        }
+        else
+        {
+            const auto g = m_gravity;
+            const auto g2 = 1.0f - g;
+            float max = 0.0f;
+            for(size_t i = 0; i < outsz; ++i)
+            {
+                auto val = std::abs(m_decibels[channel][i]);
+                if(val > max)
+                    max = val;
+            }
+            if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
+            {
+                if(!m_fast_peaks || (max <= m_meter_buf[channel]))
+                    max = (g * m_meter_buf[channel]) + (g2 * max);
+            }
+            m_meter_buf[channel] = max;
+            m_meter_val[channel] = dbfs(max);
+        }
     }
 }

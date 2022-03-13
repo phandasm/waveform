@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <limits>
 #include "cpuinfo_x86.h"
+#include <immintrin.h>
 
 #ifndef HAVE_OBS_PROP_ALPHA
 #define obs_properties_add_color_alpha obs_properties_add_color
@@ -56,9 +57,17 @@ static void update_audio_info(obs_audio_info *info)
 {
     if(!obs_get_audio_info(info))
     {
+        blog(LOG_WARNING, "[" MODULE_NAME "]: Could not determine audio configuration");
         info->samples_per_sec = 44100;
         info->speakers = SPEAKERS_UNKNOWN;
     }
+}
+
+// hide and disable a property
+static inline void set_prop_visible(obs_properties_t *props, const char *prop_name, bool vis)
+{
+    //obs_property_set_enabled(obs_properties_get(props, prop_name), vis);
+    obs_property_set_visible(obs_properties_get(props, prop_name), vis);
 }
 
 // Callbacks for obs_source_info structure
@@ -127,6 +136,8 @@ namespace callbacks {
         obs_data_set_default_int(settings, P_BAR_GAP, 6);
         obs_data_set_default_int(settings, P_STEP_WIDTH, 8);
         obs_data_set_default_int(settings, P_STEP_GAP, 4);
+        obs_data_set_default_int(settings, P_METER_BUF, 150);
+        obs_data_set_default_bool(settings, P_RMS_MODE, true);
     }
 
     static obs_properties_t *get_properties([[maybe_unused]] void *data)
@@ -146,25 +157,45 @@ namespace callbacks {
         obs_property_list_add_string(displaylist, T(P_CURVE), P_CURVE);
         obs_property_list_add_string(displaylist, T(P_BARS), P_BARS);
         obs_property_list_add_string(displaylist, T(P_STEP_BARS), P_STEP_BARS);
+        obs_property_list_add_string(displaylist, T(P_LEVEL_METER), P_LEVEL_METER);
+        obs_property_list_add_string(displaylist, T(P_STEPPED_METER), P_STEPPED_METER);
         obs_properties_add_int(props, P_BAR_WIDTH, T(P_BAR_WIDTH), 1, 256, 1);
         obs_properties_add_int(props, P_BAR_GAP, T(P_BAR_GAP), 0, 256, 1);
         obs_properties_add_int(props, P_STEP_WIDTH, T(P_STEP_WIDTH), 1, 256, 1);
         obs_properties_add_int(props, P_STEP_GAP, T(P_STEP_GAP), 0, 256, 1);
         obs_property_set_modified_callback(displaylist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto disp = obs_data_get_string(settings, P_DISPLAY_MODE);
-            auto bar = p_equ(disp, P_BARS);
-            auto step = p_equ(disp, P_STEP_BARS);
-            obs_property_set_enabled(obs_properties_get(props, P_BAR_WIDTH), bar || step);
-            obs_property_set_enabled(obs_properties_get(props, P_BAR_GAP), bar || step);
-            obs_property_set_visible(obs_properties_get(props, P_BAR_WIDTH), bar || step);
-            obs_property_set_visible(obs_properties_get(props, P_BAR_GAP), bar || step);
-            obs_property_set_enabled(obs_properties_get(props, P_STEP_WIDTH), step);
-            obs_property_set_enabled(obs_properties_get(props, P_STEP_GAP), step);
-            obs_property_set_visible(obs_properties_get(props, P_STEP_WIDTH), step);
-            obs_property_set_visible(obs_properties_get(props, P_STEP_GAP), step);
-            obs_property_set_enabled(obs_properties_get(props, P_CAPS), bar);
-            obs_property_set_visible(obs_properties_get(props, P_CAPS), bar);
-            obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, bar || step);
+            auto meter = p_equ(disp, P_LEVEL_METER);
+            auto step_meter = p_equ(disp, P_STEPPED_METER);
+            auto bar = p_equ(disp, P_BARS) || meter;
+            auto step = p_equ(disp, P_STEP_BARS) || step_meter;
+            auto curve = p_equ(disp, P_CURVE);
+            set_prop_visible(props, P_BAR_WIDTH, bar || step);
+            set_prop_visible(props, P_BAR_GAP, bar || step);
+            set_prop_visible(props, P_STEP_WIDTH, step);
+            set_prop_visible(props, P_STEP_GAP, step);
+            set_prop_visible(props, P_CAPS, bar);
+            obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, !curve);
+
+            // meter mode
+            bool notmeter = !(meter || step_meter);
+            set_prop_visible(props, P_SLOPE, notmeter);
+            set_prop_visible(props, P_CUTOFF_LOW, notmeter);
+            set_prop_visible(props, P_CUTOFF_HIGH, notmeter);
+            set_prop_visible(props, P_FILTER_MODE, notmeter);
+            set_prop_visible(props, P_FILTER_RADIUS, notmeter && !p_equ(obs_data_get_string(settings, P_FILTER_MODE), P_NONE));
+            set_prop_visible(props, P_INTERP_MODE, notmeter);
+            set_prop_visible(props, P_CHANNEL_MODE, notmeter);
+            set_prop_visible(props, P_WINDOW, notmeter);
+            set_prop_visible(props, P_RADIAL, notmeter);
+            set_prop_visible(props, P_DEADZONE, notmeter && obs_data_get_bool(settings, P_RADIAL));
+            set_prop_visible(props, P_INVERT, notmeter && obs_data_get_bool(settings, P_RADIAL));
+            set_prop_visible(props, P_LOG_SCALE, notmeter);
+            set_prop_visible(props, P_WIDTH, notmeter);
+            set_prop_visible(props, P_AUTO_FFT_SIZE, notmeter);
+            set_prop_visible(props, P_FFT_SIZE, notmeter);
+            set_prop_visible(props, P_RMS_MODE, !notmeter);
+            set_prop_visible(props, P_METER_BUF, !notmeter);
             return true;
             });
 
@@ -182,17 +213,20 @@ namespace callbacks {
         obs_property_float_set_suffix(deadzone, "%");
         obs_property_set_long_description(deadzone, T(P_DEADZONE_DESC));
         obs_property_set_modified_callback(rad, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
-            auto enable = obs_data_get_bool(settings, P_RADIAL) && obs_property_enabled(obs_properties_get(props, P_RADIAL));
-            obs_property_set_enabled(obs_properties_get(props, P_DEADZONE), enable);
-            obs_property_set_enabled(obs_properties_get(props, P_INVERT), enable);
-            obs_property_set_visible(obs_properties_get(props, P_DEADZONE), enable);
-            obs_property_set_visible(obs_properties_get(props, P_INVERT), enable);
+            auto enable = obs_data_get_bool(settings, P_RADIAL) && obs_property_visible(obs_properties_get(props, P_RADIAL));
+            set_prop_visible(props, P_DEADZONE, enable);
+            set_prop_visible(props, P_INVERT, enable);
             return true;
             });
 
         // rounded caps
         auto caps = obs_properties_add_bool(props, P_CAPS, T(P_CAPS));
         obs_property_set_long_description(caps, T(P_CAPS_DESC));
+
+        // meter
+        obs_properties_add_bool(props, P_RMS_MODE, T(P_RMS_MODE));
+        auto meterbuf = obs_properties_add_int_slider(props, P_METER_BUF, T(P_METER_BUF), 16, 1000, 1);
+        obs_property_int_set_suffix(meterbuf, " ms");
 
         // channels
         auto chanlst = obs_properties_add_list(props, P_CHANNEL_MODE, T(P_CHANNEL_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
@@ -206,8 +240,9 @@ namespace callbacks {
         obs_property_set_long_description(autofftsz, T(P_AUTO_FFT_DESC));
         obs_property_set_long_description(fftsz, T(P_FFT_DESC));
         obs_property_set_modified_callback(autofftsz, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
-                obs_property_set_enabled(obs_properties_get(props, P_FFT_SIZE), !obs_data_get_bool(settings, P_AUTO_FFT_SIZE));
-                return true;
+            auto enable = !obs_data_get_bool(settings, P_AUTO_FFT_SIZE);
+            obs_property_set_enabled(obs_properties_get(props, P_FFT_SIZE), enable);
+            return true;
             });
 
         // fft window function
@@ -230,10 +265,8 @@ namespace callbacks {
         obs_property_set_long_description(peaks, T(P_FAST_PEAKS_DESC));
         obs_property_set_modified_callback(tsmoothlist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto enable = !p_equ(obs_data_get_string(settings, P_TSMOOTHING), P_NONE);
-            obs_property_set_enabled(obs_properties_get(props, P_GRAVITY), enable);
-            obs_property_set_enabled(obs_properties_get(props, P_FAST_PEAKS), enable);
-            obs_property_set_visible(obs_properties_get(props, P_GRAVITY), enable);
-            obs_property_set_visible(obs_properties_get(props, P_FAST_PEAKS), enable);
+            set_prop_visible(props, P_GRAVITY, enable);
+            set_prop_visible(props, P_FAST_PEAKS, enable);
             return true;
             });
 
@@ -250,9 +283,8 @@ namespace callbacks {
         obs_properties_add_float_slider(props, P_FILTER_RADIUS, T(P_FILTER_RADIUS), 0.0, 32.0, 0.01);
         obs_property_set_long_description(filterlist, T(P_FILTER_DESC));
         obs_property_set_modified_callback(filterlist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
-            auto enable = !p_equ(obs_data_get_string(settings, P_FILTER_MODE), P_NONE);
-            obs_property_set_enabled(obs_properties_get(props, P_FILTER_RADIUS), enable);
-            obs_property_set_visible(obs_properties_get(props, P_FILTER_RADIUS), enable);
+            auto enable = !p_equ(obs_data_get_string(settings, P_FILTER_MODE), P_NONE) && obs_property_visible(obs_properties_get(props, P_FILTER_MODE));
+            set_prop_visible(props, P_FILTER_RADIUS, enable);
             return true;
             });
 
@@ -277,8 +309,7 @@ namespace callbacks {
         obs_property_set_modified_callback(renderlist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto enable = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_GRADIENT);
             obs_property_set_enabled(obs_properties_get(props, P_COLOR_CREST), enable);
-            obs_property_set_enabled(obs_properties_get(props, P_GRAD_RATIO), enable);
-            obs_property_set_visible(obs_properties_get(props, P_GRAD_RATIO), enable);
+            set_prop_visible(props, P_GRAD_RATIO, enable);
             return true;
             });
 
@@ -355,6 +386,8 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_bar_gap = (int)obs_data_get_int(settings, P_BAR_GAP);
     m_step_width = (int)obs_data_get_int(settings, P_STEP_WIDTH);
     m_step_gap = (int)obs_data_get_int(settings, P_STEP_GAP);
+    m_meter_rms = obs_data_get_bool(settings, P_RMS_MODE);
+    m_meter_ms = (int)obs_data_get_int(settings, P_METER_BUF);
 
     m_color_base = { (uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f };
     m_color_crest = { (uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f };
@@ -418,11 +451,22 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_display_mode = DisplayMode::BAR;
     else if(p_equ(display, P_STEP_BARS))
         m_display_mode = DisplayMode::STEPPED_BAR;
+    else if(p_equ(display, P_LEVEL_METER))
+        m_display_mode = DisplayMode::METER;
+    else if(p_equ(display, P_STEPPED_METER))
+        m_display_mode = DisplayMode::STEPPED_METER;
     else
         m_display_mode = DisplayMode::CURVE;
 
-    if(m_display_mode != DisplayMode::BAR)
+    if((m_display_mode != DisplayMode::BAR) && (m_display_mode != DisplayMode::METER))
         m_rounded_caps = false;
+
+    m_meter_mode = false;
+    if((m_display_mode == DisplayMode::METER) || (m_display_mode == DisplayMode::STEPPED_METER))
+    {
+        m_radial = false;
+        m_meter_mode = true;
+    }
 
     if(m_radial)
     {
@@ -537,11 +581,6 @@ void WAVSource::free_bufs()
     m_fft_output.reset();
     m_window_coefficients.reset();
     m_slope_modifiers.reset();
-    if(m_vbuf != nullptr)
-    {
-        gs_vertexbuffer_destroy(m_vbuf);
-        m_vbuf = nullptr;
-    }
 
     if(m_fft_plan != nullptr)
     {
@@ -594,8 +633,10 @@ unsigned int WAVSource::width()
 {
     std::lock_guard lock(m_mtx);
 
+    if(m_meter_mode)
+        return (m_bar_width * m_capture_channels) + ((m_capture_channels > 1) ? m_bar_gap : 0);
     if(m_radial)
-        return (m_height + m_deadzone) * 2;
+        return (unsigned int)((m_height + m_deadzone) * 2);
     return m_width;
 }
 
@@ -604,7 +645,7 @@ unsigned int WAVSource::height()
     std::lock_guard lock(m_mtx);
 
     if(m_radial)
-        return (m_height + m_deadzone) * 2;
+        return (unsigned int)((m_height + m_deadzone) * 2);
     return m_height;
 }
 
@@ -621,6 +662,28 @@ void WAVSource::update(obs_data_t *settings)
     m_capture_channels = std::min(get_audio_channels(m_audio_info.speakers), 2u);
     if(m_capture_channels == 0)
         blog(LOG_WARNING, "[" MODULE_NAME "]: Could not determine audio channel count");
+
+    // meter mode
+    if(m_meter_mode)
+    {
+        // turn off stuff we don't need in this mode
+        m_window_func = FFTWindow::NONE;
+        m_interp_mode = InterpMode::POINT;
+        m_filter_mode = FilterMode::NONE;
+        m_auto_fft_size = false;
+        m_slope = 0.0f;
+        m_stereo = false;
+        m_radial = false;
+
+        // repurpose m_fft_size for meter buffer size
+        m_fft_size = size_t(m_audio_info.samples_per_sec * (m_meter_ms / 1000.0)) & -16;
+
+        memset(m_meter_pos, 0, sizeof(m_meter_pos));
+        for(auto& i : m_meter_buf)
+            i = DB_MIN;
+        for(auto& i : m_meter_val)
+            i = DB_MIN;
+    }
 
     // calculate FFT size based on video FPS
     obs_video_info vinfo = {};
@@ -640,20 +703,28 @@ void WAVSource::update(obs_data_t *settings)
     m_output_channels = ((m_capture_channels > 1) || m_stereo) ? 2u : 1u;
     for(auto i = 0u; i < m_output_channels; ++i)
     {
-        auto count = m_fft_size / 2;
+        auto count = m_meter_mode ? m_fft_size : m_fft_size / 2;
         m_decibels[i].reset(avx_alloc<float>(count));
-        if(m_tsmoothing != TSmoothingMode::NONE)
-            m_tsmooth_buf[i].reset(avx_alloc<float>(count));
-        for(auto j = 0u; j < count; ++j)
+        if(m_meter_mode)
+            memset(m_decibels[i].get(), 0, count * sizeof(float));
+        else
         {
-            m_decibels[i][j] = DB_MIN;
             if(m_tsmoothing != TSmoothingMode::NONE)
-                m_tsmooth_buf[i][j] = 0;
+                m_tsmooth_buf[i].reset(avx_alloc<float>(count));
+            for(auto j = 0u; j < count; ++j)
+            {
+                m_decibels[i][j] = DB_MIN;
+                if(m_tsmoothing != TSmoothingMode::NONE)
+                    m_tsmooth_buf[i][j] = 0;
+            }
         }
     }
-    m_fft_input.reset(avx_alloc<float>(m_fft_size));
-    m_fft_output.reset(avx_alloc<fftwf_complex>(m_fft_size));
-    m_fft_plan = fftwf_plan_dft_r2c_1d((int)m_fft_size, m_fft_input.get(), m_fft_output.get(), FFTW_ESTIMATE);
+    if(!m_meter_mode)
+    {
+        m_fft_input.reset(avx_alloc<float>(m_fft_size));
+        m_fft_output.reset(avx_alloc<fftwf_complex>(m_fft_size));
+        m_fft_plan = fftwf_plan_dft_r2c_1d((int)m_fft_size, m_fft_input.get(), m_fft_output.get(), FFTW_ESTIMATE);
+    }
 
     // window function
     if(m_window_func != FFTWindow::NONE)
@@ -709,6 +780,16 @@ void WAVSource::update(obs_data_t *settings)
         for(auto& i : m_interp_bufs)
             i.resize(m_width);
     }
+    else if(m_meter_mode)
+    {
+        // channel meter rendering through the bar renderer
+        // emulate 1-2 bar spectrum graph
+        m_interp_indices.clear();
+        for(auto& i : m_interp_bufs)
+            i.clear();
+        m_interp_bufs[0].resize(m_capture_channels);
+        m_num_bars = m_capture_channels;
+    }
     else
     {
         const auto bar_stride = m_bar_width + m_bar_gap;
@@ -730,10 +811,38 @@ void WAVSource::update(obs_data_t *settings)
     m_slope_modifiers.reset(avx_alloc<float>(num_mods));
     for(size_t i = 0; i < num_mods; ++i)
         m_slope_modifiers[i] = log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
+
+    // rounded caps
+    m_cap_verts.clear();
+    if(m_rounded_caps)
+    {
+        // caps are full circles to avoid distortion issues in radial mode
+        m_cap_radius = (float)m_bar_width / 2.0f;
+        m_cap_tris = std::max((int)((2 * (float)M_PI * m_cap_radius) / 3.0f), 4);
+        auto angle = (2 * (float)M_PI) / (float)m_cap_tris;
+        auto verts = m_cap_tris + 1;
+        m_cap_verts.resize(verts);
+        for(auto j = 0; j < verts; ++j)
+        {
+            auto a = j * angle;
+            m_cap_verts[j].x = m_cap_radius * std::cos(a);
+            m_cap_verts[j].y = m_cap_radius * std::sin(a);
+        }
+    }
+}
+
+void WAVSource::tick(float seconds)
+{
+    std::lock_guard lock(m_mtx);
+    if(m_meter_mode)
+        tick_meter(seconds);
+    else
+        tick_spectrum(seconds);
 }
 
 void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 {
+    std::lock_guard lock(m_mtx);
     if(m_display_mode == DisplayMode::CURVE)
         render_curve(effect);
     else
@@ -742,23 +851,20 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 
 void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 {
-    std::lock_guard lock(m_mtx);
+    //std::lock_guard lock(m_mtx); // now locked in render()
     //if(m_last_silent)
     //    return;
 
     // vertex buffer
     const auto num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2));
-    if(m_vbuf == nullptr)
-    {
-        auto vbdata = gs_vbdata_create();
-        vbdata->num = num_verts;
-        vbdata->points = (vec3*)bzalloc(num_verts * sizeof(vec3));
-        vbdata->num_tex = 1;
-        vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
-        vbdata->tvarray->width = 2;
-        vbdata->tvarray->array = bzalloc(2 * num_verts * sizeof(float));
-        m_vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
-    }
+    auto vbdata = gs_vbdata_create();
+    vbdata->num = num_verts;
+    vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
+    vbdata->num_tex = 1;
+    vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
+    vbdata->tvarray->width = 2;
+    vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
+    auto vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
 
     auto filename = obs_module_file("gradient.effect");
     auto shader = gs_effect_create_from_file(filename, nullptr);
@@ -833,13 +939,13 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
-    gs_load_vertexbuffer(m_vbuf);
+    gs_load_vertexbuffer(vbuf);
     gs_load_indexbuffer(nullptr);
 
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         auto vertpos = 0u;
-        auto vbdata = gs_vertexbuffer_get_data(m_vbuf);
+        vbdata = gs_vertexbuffer_get_data(vbuf);
         if(m_render_mode != RenderMode::LINE)
             vec3_set(&vbdata->points[vertpos++], -0.5, cpos, 0);
 
@@ -861,12 +967,13 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         if(m_render_mode != RenderMode::LINE)
             vec3_set(&vbdata->points[vertpos++], right, cpos, 0);
 
-        gs_vertexbuffer_flush(m_vbuf);
+        gs_vertexbuffer_flush(vbuf);
 
         gs_draw((m_render_mode != RenderMode::LINE) ? GS_TRISTRIP : GS_LINESTRIP, 0, (uint32_t)num_verts);
     }
 
     gs_load_vertexbuffer(nullptr);
+    gs_vertexbuffer_destroy(vbuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
 
@@ -876,7 +983,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 // FIXME: DESPERATELY needs cleanup
 void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 {
-    std::lock_guard lock(m_mtx);
+    //std::lock_guard lock(m_mtx); // now locked in render()
     //if(m_last_silent)
     //    return;
 
@@ -897,31 +1004,25 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     const auto bottom = (float)m_height + 0.5f;
     const auto dbrange = m_ceiling - m_floor;
     const auto cpos = m_stereo ? center : bottom;
-    const auto cap_radius = (float)m_bar_width / 2.0f;
-    // caps are full circles to avoid distortion issues in radial mode
-    const auto cap_points = std::max((int)((2 * (float)M_PI * cap_radius) / 3.0f), 4);
 
     auto max_steps = (size_t)(cpos / step_stride);
     if(((int)cpos - (int)(max_steps * step_stride)) >= m_step_width)
         ++max_steps;
 
     // vertex buffer
-    if(m_vbuf == nullptr)
-    {
-        auto num_verts = (size_t)(m_num_bars * 6);
-        if(m_display_mode == DisplayMode::STEPPED_BAR)
-            num_verts *= max_steps;
-        else if(m_rounded_caps)
-            num_verts += cap_points * 6 * m_num_bars;
-        auto vbdata = gs_vbdata_create();
-        vbdata->num = num_verts;
-        vbdata->points = (vec3*)bzalloc(num_verts * sizeof(vec3));
-        vbdata->num_tex = 1;
-        vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
-        vbdata->tvarray->width = 2;
-        vbdata->tvarray->array = bzalloc(2 * num_verts * sizeof(float));
-        m_vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
-    }
+    auto num_verts = (size_t)(m_num_bars * 6);
+    if((m_display_mode == DisplayMode::STEPPED_BAR) || (m_display_mode == DisplayMode::STEPPED_METER))
+        num_verts *= max_steps;
+    else if(m_rounded_caps)
+        num_verts += m_cap_tris * 6 * m_num_bars; // 2 caps per bar
+    auto vbdata = gs_vbdata_create();
+    vbdata->num = num_verts;
+    vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
+    vbdata->num_tex = 1;
+    vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
+    vbdata->tvarray->width = 2;
+    vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
+    auto vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
 
     auto grad_center = gs_effect_get_param_by_name(shader, "grad_center");
     gs_effect_set_float(grad_center, cpos);
@@ -950,51 +1051,59 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     auto miny = cpos;
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
-        if(m_interp_mode == InterpMode::LANCZOS)
+        if(m_meter_mode)
         {
-            for(auto i = 0; i < m_num_bars; ++i)
-            {
-                auto pos = m_interp_indices[i];
-                float sum = 0.0f;
-                int count = 0;
-                float stop = m_interp_indices[i + 1];
-                do
-                {
-                    sum += lanczos_interp(pos, 3.0f, m_fft_size / 2, m_decibels[channel].get());
-                    ++count;
-                    pos += 1.0f;
-                } while(pos < stop);
-                m_interp_bufs[channel][i] = sum / (float)count;
-            }
+            for(auto i = 0u; i < m_capture_channels; ++i)
+                m_interp_bufs[0][i] = m_meter_val[i];
         }
         else
         {
-            for(auto i = 0; i < m_num_bars; ++i)
+            if(m_interp_mode == InterpMode::LANCZOS)
             {
-                auto pos = (int)m_interp_indices[i];
-                float sum = 0.0f;
-                int count = 0;
-                int stop = (int)m_interp_indices[i + 1];
-                do
+                for(auto i = 0; i < m_num_bars; ++i)
                 {
-                    sum += m_decibels[channel][pos];
-                    ++count;
-                    ++pos;
-                } while(pos < stop);
-                m_interp_bufs[channel][i] = sum / (float)count;
+                    auto pos = m_interp_indices[i];
+                    float sum = 0.0f;
+                    int count = 0;
+                    float stop = m_interp_indices[i + 1];
+                    do
+                    {
+                        sum += lanczos_interp(pos, 3.0f, m_fft_size / 2, m_decibels[channel].get());
+                        ++count;
+                        pos += 1.0f;
+                    } while(pos < stop);
+                    m_interp_bufs[channel][i] = sum / (float)count;
+                }
+            }
+            else
+            {
+                for(auto i = 0; i < m_num_bars; ++i)
+                {
+                    auto pos = (int)m_interp_indices[i];
+                    float sum = 0.0f;
+                    int count = 0;
+                    int stop = (int)m_interp_indices[i + 1];
+                    do
+                    {
+                        sum += m_decibels[channel][pos];
+                        ++count;
+                        ++pos;
+                    } while(pos < stop);
+                    m_interp_bufs[channel][i] = sum / (float)count;
+                }
+            }
+
+            if(m_filter_mode != FilterMode::NONE)
+            {
+                if(HAVE_SSE41)
+                    m_interp_bufs[channel] = apply_filter_sse41(m_interp_bufs[channel], m_kernel);
+                else
+                    m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
             }
         }
 
-        if(m_filter_mode != FilterMode::NONE)
-        {
-            if(HAVE_SSE41)
-                m_interp_bufs[channel] = apply_filter_sse41(m_interp_bufs[channel], m_kernel);
-            else
-                m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
-        }
-
-        auto border_top = (m_rounded_caps) ? cap_radius : 0.5f;
-        auto border_bottom = (m_rounded_caps && !m_stereo) ? cpos - cap_radius : cpos;
+        auto border_top = (m_rounded_caps) ? m_cap_radius : 0.5f;
+        auto border_bottom = (m_rounded_caps && !m_stereo) ? cpos - m_cap_radius : cpos;
         for(auto i = 0; i < m_num_bars; ++i)
         {
             auto val = lerp(border_top, border_bottom, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
@@ -1008,13 +1117,13 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
-    gs_load_vertexbuffer(m_vbuf);
+    gs_load_vertexbuffer(vbuf);
     gs_load_indexbuffer(nullptr);
 
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         auto vertpos = 0u;
-        auto vbdata = gs_vertexbuffer_get_data(m_vbuf);
+        vbdata = gs_vertexbuffer_get_data(vbuf);
 
         for(auto i = 0; i < m_num_bars; ++i)
         {
@@ -1022,7 +1131,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             auto x2 = x1 + m_bar_width;
             auto val = m_interp_bufs[channel][i];
 
-            if(m_display_mode == DisplayMode::STEPPED_BAR)
+            if((m_display_mode == DisplayMode::STEPPED_BAR) || (m_display_mode == DisplayMode::STEPPED_METER))
             {
                 for(auto j = 0u; j < max_steps; ++j)
                 {
@@ -1053,7 +1162,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             {
                 if(channel)
                     val = bottom - val;
-                auto bot = (m_rounded_caps && !m_stereo) ? cpos - cap_radius : cpos;
+                auto bot = (m_rounded_caps && !m_stereo) ? cpos - m_cap_radius : cpos;
                 vec3_set(&vbdata->points[vertpos], x1, val, 0);
                 vec3_set(&vbdata->points[vertpos + 1], x2, val, 0);
                 vec3_set(&vbdata->points[vertpos + 2], x1, bot, 0);
@@ -1064,18 +1173,13 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
                 if(m_rounded_caps)
                 {
-                    auto angle = (2 * (float)M_PI) / (float)cap_points;
-                    if(channel == 0)
-                        angle = -angle;
-                    auto ccx = x1 + cap_radius; // cap center x
-                    for(auto j = 0; j < cap_points; ++j)
+                    auto ccx = x1 + m_cap_radius; // cap center x
+                    for(auto j = 0; j < m_cap_tris; ++j)
                     {
-                        auto a1 = j * angle;
-                        auto a2 = (j + 1) * angle;
-                        auto cx1 = cap_radius * std::cos(a1);
-                        auto cy1 = cap_radius * std::sin(a1);
-                        auto cx2 = cap_radius * std::cos(a2);
-                        auto cy2 = cap_radius * std::sin(a2);
+                        auto cx1 = m_cap_verts[j].x;
+                        auto cy1 = m_cap_verts[j].y;
+                        auto cx2 = m_cap_verts[j + 1].x;
+                        auto cy2 = m_cap_verts[j + 1].y;
                         vec3_set(&vbdata->points[vertpos], cx1 + ccx, cy1 + val, 0);
                         vec3_set(&vbdata->points[vertpos + 1], cx2 + ccx, cy2 + val, 0);
                         vec3_set(&vbdata->points[vertpos + 2], ccx, val, 0);
@@ -1083,16 +1187,13 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                     }
                     if(!m_stereo)
                     {
-                        auto ccy = cpos - cap_radius;
-                        angle = (2 * (float)M_PI) / (float)cap_points;
-                        for(auto j = 0; j < cap_points; ++j)
+                        auto ccy = cpos - m_cap_radius;
+                        for(auto j = 0; j < m_cap_tris; ++j)
                         {
-                            auto a1 = j * angle;
-                            auto a2 = (j + 1) * angle;
-                            auto cx1 = cap_radius * std::cos(a1);
-                            auto cy1 = cap_radius * std::sin(a1);
-                            auto cx2 = cap_radius * std::cos(a2);
-                            auto cy2 = cap_radius * std::sin(a2);
+                            auto cx1 = m_cap_verts[j].x;
+                            auto cy1 = m_cap_verts[j].y;
+                            auto cx2 = m_cap_verts[j + 1].x;
+                            auto cy2 = m_cap_verts[j + 1].y;
                             vec3_set(&vbdata->points[vertpos], cx1 + ccx, cy1 + ccy, 0);
                             vec3_set(&vbdata->points[vertpos + 1], cx2 + ccx, cy2 + ccy, 0);
                             vec3_set(&vbdata->points[vertpos + 2], ccx, ccy, 0);
@@ -1103,17 +1204,98 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             }
         }
 
-        gs_vertexbuffer_flush(m_vbuf);
+        gs_vertexbuffer_flush(vbuf);
 
         if(vertpos > 0)
             gs_draw(GS_TRIS, 0, vertpos);
     }
 
     gs_load_vertexbuffer(nullptr);
+    gs_vertexbuffer_destroy(vbuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
 
     gs_effect_destroy(shader);
+}
+
+// WAVSourceAVX and WAVSourceAVX2 both inherit this implementation
+// WAVSourceSSE2 overrides in source_sse2.cpp
+DECORATE_AVX
+void WAVSource::tick_meter(float seconds)
+{
+    if(!check_audio_capture(seconds))
+        return;
+
+    if(m_capture_channels == 0)
+        return;
+
+    // repurpose m_decibels as circular buffer for sample data
+    for(auto channel = 0u; channel < m_capture_channels; ++channel)
+    {
+        while(m_capturebufs[channel].size > 0)
+        {
+            auto consume = m_capturebufs[channel].size;
+            auto max = (m_fft_size - m_meter_pos[channel]) * sizeof(float);
+            if(consume >= max)
+            {
+                circlebuf_pop_front(&m_capturebufs[channel], &m_decibels[channel][m_meter_pos[channel]], max);
+                m_meter_pos[channel] = 0;
+            }
+            else
+            {
+                circlebuf_pop_front(&m_capturebufs[channel], &m_decibels[channel][m_meter_pos[channel]], consume);
+                m_meter_pos[channel] += consume / sizeof(float);
+            }
+        }
+    }
+
+    if(!m_show)
+        return;
+
+    for(auto channel = 0u; channel < m_capture_channels; ++channel)
+    {
+        float out = 0.0f;
+        if(m_meter_rms)
+        {
+            constexpr auto step = sizeof(__m256) / sizeof(float);
+            for(size_t i = 0; i < m_fft_size; i += step)
+            {
+                auto chunk = _mm256_load_ps(&m_decibels[channel][i]);
+                auto tmp = _mm256_dp_ps(chunk, chunk, 0xf1);                // sum the squares of each element (per lane)
+                auto tmp2 = _mm_cvtss_f32(_mm256_extractf128_ps(tmp, 1));   // extract top lane and try to pipeline while the bottom lane sums
+                out += _mm256_cvtss_f32(tmp);   // add sum of bottom lane
+                out += tmp2;                    // add sum of top lane
+            }
+            out = std::sqrt(out / m_fft_size);
+        }
+        else
+        {
+            constexpr auto step = sizeof(__m256) / sizeof(float);
+            const auto signbit = _mm256_set1_ps(-0.0f);
+            for(size_t i = 0; i < m_fft_size; i += step)
+            {
+                auto chunk = _mm256_andnot_ps(signbit, _mm256_load_ps(&m_decibels[channel][i])); // absolute value
+                auto high = _mm256_extractf128_ps(chunk, 1); // split into two 128-bit vecs
+                auto low = _mm_max_ps(high, _mm256_castps256_ps128(chunk)); // max(h[0], l[0]) max(h[1], l[1]) max(h[2], l[2]) max(h[3], l[3])
+                high = _mm_movehl_ps(high, low); // high[0] = low[2], high[1] = low[3]
+                low = _mm_max_ps(high, low); // max(h[0], l[0]) max(h[1], l[1])
+                high = _mm_permute_ps(low, 1); // high[0] = low[1]
+                auto max = _mm_cvtss_f32(_mm_max_ss(high, low));
+                if(max > out)
+                    out = max;
+            }
+        }
+
+        const auto g = m_gravity;
+        const auto g2 = 1.0f - g;
+        if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
+        {
+            if(!m_fast_peaks || (out <= m_meter_buf[channel]))
+                out = (g * m_meter_buf[channel]) + (g2 * out);
+        }
+        m_meter_buf[channel] = out;
+        m_meter_val[channel] = dbfs(out);
+    }
 }
 
 void WAVSource::show()
@@ -1187,7 +1369,7 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
             circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
 
         auto total = m_capturebufs[i].size;
-        auto max = m_fft_size * sizeof(float) * 2;
+        auto max = m_meter_mode ? 4096 : m_fft_size * sizeof(float) * 2;
         if(total > max)
             circlebuf_pop_front(&m_capturebufs[i], nullptr, total - max);
     }
@@ -1205,7 +1387,7 @@ void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_
         circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
 
         auto total = m_capturebufs[i].size;
-        auto max = m_fft_size * sizeof(float) * 2;
+        auto max = m_meter_mode ? 4096 : m_fft_size * sizeof(float) * 2;
         if(total > max)
             circlebuf_pop_front(&m_capturebufs[i], nullptr, total - max);
     }
