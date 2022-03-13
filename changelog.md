@@ -1,6 +1,8 @@
-- Fix crash that can occur in certain configurations
-- Fix potential installation issues
-- Auto recapture audio sources that have been removed and re-added
+- Add circular display mode
+- Add level meter display mode
+- Add rounded bar caps
+- Add option to capture OBS audio output bus (all active audio sources)
+- Reduce minimum strength of gaussian filter to work better with bar graphs
 
 ## Installation
 ### Windows
