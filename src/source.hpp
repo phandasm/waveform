@@ -230,7 +230,6 @@ public:
     // constants
     static const bool HAVE_AVX2;
     static const bool HAVE_AVX;
-    static const bool HAVE_SSE41;
     static const bool HAVE_FMA3;
 };
 

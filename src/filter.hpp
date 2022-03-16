@@ -25,27 +25,67 @@
 #include <immintrin.h>
 #include <memory>
 
-DECORATE_SSE41
-static inline float sum_product_sse41(const float *a, const float *b) // b must be 16-byte aligned
+// helpers for template SIMD code
+template<typename T>
+struct SSEType
 {
-    return _mm_cvtss_f32(_mm_dp_ps(_mm_loadu_ps(a), _mm_load_ps(b), 0xf1));
+    // empty unspecialized version
+};
+
+template<>
+struct SSEType<float>
+{
+    using Type = __m128;
+};
+
+template<>
+struct SSEType<double>
+{
+    using Type = __m128d;
+};
+
+template<typename T>
+DECORATE_SSE2
+inline std::enable_if_t<std::is_same_v<T, __m128>, T> setzero()
+{
+    return _mm_setzero_ps();
 }
 
-DECORATE_SSE41
-static inline double sum_product_sse41(const double *a, const double *b) // b must be 16-byte aligned
+template<typename T>
+DECORATE_SSE2
+inline std::enable_if_t<std::is_same_v<T, __m128d>, T> setzero()
 {
-    return _mm_cvtsd_f64(_mm_dp_pd(_mm_loadu_pd(a), _mm_load_pd(b), 0xf1));
+    return _mm_setzero_pd();
 }
 
-#if 0
 DECORATE_AVX
-static inline float sum_product_avx(const float *a, const float *b) // b must be 32-byte aligned
+static inline float horizontal_sum(__m128 vec)
 {
-    auto tmp = _mm256_dp_ps(_mm256_loadu_ps(a), _mm256_load_ps(b), 0xf1);
-    auto sum = _mm_add_ss(_mm256_extractf128_ps(tmp, 1), _mm256_castps256_ps128(tmp));
-    return _mm_cvtss_f32(sum);
+    auto low = vec;
+    auto high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
+    low = _mm_add_ps(high, low); // (h[0] + l[0]) (h[1] + l[1])
+    high = _mm_movehdup_ps(low); // high[0] = low[1]
+    return _mm_cvtss_f32(_mm_add_ss(high, low));
 }
-#endif
+
+DECORATE_AVX
+static inline double horizontal_sum(__m128d vec)
+{
+    auto vec2 = _mm_permute_pd(vec, 1); // vec2[0] = vec[1]
+    return _mm_cvtsd_f64(_mm_add_sd(vec, vec2));
+}
+
+DECORATE_AVX
+static inline __m128 sum_product_fma3(const float *a, const float *b, __m128 sum) // b must be 16-byte aligned
+{
+    return _mm_fmadd_ps(_mm_loadu_ps(a), _mm_load_ps(b), sum);
+}
+
+DECORATE_AVX
+static inline __m128d sum_product_fma3(const double *a, const double *b, __m128d sum) // b must be 16-byte aligned
+{
+    return _mm_fmadd_pd(_mm_loadu_pd(a), _mm_load_pd(b), sum);
+}
 
 template<typename T>
 struct Kernel
@@ -109,8 +149,8 @@ T weighted_avg(const std::vector<T>& samples, const Kernel<T>& kernel, intmax_t 
 }
 
 template<typename T>
-DECORATE_SSE41
-T weighted_avg_sse41(const std::vector<T>& samples, const Kernel<T>& kernel, intmax_t index)
+DECORATE_AVX
+T weighted_avg_fma3(const std::vector<T>& samples, const Kernel<T>& kernel, intmax_t index)
 {
     const auto start = (index - kernel.radius) + 1;
     const auto stop = index + kernel.radius;
@@ -130,9 +170,11 @@ T weighted_avg_sse41(const std::vector<T>& samples, const Kernel<T>& kernel, int
     {
         constexpr auto step = sizeof(__m128) / sizeof(T);
         const auto ssestop = start + kernel.sse_size;
+        auto vecsum = setzero<SSEType<T>::Type>();
         auto i = start;
         for(; i < ssestop; i += step)
-            sum += sum_product_sse41(&samples[i], &kernel.weights[i - start]);
+            vecsum = sum_product_fma3(&samples[i], &kernel.weights[i - start], vecsum);
+        sum = horizontal_sum(vecsum);
         for(; i < stop; ++i)
             sum += samples[i] * kernel.weights[i - start];
         return sum / kernel.sum;
@@ -151,13 +193,21 @@ std::vector<T> apply_filter(const std::vector<T>& samples, const Kernel<T>& kern
 }
 
 template<typename T>
-DECORATE_SSE41
-std::vector<T> apply_filter_sse41(const std::vector<T>& samples, const Kernel<T>& kernel)
+DECORATE_AVX
+std::vector<T> apply_filter_fma3(const std::vector<T>& samples, const Kernel<T>& kernel)
 {
     auto sz = samples.size();
     std::vector<T> filtered;
     filtered.resize(sz);
-    for(auto i = 0u; i < sz; ++i)
-        filtered[i] = weighted_avg_sse41(samples, kernel, i);
+    if(kernel.sse_size >= ((sizeof(SSEType<T>::Type) / sizeof(T)) * 2)) // make sure we get at least 2 SIMD iterations
+    {
+        for(auto i = 0u; i < sz; ++i)
+            filtered[i] = weighted_avg_fma3(samples, kernel, i);
+    }
+    else // otherwise use the plain C version
+    {
+        for(auto i = 0u; i < sz; ++i)
+            filtered[i] = weighted_avg(samples, kernel, i);
+    }
     return filtered;
 }

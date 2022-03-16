@@ -36,7 +36,6 @@ const float WAVSource::DB_MIN = 20.0f * std::log10(std::numeric_limits<float>::m
 static const auto CPU_INFO = cpu_features::GetX86Info();
 const bool WAVSource::HAVE_AVX2 = CPU_INFO.features.avx2 && CPU_INFO.features.fma3;
 const bool WAVSource::HAVE_AVX = CPU_INFO.features.avx && CPU_INFO.features.fma3;
-const bool WAVSource::HAVE_SSE41 = CPU_INFO.features.sse4_1;
 const bool WAVSource::HAVE_FMA3 = CPU_INFO.features.fma3;
 
 static bool enum_callback(void *data, obs_source_t *src)
@@ -919,8 +918,8 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 
         if(m_filter_mode != FilterMode::NONE)
         {
-            if(HAVE_SSE41)
-                m_interp_bufs[channel] = apply_filter_sse41(m_interp_bufs[channel], m_kernel);
+            if(HAVE_AVX)
+                m_interp_bufs[channel] = apply_filter_fma3(m_interp_bufs[channel], m_kernel);
             else
                 m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
         }
@@ -1095,8 +1094,8 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
             if(m_filter_mode != FilterMode::NONE)
             {
-                if(HAVE_SSE41)
-                    m_interp_bufs[channel] = apply_filter_sse41(m_interp_bufs[channel], m_kernel);
+                if(HAVE_AVX)
+                    m_interp_bufs[channel] = apply_filter_fma3(m_interp_bufs[channel], m_kernel);
                 else
                     m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
             }
@@ -1258,14 +1257,20 @@ void WAVSource::tick_meter(float seconds)
         if(m_meter_rms)
         {
             constexpr auto step = sizeof(__m256) / sizeof(float);
+            auto sum = _mm256_setzero_ps();
             for(size_t i = 0; i < m_fft_size; i += step)
             {
                 auto chunk = _mm256_load_ps(&m_decibels[channel][i]);
-                auto tmp = _mm256_dp_ps(chunk, chunk, 0xf1);                // sum the squares of each element (per lane)
-                auto tmp2 = _mm_cvtss_f32(_mm256_extractf128_ps(tmp, 1));   // extract top lane and try to pipeline while the bottom lane sums
-                out += _mm256_cvtss_f32(tmp);   // add sum of bottom lane
-                out += tmp2;                    // add sum of top lane
+                sum = _mm256_fmadd_ps(chunk, chunk, sum);
             }
+
+            auto high = _mm256_extractf128_ps(sum, 1); // split into two 128-bit vecs
+            auto low = _mm_add_ps(high, _mm256_castps256_ps128(sum)); // (h[0] + l[0]) (h[1] + l[1]) (h[2] + l[2]) (h[3] + l[3])
+            high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
+            low = _mm_add_ps(high, low); // (h[0] + l[0]) (h[1] + l[1])
+            high = _mm_movehdup_ps(low); // high[0] = low[1]
+            out = _mm_cvtss_f32(_mm_add_ss(high, low));
+
             out = std::sqrt(out / m_fft_size);
         }
         else
@@ -1277,9 +1282,9 @@ void WAVSource::tick_meter(float seconds)
                 auto chunk = _mm256_andnot_ps(signbit, _mm256_load_ps(&m_decibels[channel][i])); // absolute value
                 auto high = _mm256_extractf128_ps(chunk, 1); // split into two 128-bit vecs
                 auto low = _mm_max_ps(high, _mm256_castps256_ps128(chunk)); // max(h[0], l[0]) max(h[1], l[1]) max(h[2], l[2]) max(h[3], l[3])
-                high = _mm_movehl_ps(high, low); // high[0] = low[2], high[1] = low[3]
+                high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
                 low = _mm_max_ps(high, low); // max(h[0], l[0]) max(h[1], l[1])
-                high = _mm_permute_ps(low, 1); // high[0] = low[1]
+                high = _mm_movehdup_ps(low); // high[0] = low[1]
                 auto max = _mm_cvtss_f32(_mm_max_ss(high, low));
                 if(max > out)
                     out = max;
@@ -1317,8 +1322,6 @@ void WAVSource::register_source()
         arch += " AVX2";
     if(HAVE_AVX)
         arch += " AVX";
-    if(HAVE_SSE41)
-        arch += " SSE4.1";
     if(HAVE_FMA3)
         arch += " FMA3";
     arch += " SSE2";
