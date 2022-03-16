@@ -199,7 +199,7 @@ std::vector<T> apply_filter_fma3(const std::vector<T>& samples, const Kernel<T>&
     auto sz = samples.size();
     std::vector<T> filtered;
     filtered.resize(sz);
-    if(kernel.sse_size >= ((sizeof(SSEType<T>::Type) / sizeof(T)) * 2)) // make sure we get at least 2 SIMD iterations
+    if(kernel.sse_size >= ((sizeof(typename SSEType<T>::Type) / sizeof(T)) * 2)) // make sure we get at least 2 SIMD iterations
     {
         for(auto i = 0u; i < sz; ++i)
             filtered[i] = weighted_avg_fma3(samples, kernel, i);
