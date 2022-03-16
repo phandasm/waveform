@@ -170,7 +170,7 @@ T weighted_avg_fma3(const std::vector<T>& samples, const Kernel<T>& kernel, intm
     {
         constexpr auto step = sizeof(__m128) / sizeof(T);
         const auto ssestop = start + kernel.sse_size;
-        auto vecsum = setzero<SSEType<T>::Type>();
+        auto vecsum = setzero<typename SSEType<T>::Type>();
         auto i = start;
         for(; i < ssestop; i += step)
             vecsum = sum_product_fma3(&samples[i], &kernel.weights[i - start], vecsum);
