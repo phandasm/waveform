@@ -25,35 +25,16 @@
 #include <immintrin.h>
 #include <memory>
 
-// helpers for template SIMD code
-template<typename T>
-struct SSEType
-{
-    // empty unspecialized version
-};
-
-template<>
-struct SSEType<float>
-{
-    using Type = __m128;
-};
-
-template<>
-struct SSEType<double>
-{
-    using Type = __m128d;
-};
-
 template<typename T>
 DECORATE_SSE2
-inline std::enable_if_t<std::is_same_v<T, __m128>, T> setzero()
+inline std::enable_if_t<std::is_same_v<T, float>, __m128> setzero()
 {
     return _mm_setzero_ps();
 }
 
 template<typename T>
 DECORATE_SSE2
-inline std::enable_if_t<std::is_same_v<T, __m128d>, T> setzero()
+inline std::enable_if_t<std::is_same_v<T, double>, __m128d> setzero()
 {
     return _mm_setzero_pd();
 }
@@ -170,7 +151,7 @@ T weighted_avg_fma3(const std::vector<T>& samples, const Kernel<T>& kernel, intm
     {
         constexpr auto step = sizeof(__m128) / sizeof(T);
         const auto ssestop = start + kernel.sse_size;
-        auto vecsum = setzero<typename SSEType<T>::Type>();
+        auto vecsum = setzero<T>();
         auto i = start;
         for(; i < ssestop; i += step)
             vecsum = sum_product_fma3(&samples[i], &kernel.weights[i - start], vecsum);
@@ -199,7 +180,7 @@ std::vector<T> apply_filter_fma3(const std::vector<T>& samples, const Kernel<T>&
     auto sz = samples.size();
     std::vector<T> filtered;
     filtered.resize(sz);
-    if(kernel.sse_size >= ((sizeof(typename SSEType<T>::Type) / sizeof(T)) * 2)) // make sure we get at least 2 SIMD iterations
+    if(kernel.sse_size >= ((sizeof(__m128) / sizeof(T)) * 2)) // make sure we get at least 2 SIMD iterations
     {
         for(auto i = 0u; i < sz; ++i)
             filtered[i] = weighted_avg_fma3(samples, kernel, i);
