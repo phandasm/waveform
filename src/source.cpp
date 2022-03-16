@@ -1172,7 +1172,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
                 if(m_rounded_caps)
                 {
-                    auto ccx = x1 + m_cap_radius; // cap center x
+                    auto ccx = (float)(i * bar_stride) + m_cap_radius; // cap center x
                     for(auto j = 0; j < m_cap_tris; ++j)
                     {
                         auto cx1 = m_cap_verts[j].x;
