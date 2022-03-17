@@ -30,6 +30,8 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_NONE              "none"
 #define P_OUTPUT_BUS        "output_bus"
 
+#define P_HIDE_SILENT       "hide_on_silent"
+
 #define P_RENDER_MODE       "render_mode"
 #define P_LINE              "line"
 #define P_SOLID             "solid"

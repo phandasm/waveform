@@ -137,6 +137,7 @@ namespace callbacks {
         obs_data_set_default_int(settings, P_STEP_GAP, 4);
         obs_data_set_default_int(settings, P_METER_BUF, 150);
         obs_data_set_default_bool(settings, P_RMS_MODE, true);
+        obs_data_set_default_bool(settings, P_HIDE_SILENT, false);
     }
 
     static obs_properties_t *get_properties([[maybe_unused]] void *data)
@@ -150,6 +151,9 @@ namespace callbacks {
 
         for(const auto& str : enumerate_audio_sources())
             obs_property_list_add_string(srclist, str.c_str(), str.c_str());
+
+        // hide on silent audio
+        obs_properties_add_bool(props, P_HIDE_SILENT, T(P_HIDE_SILENT));
 
         // display type
         auto displaylist = obs_properties_add_list(props, P_DISPLAY_MODE, T(P_DISPLAY_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
@@ -387,6 +391,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_step_gap = (int)obs_data_get_int(settings, P_STEP_GAP);
     m_meter_rms = obs_data_get_bool(settings, P_RMS_MODE);
     m_meter_ms = (int)obs_data_get_int(settings, P_METER_BUF);
+    m_hide_on_silent = obs_data_get_bool(settings, P_HIDE_SILENT);
 
     m_color_base = { (uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f };
     m_color_crest = { (uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f };
@@ -842,6 +847,8 @@ void WAVSource::tick(float seconds)
 void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 {
     std::lock_guard lock(m_mtx);
+    if(m_last_silent && m_hide_on_silent)
+        return;
     if(m_display_mode == DisplayMode::CURVE)
         render_curve(effect);
     else
