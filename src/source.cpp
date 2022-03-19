@@ -1261,13 +1261,16 @@ void WAVSource::tick_meter(float seconds)
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
         float out = 0.0f;
+        constexpr auto step = (sizeof(__m256) / sizeof(float)) * 2; // buffer size is 64-byte multiple
+        constexpr auto halfstep = step / 2;
         if(m_meter_rms)
         {
-            constexpr auto step = sizeof(__m256) / sizeof(float);
             auto sum = _mm256_setzero_ps();
             for(size_t i = 0; i < m_fft_size; i += step)
             {
                 auto chunk = _mm256_load_ps(&m_decibels[channel][i]);
+                sum = _mm256_fmadd_ps(chunk, chunk, sum);
+                chunk = _mm256_load_ps(&m_decibels[channel][i + halfstep]); // unroll loop to cache line size
                 sum = _mm256_fmadd_ps(chunk, chunk, sum);
             }
 
@@ -1282,20 +1285,22 @@ void WAVSource::tick_meter(float seconds)
         }
         else
         {
-            constexpr auto step = sizeof(__m256) / sizeof(float);
             const auto signbit = _mm256_set1_ps(-0.0f);
+            auto maxvec = _mm256_setzero_ps();
             for(size_t i = 0; i < m_fft_size; i += step)
             {
                 auto chunk = _mm256_andnot_ps(signbit, _mm256_load_ps(&m_decibels[channel][i])); // absolute value
-                auto high = _mm256_extractf128_ps(chunk, 1); // split into two 128-bit vecs
-                auto low = _mm_max_ps(high, _mm256_castps256_ps128(chunk)); // max(h[0], l[0]) max(h[1], l[1]) max(h[2], l[2]) max(h[3], l[3])
-                high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
-                low = _mm_max_ps(high, low); // max(h[0], l[0]) max(h[1], l[1])
-                high = _mm_movehdup_ps(low); // high[0] = low[1]
-                auto max = _mm_cvtss_f32(_mm_max_ss(high, low));
-                if(max > out)
-                    out = max;
+                maxvec = _mm256_max_ps(maxvec, chunk);
+                chunk = _mm256_andnot_ps(signbit, _mm256_load_ps(&m_decibels[channel][i + halfstep])); // unroll loop to cache line size
+                maxvec = _mm256_max_ps(maxvec, chunk);
             }
+
+            auto high = _mm256_extractf128_ps(maxvec, 1); // split into two 128-bit vecs
+            auto low = _mm_max_ps(high, _mm256_castps256_ps128(maxvec)); // max(h[0], l[0]) max(h[1], l[1]) max(h[2], l[2]) max(h[3], l[3])
+            high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
+            low = _mm_max_ps(high, low); // max(h[0], l[0]) max(h[1], l[1])
+            high = _mm_movehdup_ps(low); // high[0] = low[1]
+            out = _mm_cvtss_f32(_mm_max_ss(high, low));
         }
 
         const auto g = m_gravity;
