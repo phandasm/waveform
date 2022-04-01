@@ -1384,7 +1384,7 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
             circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
 
         auto total = m_capturebufs[i].size;
-        auto max = m_meter_mode ? 4096 : m_fft_size * sizeof(float) * 2;
+        auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
         if(total > max)
             circlebuf_pop_front(&m_capturebufs[i], nullptr, total - max);
     }
@@ -1402,7 +1402,7 @@ void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_
         circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
 
         auto total = m_capturebufs[i].size;
-        auto max = m_meter_mode ? 4096 : m_fft_size * sizeof(float) * 2;
+        auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
         if(total > max)
             circlebuf_pop_front(&m_capturebufs[i], nullptr, total - max);
     }
