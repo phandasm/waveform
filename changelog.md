@@ -1,5 +1,11 @@
+- Fix crash when 'Temporal Smoothing' is set to None and source is not visible
+
+<details>
+<summary>Changes from 1.2.1</summary>
+
 - Fix rounded caps misaligned by 1 pixel
 - Add option to hide the graph when audio is silent
+</details>
 
 <details>
 <summary>Changes from 1.2.0</summary>
