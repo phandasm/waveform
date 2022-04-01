@@ -42,7 +42,8 @@ void WAVSourceAVX::tick_spectrum(float seconds)
         if(m_last_silent)
             return;
         for(auto channel = 0u; channel < m_capture_channels; ++channel)
-            memset(m_tsmooth_buf[channel].get(), 0, outsz * sizeof(float));
+            if(m_tsmooth_buf[channel] != nullptr)
+                memset(m_tsmooth_buf[channel].get(), 0, outsz * sizeof(float));
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
             for(size_t i = 0; i < outsz; ++i)
                 m_decibels[channel][i] = DB_MIN;
