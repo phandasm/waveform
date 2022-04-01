@@ -19,4 +19,4 @@
 
 #define MODULE_DISPLAY_NAME "Waveform Visualizer"
 #define MODULE_NAME "phandasm_waveform"
-#define VERSION_STRING "1.2.1"
+#define VERSION_STRING "1.2.2"
