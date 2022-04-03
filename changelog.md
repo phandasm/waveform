@@ -1,4 +1,10 @@
+- Try to accomodate high channel count audio configurations
+
+<details>
+<summary>Changes from 1.2.2</summary>
+
 - Fix crash when 'Temporal Smoothing' is set to None and source is not visible
+</details>
 
 <details>
 <summary>Changes from 1.2.1</summary>
