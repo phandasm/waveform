@@ -665,7 +665,19 @@ void WAVSource::update(obs_data_t *settings)
     update_audio_info(&m_audio_info);
     m_capture_channels = std::min(get_audio_channels(m_audio_info.speakers), 2u);
     if(m_capture_channels == 0)
-        blog(LOG_WARNING, "[" MODULE_NAME "]: Could not determine audio channel count");
+    {
+        auto channels = (unsigned int)m_audio_info.speakers;
+        if(channels > 0)
+        {
+            m_capture_channels = std::min((uint32_t)channels, 2u);
+            auto msg = "[" MODULE_NAME "]: Attempting to support unknown channel config: " + std::to_string(channels);
+            blog(LOG_WARNING, msg.c_str());
+        }
+        else
+        {
+            blog(LOG_WARNING, "[" MODULE_NAME "]: Could not determine audio channel count");
+        }
+    }
 
     // meter mode
     if(m_meter_mode)
