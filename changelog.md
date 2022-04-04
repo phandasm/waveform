@@ -1,4 +1,5 @@
-- Try to accomodate high channel count audio configurations
+- Support more audio configurations
+- Fix alignment when scaling bar graphs
 
 <details>
 <summary>Changes from 1.2.2</summary>

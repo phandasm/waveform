@@ -1145,7 +1145,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
         for(auto i = 0; i < m_num_bars; ++i)
         {
-            auto x1 = (float)(i * bar_stride) + 0.5f;
+            auto x1 = (float)(i * bar_stride);
             auto x2 = x1 + m_bar_width;
             auto val = m_interp_bufs[channel][i];
 
