@@ -20,9 +20,10 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF) # static link dependencies
 if(NOT MSVC)
     option(STATIC_FFTW "Static link FFTW" OFF) # allow static linking FFTW on non-windows platforms
+    option(BUILTIN_FFTW "Build FFTW from source" OFF)
 endif()
 
-if(WIN32)
+if(WIN32 OR APPLE)
     list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 endif()
 find_package(LibObs REQUIRED)
@@ -68,9 +69,15 @@ if(MSVC)
     set(AVX_FLAG "")
     set(HAVE_AVX2 TRUE)
     set(AVX2_FLAG "")
-    
+
+    set(BUILTIN_FFTW TRUE)
+endif()
+
+if(BUILTIN_FFTW)    
     option(ENABLE_THREADS "Use pthread for multithreading" ON)
-    option(WITH_COMBINED_THREADS "Merge thread library" ON)
+    if(WIN32 OR APPLE)
+        option(WITH_COMBINED_THREADS "Merge thread library" ON)
+    endif()
     option(ENABLE_FLOAT "single-precision" ON)
     add_subdirectory("deps/fftw-3.3.10" EXCLUDE_FROM_ALL)
     set(FFTW_LIBRARIES fftw3f)
