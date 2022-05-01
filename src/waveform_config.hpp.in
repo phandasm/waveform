@@ -3,8 +3,8 @@
 #cmakedefine DECORATE_SIMD_FUNCS
 
 #ifdef DECORATE_SIMD_FUNCS
-#define DECORATE_AVX2 __attribute__ ((__target__ ("avx2", "fma")))
-#define DECORATE_AVX __attribute__ ((__target__ ("avx", "fma")))
+#define DECORATE_AVX2 __attribute__ ((__target__ ("avx2,fma")))
+#define DECORATE_AVX __attribute__ ((__target__ ("avx,fma")))
 #define DECORATE_SSE2 __attribute__ ((__target__ ("sse2")))
 #define DECORATE_SSE41 __attribute__ ((__target__ ("sse4.1")))
 #else

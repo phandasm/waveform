@@ -101,6 +101,9 @@ else()
 endif()
 
 add_subdirectory(deps/cpu_features EXCLUDE_FROM_ALL)
+if(NOT MSVC AND NOT BUILD_SHARED_LIBS) # Clang complains
+    target_compile_options(cpu_features PRIVATE "-fPIC")
+endif()
 
 set(PLUGIN_SOURCES
     "src/module.hpp"
