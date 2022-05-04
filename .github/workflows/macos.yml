@@ -17,21 +17,10 @@ jobs:
         with:
           submodules: recursive
       
-      - name: 'Cache obs-deps'
-        uses: actions/cache@v3
-        id: cache
-        with:
-          path: ${{github.workspace}}/deps/obs-deps.tar.xz
-          key: ${{ runner.os }}-${{ hashFiles('deps/obs-deps.tar.xz') }}
-      
-      - name: 'Download obs-deps'
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: curl -o ${{github.workspace}}/deps/obs-deps.tar.xz --create-dirs https://github.com/obsproject/obs-deps/releases/download/2022-02-13/macos-deps-2022-02-13-x86_64.tar.xz
-      
       - name: 'Extract obs-deps'
         run: |
           mkdir ${{github.workspace}}/deps/obs-deps
-          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/deps/obs-deps.tar.xz
+          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/CI/deps/obs-deps.tar.xz
       
       - name: 'Checkout obs-studio'
         uses: actions/checkout@v3
