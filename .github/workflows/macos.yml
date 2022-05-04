@@ -41,7 +41,7 @@ jobs:
           ref: '27.2.4'
       
       - name: 'OBS Cmake'
-        run: cmake -B ${{github.workspace}}/deps/obs-studio/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DDISABLE_UI=ON -DENABLE_UI=OFF -DCOMPILE_PYTHON=OFF -DDISABLE_PYTHON=ON -DENABLE_SCRIPTING=OFF -DBUILD_BROWSER=OFF -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps"
+        run: cmake -B ${{github.workspace}}/deps/obs-studio/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DDISABLE_UI=ON -DENABLE_UI=OFF -DCOMPILE_PYTHON=OFF -DDISABLE_PYTHON=ON -DENABLE_SCRIPTING=OFF -DBUILD_BROWSER=OFF -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" ${{github.workspace}}/deps/obs-studio
       
       - name: 'Build OBS'
         run: cmake --build ${{github.workspace}}/deps/obs-studio/build --config=Release
