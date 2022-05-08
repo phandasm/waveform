@@ -113,6 +113,7 @@ namespace callbacks {
         obs_data_set_default_double(settings, P_DEADZONE, 20.0);
         obs_data_set_default_bool(settings, P_CAPS, false);
         obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
+        obs_data_set_default_int(settings, P_CHANNEL_SPACING, 0);
         obs_data_set_default_int(settings, P_FFT_SIZE, 2048);
         obs_data_set_default_bool(settings, P_AUTO_FFT_SIZE, false);
         obs_data_set_default_string(settings, P_WINDOW, P_HANN);
@@ -189,6 +190,7 @@ namespace callbacks {
             set_prop_visible(props, P_FILTER_RADIUS, notmeter && !p_equ(obs_data_get_string(settings, P_FILTER_MODE), P_NONE));
             set_prop_visible(props, P_INTERP_MODE, notmeter);
             set_prop_visible(props, P_CHANNEL_MODE, notmeter);
+            set_prop_visible(props, P_CHANNEL_SPACING, notmeter && p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO));
             set_prop_visible(props, P_WINDOW, notmeter);
             set_prop_visible(props, P_RADIAL, notmeter);
             set_prop_visible(props, P_DEADZONE, notmeter && obs_data_get_bool(settings, P_RADIAL));
@@ -236,6 +238,14 @@ namespace callbacks {
         obs_property_list_add_string(chanlst, T(P_MONO), P_MONO);
         obs_property_list_add_string(chanlst, T(P_STEREO), P_STEREO);
         obs_property_set_long_description(chanlst, T(P_CHAN_DESC));
+
+        // channel spacing
+        obs_properties_add_int(props, P_CHANNEL_SPACING, T(P_CHANNEL_SPACING), 0, 2160, 1);
+        obs_property_set_modified_callback(chanlst, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
+            auto enable = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO) && obs_property_visible(obs_properties_get(props, P_CHANNEL_MODE));
+            set_prop_visible(props, P_CHANNEL_SPACING, enable);
+            return true;
+            });
 
         // fft size
         auto autofftsz = obs_properties_add_bool(props, P_AUTO_FFT_SIZE, T(P_AUTO_FFT_SIZE));
@@ -366,6 +376,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     auto deadzone = (float)obs_data_get_double(settings, P_DEADZONE) / 100.0f;
     m_rounded_caps = obs_data_get_bool(settings, P_CAPS);
     m_stereo = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO);
+    m_channel_spacing = (int)obs_data_get_int(settings, P_CHANNEL_SPACING);
     m_fft_size = (size_t)obs_data_get_int(settings, P_FFT_SIZE);
     m_auto_fft_size = obs_data_get_bool(settings, P_AUTO_FFT_SIZE);
     auto wnd = obs_data_get_string(settings, P_WINDOW);
@@ -834,6 +845,8 @@ void WAVSource::update(obs_data_t *settings)
         // caps are full circles to avoid distortion issues in radial mode
         m_cap_radius = (float)m_bar_width / 2.0f;
         m_cap_tris = std::max((int)((2 * (float)M_PI * m_cap_radius) / 3.0f), 4);
+        if(m_cap_tris & 1) // force even number of triangles
+            m_cap_tris += 1;
         auto angle = (2 * (float)M_PI) / (float)m_cap_tris;
         auto verts = m_cap_tris + 1;
         m_cap_verts.resize(verts);
@@ -1191,7 +1204,10 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                 if(m_rounded_caps)
                 {
                     auto ccx = (float)(i * bar_stride) + m_cap_radius; // cap center x
-                    for(auto j = 0; j < m_cap_tris; ++j)
+                    auto half = m_cap_tris / 2; // m_cap_tris always even
+                    auto start = m_radial ? 0 : (channel ? 0 : half);
+                    auto stop = m_radial ? m_cap_tris : (start + half);
+                    for(auto j = start; j < stop; ++j)
                     {
                         auto cx1 = m_cap_verts[j].x;
                         auto cy1 = m_cap_verts[j].y;
@@ -1205,7 +1221,9 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                     if(!m_stereo)
                     {
                         auto ccy = cpos - m_cap_radius;
-                        for(auto j = 0; j < m_cap_tris; ++j)
+                        start = m_radial ? 0 : (channel ? half : 0);
+                        stop = m_radial ? m_cap_tris : (start + half);
+                        for(auto j = start; j < stop; ++j)
                         {
                             auto cx1 = m_cap_verts[j].x;
                             auto cy1 = m_cap_verts[j].y;

@@ -100,7 +100,7 @@ protected:
     AVXBufR m_tsmooth_buf[2];   // last frames magnitudes
     AVXBufR m_decibels[2];      // dBFS, or audio sample buffer in meter mode
     size_t m_fft_size = 0;      // number of fft elements, or audio samples in meter mode (not bytes, multiple of 16)
-                                // in meter mode m_fft_size is the size of of the circular buffer in samples
+                                // in meter mode m_fft_size is the size of the circular buffer in samples
 
     // meter mode
     size_t m_meter_pos[2] = { 0, 0 };       // circular buffer position (per channel)
@@ -157,6 +157,7 @@ protected:
     float m_deadzone = 0.0f; // radial display deadzone
     bool m_rounded_caps = false;
     bool m_hide_on_silent = false;
+    int m_channel_spacing = 0;
 
     // interpolation
     std::vector<float> m_interp_indices;

@@ -61,6 +61,8 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_MONO              "mono"
 #define P_STEREO            "stereo"
 
+#define P_CHANNEL_SPACING   "channel_spacing"
+
 #define P_INTERP_MODE       "interp_mode"
 #define P_POINT             "point"
 #define P_LANCZOS           "lanczos"
