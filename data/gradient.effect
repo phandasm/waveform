@@ -3,6 +3,7 @@ uniform float4 color_base = {1.0, 1.0, 1.0, 1.0};
 uniform float4 color_crest = {1.0, 1.0, 1.0, 1.0};
 uniform float grad_center = 0.0;
 uniform float grad_height = 0.0;
+uniform float grad_offset = 0.0;
 
 uniform float graph_width = 0.0;
 uniform float graph_height = 0.0;
@@ -59,7 +60,7 @@ float4 PSSolid(VertInOut vert_in) : TARGET
 
 float4 PSGradient(VertGrad vert_in) : TARGET
 {
-    float lerp_t = saturate(distance(vert_in.tex.y, grad_center) / grad_height);
+    float lerp_t = saturate((distance(vert_in.tex.y, grad_center) - grad_offset) / grad_height);
 	return lerp(color_base, color_crest, lerp_t);
 }
 
