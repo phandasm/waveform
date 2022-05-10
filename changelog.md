@@ -1,4 +1,6 @@
-- Add MacOS support
+- Add experimental MacOS support (x64 CPUs only)
+- Add Channel Spacing option in stereo mode
+- Fix alpha overlap with rounded caps (except in radial mode)
 
 ## Installation
 ### Windows
@@ -15,3 +17,7 @@ Both methods include 32-bit and 64-bit binaries.
 
 #### Source Build
 - Step-by-step instructions in the [readme](https://github.com/phandasm/waveform/blob/master/README.md#linux-ubuntu-20043-lts).
+
+### MacOS (10.13+ with x64 CPU only)
+#### Prebuilt Binaries
+- Extract Waveform\_v#.#.#\_MacOS\_x64.zip to your `/Library/Application Support/obs-studio/plugins` folder.  
