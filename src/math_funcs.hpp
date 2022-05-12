@@ -19,6 +19,7 @@
 #include <cmath>
 #include <algorithm>
 #include <type_traits>
+#include <stdint.h>
 
 template<typename T>
 std::enable_if_t<std::is_floating_point_v<T>, T> log_interp(T a, T b, T t)
