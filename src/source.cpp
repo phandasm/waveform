@@ -671,7 +671,7 @@ void WAVSource::update(obs_data_t *settings)
         {
             m_capture_channels = std::min((uint32_t)channels, 2u);
             auto msg = "[" MODULE_NAME "]: Attempting to support unknown channel config: " + std::to_string(channels);
-            blog(LOG_WARNING, msg.c_str());
+            blog(LOG_WARNING, "%s", msg.c_str());
         }
         else
         {
