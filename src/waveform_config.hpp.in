@@ -1,15 +1,12 @@
 #pragma once
 #cmakedefine HAVE_OBS_PROP_ALPHA
 #cmakedefine DECORATE_SIMD_FUNCS
+#cmakedefine DISABLE_X86_SIMD
 
-#ifdef DECORATE_SIMD_FUNCS
+#if defined(DECORATE_SIMD_FUNCS) && !defined(DISABLE_X86_SIMD)
 #define DECORATE_AVX2 __attribute__ ((__target__ ("avx2,fma")))
 #define DECORATE_AVX __attribute__ ((__target__ ("avx,fma")))
-#define DECORATE_SSE2 __attribute__ ((__target__ ("sse2")))
-#define DECORATE_SSE41 __attribute__ ((__target__ ("sse4.1")))
 #else
 #define DECORATE_AVX2
 #define DECORATE_AVX
-#define DECORATE_SSE2
-#define DECORATE_SSE41
 #endif

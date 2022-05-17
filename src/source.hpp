@@ -22,11 +22,11 @@
 #include <fftw3.h>
 #include <memory>
 #include "module.hpp"
-#include "aligned_mem.hpp"
+#include "membuf.hpp"
 #include "filter.hpp"
 
-using AVXBufR = std::unique_ptr<float[], AVXDeleter>;
-using AVXBufC = std::unique_ptr<fftwf_complex[], AVXDeleter>;
+using AVXBufR = std::unique_ptr<float[], MembufDeleter>;
+using AVXBufC = std::unique_ptr<fftwf_complex[], MembufDeleter>;
 
 enum class FFTWindow
 {
@@ -188,7 +188,7 @@ protected:
     void render_bars(gs_effect_t *effect);
 
     virtual void tick_spectrum(float) = 0;  // process audio data in frequency spectrum mode
-    virtual void tick_meter(float);         // process audio data in meter mode
+    virtual void tick_meter(float) = 0;     // process audio data in meter mode
 
     // constants
     static const float DB_MIN;
@@ -229,19 +229,12 @@ public:
     // for capturing the final OBS audio output stream
     void capture_output_bus(size_t mix_idx, const audio_data *audio);
 
+#ifndef DISABLE_X86_SIMD
     // constants
     static const bool HAVE_AVX2;
     static const bool HAVE_AVX;
     static const bool HAVE_FMA3;
-};
-
-class WAVSourceAVX2 : public WAVSource
-{
-public:
-    using WAVSource::WAVSource;
-    ~WAVSourceAVX2() override {}
-
-    void tick_spectrum(float seconds) override;
+#endif // !DISABLE_X86_SIMD
 };
 
 class WAVSourceAVX : public WAVSource
@@ -251,13 +244,23 @@ public:
     ~WAVSourceAVX() override {}
 
     void tick_spectrum(float seconds) override;
+    void tick_meter(float seconds) override;
 };
 
-class WAVSourceSSE2 : public WAVSource
+class WAVSourceAVX2 : public WAVSourceAVX
+{
+public:
+    using WAVSourceAVX::WAVSourceAVX;
+    ~WAVSourceAVX2() override {}
+
+    void tick_spectrum(float seconds) override;
+};
+
+class WAVSourceGeneric : public WAVSource
 {
 public:
     using WAVSource::WAVSource;
-    ~WAVSourceSSE2() override {}
+    ~WAVSourceGeneric() override {}
 
     void tick_spectrum(float seconds) override;
     void tick_meter(float seconds) override;

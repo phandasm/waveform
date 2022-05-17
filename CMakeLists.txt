@@ -18,6 +18,7 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     endif()
 endif()
 
+option(DISABLE_X86_SIMD "Disable x86 SIMD optimizations" OFF)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF) # static link dependencies
 if(NOT MSVC)
     option(STATIC_FFTW "Static link FFTW" OFF) # allow static linking FFTW on non-windows platforms
@@ -29,6 +30,15 @@ if(WIN32 OR APPLE)
 endif()
 find_package(LibObs REQUIRED)
 
+# arch flags
+if(NOT DISABLE_X86_SIMD)
+    if(MSVC)
+        add_compile_options("/arch:AVX")
+    else()
+        add_compile_options("-mavx")
+    endif()
+endif()
+
 if(MSVC)
     add_definitions(/MP) # parallel builds
 
@@ -38,10 +48,8 @@ if(MSVC)
         add_link_options("$<$<CONFIG:Release>:/LTCG>")
     endif()
 
-    # enable SSE2 globally for 32-bit build
-    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-        add_compile_options("/arch:SSE2")
-    endif()
+    # enable PDB for release builds
+    add_link_options("$<$<CONFIG:Release>:/DEBUG:FULL>")
     
     # allow static linked CRT
     option(STATIC_RUNTIME "Static link CRT" OFF)
@@ -80,9 +88,14 @@ if(BUILTIN_FFTW)
         option(WITH_COMBINED_THREADS "Merge thread library" ON)
     endif()
     option(ENABLE_FLOAT "single-precision" ON)
+    if(NOT MSVC AND NOT DISABLE_X86_SIMD) # enable FFTW AVX support by default for GCC/Clang builds
+        option(ENABLE_SSE "Compile with SSE instruction set support" ON)
+        option(ENABLE_SSE2 "Compile with SSE2 instruction set support" ON)
+        option(ENABLE_AVX "Compile with AVX instruction set support" ON)
+    endif()
     add_subdirectory("deps/fftw-3.3.10" EXCLUDE_FROM_ALL)
-    if(NOT MSVC AND NOT BUILD_SHARED_LIBS) # GCC complains
-        target_compile_options(fftw3f PRIVATE "-fPIC")
+    if(NOT MSVC AND NOT BUILD_SHARED_LIBS)
+        target_compile_options(fftw3f PRIVATE "-fPIC") # GCC complains
     endif()
     set(FFTW_LIBRARIES fftw3f)
     set(FFTW_INCLUDE_DIRS "deps/fftw-3.3.10/api")
@@ -101,28 +114,37 @@ else()
     endif()
 endif()
 
-add_subdirectory(deps/cpu_features EXCLUDE_FROM_ALL)
-if(NOT MSVC AND NOT BUILD_SHARED_LIBS) # Clang complains
-    target_compile_options(cpu_features PRIVATE "-fPIC")
-endif()
-
 set(PLUGIN_SOURCES
     "src/module.hpp"
     "src/module.cpp"
     "src/source.hpp"
     "src/source.cpp"
-    "src/source_avx2.cpp"
-    "src/source_avx.cpp"
-    "src/source_sse2.cpp"
-    "src/aligned_mem.hpp"
+    "src/source_generic.cpp"
+    "src/membuf.hpp"
     "src/math_funcs.hpp"
     "src/filter.hpp"
     "src/settings.hpp"
 )
 
+if(NOT DISABLE_X86_SIMD)
+    list(APPEND PLUGIN_SOURCES
+        "src/source_avx2.cpp"
+        "src/source_avx.cpp"
+        "src/aligned_mem.hpp"
+    )
+
+    add_subdirectory(deps/cpu_features EXCLUDE_FROM_ALL)
+    if(NOT MSVC AND NOT BUILD_SHARED_LIBS) # Clang complains
+        target_compile_options(cpu_features PRIVATE "-fPIC")
+    endif()
+endif()
+
 add_library(waveform MODULE ${PLUGIN_SOURCES})
 target_include_directories(waveform PRIVATE ${LIBOBS_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/include)
-target_link_libraries(waveform PRIVATE ${LIBOBS_LIBRARIES} ${FFTW_LIBRARIES} cpu_features)
+target_link_libraries(waveform PRIVATE ${LIBOBS_LIBRARIES} ${FFTW_LIBRARIES})
+if(NOT DISABLE_X86_SIMD)
+    target_link_libraries(waveform PRIVATE cpu_features)
+endif()
 target_compile_definitions(waveform PRIVATE _USE_MATH_DEFINES)
 if(MSVC)
     target_compile_options(waveform PRIVATE "/W4") # warning level

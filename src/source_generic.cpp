@@ -15,16 +15,14 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "waveform_config.hpp"
 #include "source.hpp"
-#include <immintrin.h>
 #include <algorithm>
 #include <cstring>
+#include <cmath>
 
-// compatibility fallback using at most SSE2 instructions
+// portable non-SIMD implementation
 // see comments of WAVSourceAVX2
-DECORATE_SSE2
-void WAVSourceSSE2::tick_spectrum(float seconds)
+void WAVSourceGeneric::tick_spectrum(float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
     if(!check_audio_capture(seconds))
@@ -35,7 +33,7 @@ void WAVSourceSSE2::tick_spectrum(float seconds)
 
     const auto bufsz = m_fft_size * sizeof(float);
     const auto outsz = m_fft_size / 2;
-    constexpr auto step = sizeof(__m128) / sizeof(float);
+    constexpr auto step = 1;
 
     if(!m_show)
     {
@@ -63,11 +61,9 @@ void WAVSourceSSE2::tick_spectrum(float seconds)
             continue;
 
         bool silent = true;
-        const auto zero = _mm_setzero_ps();
         for(auto i = 0u; i < m_fft_size; i += step)
         {
-            auto mask = _mm_cmpeq_ps(zero, _mm_load_ps(&m_fft_input[i]));
-            if(_mm_movemask_ps(mask) != 0xf)
+            if(m_fft_input[i] != 0.0f)
             {
                 silent = false;
                 m_last_silent = false;
@@ -80,12 +76,11 @@ void WAVSourceSSE2::tick_spectrum(float seconds)
             if(m_last_silent)
                 continue;
             bool outsilent = true;
-            auto floor = _mm_set1_ps((float)(m_floor - 10));
+            auto floor = (float)(m_floor - 10);
             for(size_t i = 0; i < outsz; i += step)
             {
                 const auto ch = (m_stereo) ? channel : 0u;
-                auto mask = _mm_cmpgt_ps(floor, _mm_load_ps(&m_decibels[ch][i]));
-                if(_mm_movemask_ps(mask) != 0xf)
+                if(m_decibels[ch][i] > floor)
                 {
                     outsilent = false;
                     break;
@@ -104,7 +99,7 @@ void WAVSourceSSE2::tick_spectrum(float seconds)
             auto inbuf = m_fft_input.get();
             auto mulbuf = m_window_coefficients.get();
             for(auto i = 0u; i < m_fft_size; i += step)
-                _mm_store_ps(&inbuf[i], _mm_mul_ps(_mm_load_ps(&inbuf[i]), _mm_load_ps(&mulbuf[i])));
+                inbuf[i] *= mulbuf[i];
         }
 
         if(m_fft_plan != nullptr)
@@ -112,37 +107,30 @@ void WAVSourceSSE2::tick_spectrum(float seconds)
         else
             continue;
 
-        constexpr auto shuffle_mask_r = 0 | (2 << 2) | (0 << 4) | (2 << 6);
-        constexpr auto shuffle_mask_i = 1 | (3 << 2) | (1 << 4) | (3 << 6);
-        const auto mag_coefficient = _mm_div_ps(_mm_set1_ps(2.0f), _mm_set1_ps((float)m_fft_size));
-        const auto g = _mm_set1_ps(m_gravity);
-        const auto g2 = _mm_sub_ps(_mm_set1_ps(1.0), g);
+        const auto mag_coefficient = 2.0f / (float)m_fft_size;
+        const auto g = m_gravity;
+        const auto g2 = 1.0f - g;
         const bool slope = m_slope > 0.0f;
         for(size_t i = 0; i < outsz; i += step)
         {
-            // load 4 real/imaginary pairs and pack the r/i components into separate vectors
-            const float *buf = &m_fft_output[i][0];
-            auto chunk1 = _mm_load_ps(buf);
-            auto chunk2 = _mm_load_ps(&buf[4]);
-            auto rvec = _mm_shuffle_ps(chunk1, chunk2, shuffle_mask_r);
-            auto ivec = _mm_shuffle_ps(chunk1, chunk2, shuffle_mask_i);
+            auto real = m_fft_output[i][0];
+            auto imag = m_fft_output[i][1];
 
-            auto mag = _mm_sqrt_ps(_mm_add_ps(_mm_mul_ps(ivec, ivec), _mm_mul_ps(rvec, rvec)));
-            mag = _mm_mul_ps(mag, mag_coefficient);
+            auto mag = std::sqrt((real * real) + (imag * imag)) * mag_coefficient;
 
             if(slope)
-                mag = _mm_mul_ps(mag, _mm_load_ps(&m_slope_modifiers[i]));
+                mag *= m_slope_modifiers[i];
 
             if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
             {
                 if(m_fast_peaks)
-                    _mm_store_ps(&m_tsmooth_buf[channel][i], _mm_max_ps(mag, _mm_load_ps(&m_tsmooth_buf[channel][i])));
+                    m_tsmooth_buf[channel][i] = std::max(mag, m_tsmooth_buf[channel][i]);
 
-                mag = _mm_add_ps(_mm_mul_ps(g, _mm_load_ps(&m_tsmooth_buf[channel][i])), _mm_mul_ps(g2, mag));
-                _mm_store_ps(&m_tsmooth_buf[channel][i], mag);
+                mag = (g * m_tsmooth_buf[channel][i]) + (g2 * mag);
+                m_tsmooth_buf[channel][i] = mag;
             }
 
-            _mm_store_ps(&m_decibels[channel][i], mag);
+            m_decibels[channel][i] = mag;
         }
     }
 
@@ -170,7 +158,7 @@ void WAVSourceSSE2::tick_spectrum(float seconds)
     }
 }
 
-void WAVSourceSSE2::tick_meter(float seconds)
+void WAVSourceGeneric::tick_meter(float seconds)
 {
     if(!check_audio_capture(seconds))
         return;
@@ -204,43 +192,30 @@ void WAVSourceSSE2::tick_meter(float seconds)
 
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
+        float out = 0.0f;
         if(m_meter_rms)
         {
-            float sum = 0.0f;
             for(size_t i = 0; i < outsz; ++i)
             {
                 auto val = m_decibels[channel][i];
-                sum += val * val;
+                out += val * val;
             }
-            const auto g = m_gravity;
-            const auto g2 = 1.0f - g;
-            auto rms = std::sqrt(sum / m_fft_size);
-            if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
-            {
-                if(!m_fast_peaks || (rms <= m_meter_buf[channel]))
-                    rms = (g * m_meter_buf[channel]) + (g2 * rms);
-            }
-            m_meter_buf[channel] = rms;
-            m_meter_val[channel] = dbfs(rms);
+            out = std::sqrt(out / m_fft_size);
         }
         else
         {
+            for(size_t i = 0; i < outsz; ++i)
+                out = std::max(out, std::abs(m_decibels[channel][i]));
+        }
+
+        if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
+        {
             const auto g = m_gravity;
             const auto g2 = 1.0f - g;
-            float max = 0.0f;
-            for(size_t i = 0; i < outsz; ++i)
-            {
-                auto val = std::abs(m_decibels[channel][i]);
-                if(val > max)
-                    max = val;
-            }
-            if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
-            {
-                if(!m_fast_peaks || (max <= m_meter_buf[channel]))
-                    max = (g * m_meter_buf[channel]) + (g2 * max);
-            }
-            m_meter_buf[channel] = max;
-            m_meter_val[channel] = dbfs(max);
+            if(!m_fast_peaks || (out <= m_meter_buf[channel]))
+                out = (g * m_meter_buf[channel]) + (g2 * out);
         }
+        m_meter_buf[channel] = out;
+        m_meter_val[channel] = dbfs(out);
     }
 }

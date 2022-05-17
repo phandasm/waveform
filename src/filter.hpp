@@ -17,23 +17,24 @@
 
 #pragma once
 #include "waveform_config.hpp"
-#include "aligned_mem.hpp"
+#include "membuf.hpp"
 #include <cmath>
 #include <cstdint>
 #include <vector>
 #include <type_traits>
-#include <immintrin.h>
 #include <memory>
 
+#ifndef DISABLE_X86_SIMD
+
+#include <immintrin.h>
+
 template<typename T>
-DECORATE_SSE2
 inline std::enable_if_t<std::is_same_v<T, float>, __m128> setzero()
 {
     return _mm_setzero_ps();
 }
 
 template<typename T>
-DECORATE_SSE2
 inline std::enable_if_t<std::is_same_v<T, double>, __m128d> setzero()
 {
     return _mm_setzero_pd();
@@ -68,10 +69,12 @@ static inline __m128d sum_product_fma3(const double *a, const double *b, __m128d
     return _mm_fmadd_pd(_mm_loadu_pd(a), _mm_load_pd(b), sum);
 }
 
+#endif // !DISABLE_X86_SIMD
+
 template<typename T>
 struct Kernel
 {
-    std::unique_ptr<T[], AVXDeleter> weights;
+    std::unique_ptr<T[], MembufDeleter> weights;
     int radius = 0;
     int size = 0;
     int sse_size = 0;
@@ -85,7 +88,7 @@ Kernel<T> make_gauss_kernel(T sigma)
     sigma = std::max(std::abs(sigma), (T)0.01);
     auto w = (int)std::ceil((T)3 * sigma);
     auto size = (2 * w) - 1;
-    ret.weights.reset(avx_alloc<T>(size));
+    ret.weights.reset(membuf_alloc<T>(size));
     ret.radius = w;
     ret.size = size;
     ret.sse_size = size & -(int)(sizeof(__m128) / sizeof(T));
@@ -129,6 +132,8 @@ T weighted_avg(const std::vector<T>& samples, const Kernel<T>& kernel, intmax_t 
     }
 }
 
+#ifndef DISABLE_X86_SIMD
+
 template<typename T>
 DECORATE_AVX
 T weighted_avg_fma3(const std::vector<T>& samples, const Kernel<T>& kernel, intmax_t index)
@@ -162,6 +167,8 @@ T weighted_avg_fma3(const std::vector<T>& samples, const Kernel<T>& kernel, intm
     }
 }
 
+#endif // !DISABLE_X86_SIMD
+
 template<typename T>
 std::vector<T> apply_filter(const std::vector<T>& samples, const Kernel<T>& kernel)
 {
@@ -172,6 +179,8 @@ std::vector<T> apply_filter(const std::vector<T>& samples, const Kernel<T>& kern
         filtered[i] = weighted_avg(samples, kernel, i);
     return filtered;
 }
+
+#ifndef DISABLE_X86_SIMD
 
 template<typename T>
 DECORATE_AVX
@@ -192,3 +201,5 @@ std::vector<T> apply_filter_fma3(const std::vector<T>& samples, const Kernel<T>&
     }
     return filtered;
 }
+
+#endif // !DISABLE_X86_SIMD

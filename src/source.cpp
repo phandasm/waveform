@@ -24,19 +24,23 @@
 #include <string>
 #include <algorithm>
 #include <limits>
+
+#ifndef DISABLE_X86_SIMD
+
 #include "cpuinfo_x86.h"
-#include <immintrin.h>
-
-#ifndef HAVE_OBS_PROP_ALPHA
-#define obs_properties_add_color_alpha obs_properties_add_color
-#endif
-
-const float WAVSource::DB_MIN = 20.0f * std::log10(std::numeric_limits<float>::min());
 
 static const auto CPU_INFO = cpu_features::GetX86Info();
 const bool WAVSource::HAVE_AVX2 = CPU_INFO.features.avx2 && CPU_INFO.features.fma3;
 const bool WAVSource::HAVE_AVX = CPU_INFO.features.avx && CPU_INFO.features.fma3;
 const bool WAVSource::HAVE_FMA3 = CPU_INFO.features.fma3;
+
+#endif // !DISABLE_X86_SIMD
+
+const float WAVSource::DB_MIN = 20.0f * std::log10(std::numeric_limits<float>::min());
+
+#ifndef HAVE_OBS_PROP_ALPHA
+#define obs_properties_add_color_alpha obs_properties_add_color
+#endif
 
 static bool enum_callback(void *data, obs_source_t *src)
 {
@@ -78,12 +82,16 @@ namespace callbacks {
 
     static void *create(obs_data_t *settings, obs_source_t *source)
     {
+#ifndef DISABLE_X86_SIMD
         if(WAVSource::HAVE_AVX2)
             return static_cast<void*>(new WAVSourceAVX2(settings, source));
         else if(WAVSource::HAVE_AVX)
             return static_cast<void*>(new WAVSourceAVX(settings, source));
         else
-            return static_cast<void*>(new WAVSourceSSE2(settings, source));
+            return static_cast<void*>(new WAVSourceGeneric(settings, source));
+#else
+        return static_cast<void*>(new WAVSourceGeneric(settings, source));
+#endif // !DISABLE_X86_SIMD
     }
 
     static void destroy(void *data)
@@ -733,13 +741,13 @@ void WAVSource::update(obs_data_t *settings)
     for(auto i = 0u; i < m_output_channels; ++i)
     {
         auto count = m_meter_mode ? m_fft_size : m_fft_size / 2;
-        m_decibels[i].reset(avx_alloc<float>(count));
+        m_decibels[i].reset(membuf_alloc<float>(count));
         if(m_meter_mode)
             memset(m_decibels[i].get(), 0, count * sizeof(float));
         else
         {
             if(m_tsmoothing != TSmoothingMode::NONE)
-                m_tsmooth_buf[i].reset(avx_alloc<float>(count));
+                m_tsmooth_buf[i].reset(membuf_alloc<float>(count));
             for(auto j = 0u; j < count; ++j)
             {
                 m_decibels[i][j] = DB_MIN;
@@ -750,8 +758,8 @@ void WAVSource::update(obs_data_t *settings)
     }
     if(!m_meter_mode)
     {
-        m_fft_input.reset(avx_alloc<float>(m_fft_size));
-        m_fft_output.reset(avx_alloc<fftwf_complex>(m_fft_size));
+        m_fft_input.reset(membuf_alloc<float>(m_fft_size));
+        m_fft_output.reset(membuf_alloc<fftwf_complex>(m_fft_size));
         m_fft_plan = fftwf_plan_dft_r2c_1d((int)m_fft_size, m_fft_input.get(), m_fft_output.get(), FFTW_ESTIMATE);
     }
 
@@ -759,7 +767,7 @@ void WAVSource::update(obs_data_t *settings)
     if(m_window_func != FFTWindow::NONE)
     {
         // precompute window coefficients
-        m_window_coefficients.reset(avx_alloc<float>(m_fft_size));
+        m_window_coefficients.reset(membuf_alloc<float>(m_fft_size));
         const auto N = m_fft_size - 1;
         constexpr auto pi2 = 2 * (float)M_PI;
         constexpr auto pi4 = 4 * (float)M_PI;
@@ -837,7 +845,7 @@ void WAVSource::update(obs_data_t *settings)
     // slope
     const auto num_mods = m_fft_size / 2;
     const auto maxmod = (float)(num_mods - 1);
-    m_slope_modifiers.reset(avx_alloc<float>(num_mods));
+    m_slope_modifiers.reset(membuf_alloc<float>(num_mods));
     for(size_t i = 0; i < num_mods; ++i)
         m_slope_modifiers[i] = log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
 
@@ -954,10 +962,14 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 
         if(m_filter_mode != FilterMode::NONE)
         {
+#ifndef DISABLE_X86_SIMD
             if(HAVE_AVX)
                 m_interp_bufs[channel] = apply_filter_fma3(m_interp_bufs[channel], m_kernel);
             else
                 m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
+#else
+            m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
+#endif // !DISABLE_X86_SIMD
         }
         
         const auto step = (m_render_mode == RenderMode::LINE) ? 1 : 2;
@@ -1136,10 +1148,14 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
             if(m_filter_mode != FilterMode::NONE)
             {
+#ifndef DISABLE_X86_SIMD
                 if(HAVE_AVX)
                     m_interp_bufs[channel] = apply_filter_fma3(m_interp_bufs[channel], m_kernel);
                 else
                     m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
+#else
+                m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel);
+#endif // !DISABLE_X86_SIMD
             }
         }
 
@@ -1271,97 +1287,6 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     gs_effect_destroy(shader);
 }
 
-// WAVSourceAVX and WAVSourceAVX2 both inherit this implementation
-// WAVSourceSSE2 overrides in source_sse2.cpp
-DECORATE_AVX
-void WAVSource::tick_meter(float seconds)
-{
-    if(!check_audio_capture(seconds))
-        return;
-
-    if(m_capture_channels == 0)
-        return;
-
-    // repurpose m_decibels as circular buffer for sample data
-    for(auto channel = 0u; channel < m_capture_channels; ++channel)
-    {
-        while(m_capturebufs[channel].size > 0)
-        {
-            auto consume = m_capturebufs[channel].size;
-            auto max = (m_fft_size - m_meter_pos[channel]) * sizeof(float);
-            if(consume >= max)
-            {
-                circlebuf_pop_front(&m_capturebufs[channel], &m_decibels[channel][m_meter_pos[channel]], max);
-                m_meter_pos[channel] = 0;
-            }
-            else
-            {
-                circlebuf_pop_front(&m_capturebufs[channel], &m_decibels[channel][m_meter_pos[channel]], consume);
-                m_meter_pos[channel] += consume / sizeof(float);
-            }
-        }
-    }
-
-    if(!m_show)
-        return;
-
-    for(auto channel = 0u; channel < m_capture_channels; ++channel)
-    {
-        float out = 0.0f;
-        constexpr auto step = (sizeof(__m256) / sizeof(float)) * 2; // buffer size is 64-byte multiple
-        constexpr auto halfstep = step / 2;
-        if(m_meter_rms)
-        {
-            auto sum = _mm256_setzero_ps();
-            for(size_t i = 0; i < m_fft_size; i += step)
-            {
-                auto chunk = _mm256_load_ps(&m_decibels[channel][i]);
-                sum = _mm256_fmadd_ps(chunk, chunk, sum);
-                chunk = _mm256_load_ps(&m_decibels[channel][i + halfstep]); // unroll loop to cache line size
-                sum = _mm256_fmadd_ps(chunk, chunk, sum);
-            }
-
-            auto high = _mm256_extractf128_ps(sum, 1); // split into two 128-bit vecs
-            auto low = _mm_add_ps(high, _mm256_castps256_ps128(sum)); // (h[0] + l[0]) (h[1] + l[1]) (h[2] + l[2]) (h[3] + l[3])
-            high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
-            low = _mm_add_ps(high, low); // (h[0] + l[0]) (h[1] + l[1])
-            high = _mm_movehdup_ps(low); // high[0] = low[1]
-            out = _mm_cvtss_f32(_mm_add_ss(high, low));
-
-            out = std::sqrt(out / m_fft_size);
-        }
-        else
-        {
-            const auto signbit = _mm256_set1_ps(-0.0f);
-            auto maxvec = _mm256_setzero_ps();
-            for(size_t i = 0; i < m_fft_size; i += step)
-            {
-                auto chunk = _mm256_andnot_ps(signbit, _mm256_load_ps(&m_decibels[channel][i])); // absolute value
-                maxvec = _mm256_max_ps(maxvec, chunk);
-                chunk = _mm256_andnot_ps(signbit, _mm256_load_ps(&m_decibels[channel][i + halfstep])); // unroll loop to cache line size
-                maxvec = _mm256_max_ps(maxvec, chunk);
-            }
-
-            auto high = _mm256_extractf128_ps(maxvec, 1); // split into two 128-bit vecs
-            auto low = _mm_max_ps(high, _mm256_castps256_ps128(maxvec)); // max(h[0], l[0]) max(h[1], l[1]) max(h[2], l[2]) max(h[3], l[3])
-            high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
-            low = _mm_max_ps(high, low); // max(h[0], l[0]) max(h[1], l[1])
-            high = _mm_movehdup_ps(low); // high[0] = low[1]
-            out = _mm_cvtss_f32(_mm_max_ss(high, low));
-        }
-
-        const auto g = m_gravity;
-        const auto g2 = 1.0f - g;
-        if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
-        {
-            if(!m_fast_peaks || (out <= m_meter_buf[channel]))
-                out = (g * m_meter_buf[channel]) + (g2 * out);
-        }
-        m_meter_buf[channel] = out;
-        m_meter_val[channel] = dbfs(out);
-    }
-}
-
 void WAVSource::show()
 {
     std::lock_guard lock(m_mtx);
@@ -1377,6 +1302,7 @@ void WAVSource::hide()
 void WAVSource::register_source()
 {
     std::string arch;
+#ifndef DISABLE_X86_SIMD
     if(HAVE_AVX2)
         arch += " AVX2";
     if(HAVE_AVX)
@@ -1384,10 +1310,18 @@ void WAVSource::register_source()
     if(HAVE_FMA3)
         arch += " FMA3";
     arch += " SSE2";
+#else
+    arch = " Generic";
+#endif // !DISABLE_X86_SIMD
+
 #if defined(__x86_64__) || defined(_M_X64)
     blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s 64-bit", VERSION_STRING);
 #elif defined(__i386__) || defined(_M_IX86)
     blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s 32-bit", VERSION_STRING);
+#elif defined(__arm__) || defined(_M_ARM)
+    blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s ARM", VERSION_STRING);
+#elif defined(__aarch64__)
+    blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s ARM64", VERSION_STRING);
 #else
     blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s Unknown Arch", VERSION_STRING);
 #endif
