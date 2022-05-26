@@ -37,7 +37,7 @@ jobs:
         run: cmake --build ${{github.workspace}}/deps/obs-studio/build --config=Release
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DLibObs_ROOT="${{github.workspace}}/deps/obs-studio" -DBUILTIN_FFTW=ON -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/bin
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DLibObs_ROOT="${{github.workspace}}/deps/obs-studio" -DBUILTIN_FFTW=ON -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/bin
       
       - name: 'Build'
         run: |
@@ -47,7 +47,7 @@ jobs:
       - name: 'Package Binaries'
         if: success() && github.ref_type == 'tag' && github.event_name != 'pull_request'
         working-directory: ${{github.workspace}}/bin
-        run: tar -czf Waveform_${{github.ref_name}}_MacOS_${{runner.arch}}.tar.gz *
+        run: tar -czf Waveform_${{github.ref_name}}_MacOS_X64.tar.gz *
       
       - name: 'Upload'
         if: success() && github.ref_type == 'tag' && github.event_name != 'pull_request'
