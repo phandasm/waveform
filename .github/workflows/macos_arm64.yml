@@ -1,0 +1,57 @@
+name: 'Mac Arm64 CI'
+
+on:
+  push:
+    paths-ignore: ['**.md']
+  
+  pull_request:
+    paths-ignore: ['**.md']
+
+jobs:
+  macos64:
+    name: 'MacOS Arm64'
+    runs-on: [macos-latest]
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: 'Extract obs-deps'
+        run: |
+          mkdir ${{github.workspace}}/deps/obs-deps
+          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/CI/deps/macos-deps-2022-02-13-arm64.tar.xz
+      
+      - name: 'Checkout obs-studio'
+        uses: actions/checkout@v3
+        with:
+          repository: 'obsproject/obs-studio'
+          submodules: recursive
+          path: 'deps/obs-studio'
+          ref: '27.2.4'
+      
+      - name: 'OBS Cmake'
+        run: cmake -B ${{github.workspace}}/deps/obs-studio/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DCMAKE_OSX_ARCHITECTURES="arm64" -DDISABLE_UI=ON -DENABLE_UI=OFF -DCOMPILE_PYTHON=OFF -DDISABLE_PYTHON=ON -DENABLE_SCRIPTING=OFF -DBUILD_BROWSER=OFF -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" ${{github.workspace}}/deps/obs-studio
+      
+      - name: 'Build OBS'
+        run: cmake --build ${{github.workspace}}/deps/obs-studio/build --config=Release
+      
+      - name: 'Cmake'
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DCMAKE_OSX_ARCHITECTURES="arm64" -DDISABLE_X86_SIMD=ON -DLibObs_ROOT="${{github.workspace}}/deps/obs-studio" -DBUILTIN_FFTW=ON -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/bin
+      
+      - name: 'Build'
+        run: |
+          cmake --build ${{github.workspace}}/build --config=Release
+          cmake --install ${{github.workspace}}/build --config=Release
+      
+      - name: 'Package Binaries'
+        if: success() && github.ref_type == 'tag' && github.event_name != 'pull_request'
+        working-directory: ${{github.workspace}}/bin
+        run: tar -czf Waveform_${{github.ref_name}}_MacOS_Arm64.tar.gz *
+      
+      - name: 'Upload'
+        if: success() && github.ref_type == 'tag' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          path: ${{github.workspace}}/bin/*.tar.gz
