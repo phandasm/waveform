@@ -156,6 +156,18 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
         for(size_t i = 0; i < outsz; ++i)
             m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
+
+    if((m_rolloff_q > 0.0f) && (m_rolloff_rate > 0.0f))
+    {
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+        {
+            for(size_t i = 1; i < outsz; ++i)
+            {
+                auto val = m_decibels[channel][i] - m_rolloff_modifiers[i];
+                m_decibels[channel][i] = std::max(val, DB_MIN);
+            }
+        }
+    }
 }
 
 void WAVSourceGeneric::tick_meter(float seconds)

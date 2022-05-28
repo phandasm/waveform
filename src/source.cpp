@@ -136,6 +136,8 @@ namespace callbacks {
         obs_data_set_default_int(settings, P_FLOOR, -65);
         obs_data_set_default_int(settings, P_CEILING, 0);
         obs_data_set_default_double(settings, P_SLOPE, 0.0);
+        obs_data_set_default_double(settings, P_ROLLOFF_Q, 0.0);
+        obs_data_set_default_double(settings, P_ROLLOFF_RATE, 0.0);
         obs_data_set_default_string(settings, P_RENDER_MODE, P_SOLID);
         obs_data_set_default_int(settings, P_COLOR_BASE, 0xffffffff);
         obs_data_set_default_int(settings, P_COLOR_CREST, 0xffffffff);
@@ -192,6 +194,8 @@ namespace callbacks {
             // meter mode
             bool notmeter = !(meter || step_meter);
             set_prop_visible(props, P_SLOPE, notmeter);
+            set_prop_visible(props, P_ROLLOFF_Q, notmeter);
+            set_prop_visible(props, P_ROLLOFF_RATE, notmeter);
             set_prop_visible(props, P_CUTOFF_LOW, notmeter);
             set_prop_visible(props, P_CUTOFF_HIGH, notmeter);
             set_prop_visible(props, P_FILTER_MODE, notmeter);
@@ -320,6 +324,10 @@ namespace callbacks {
         obs_property_int_set_suffix(ceiling, " dBFS");
         auto slope = obs_properties_add_float_slider(props, P_SLOPE, T(P_SLOPE), 0.0, 10.0, 0.01);
         obs_property_set_long_description(slope, T(P_SLOPE_DESC));
+        auto rolloff_q = obs_properties_add_float_slider(props, P_ROLLOFF_Q, T(P_ROLLOFF_Q), 0.0, 10.0, 0.01);
+        obs_property_set_long_description(rolloff_q, T(P_ROLLOFF_Q_DESC));
+        auto rolloff_rate = obs_properties_add_float_slider(props, P_ROLLOFF_RATE, T(P_ROLLOFF_RATE), 0.0, 60.0, 0.01);
+        obs_property_set_long_description(rolloff_rate, T(P_ROLLOFF_RATE_DESC));
         auto renderlist = obs_properties_add_list(props, P_RENDER_MODE, T(P_RENDER_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         obs_property_list_add_string(renderlist, T(P_LINE), P_LINE);
         obs_property_list_add_string(renderlist, T(P_SOLID), P_SOLID);
@@ -399,6 +407,8 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_floor = (int)obs_data_get_int(settings, P_FLOOR);
     m_ceiling = (int)obs_data_get_int(settings, P_CEILING);
     m_slope = (float)obs_data_get_double(settings, P_SLOPE);
+    m_rolloff_q = (float)obs_data_get_double(settings, P_ROLLOFF_Q);
+    m_rolloff_rate = (float)obs_data_get_double(settings, P_ROLLOFF_RATE);
     auto rendermode = obs_data_get_string(settings, P_RENDER_MODE);
     auto color_base = obs_data_get_int(settings, P_COLOR_BASE);
     auto color_crest = obs_data_get_int(settings, P_COLOR_CREST);
@@ -637,6 +647,28 @@ void WAVSource::init_interp(unsigned int sz)
     }
 }
 
+void WAVSource::init_rolloff()
+{
+    const auto sz = m_fft_size / 2;
+    const auto sr = (float)m_audio_info.samples_per_sec;
+    const auto coeff = sr / (float)m_fft_size;
+    const auto ratio = std::exp2(m_rolloff_q);
+    const auto freq_low = (float)m_cutoff_low * ratio;
+    const auto freq_high = (float)m_cutoff_high / ratio;
+
+    m_rolloff_modifiers.resize(m_fft_size / 2);
+    m_rolloff_modifiers[0] = 0.0f;
+    for(auto i = 1; i < sz; ++i)
+    {
+        auto freq = i * coeff;
+        auto ratio_low = freq_low / freq;
+        auto ratio_high = freq / freq_high;
+        auto low_attenuation = (ratio_low > 1.0f) ? (m_rolloff_rate * std::log2(ratio_low)) : 0.0f;
+        auto high_attenuation = (ratio_high > 1.0f) ? (m_rolloff_rate * std::log2(ratio_high)) : 0.0f;
+        m_rolloff_modifiers[i] = low_attenuation + high_attenuation;
+    }
+}
+
 WAVSource::WAVSource(obs_data_t *settings, obs_source_t *source)
 {
     m_source = source;
@@ -868,6 +900,12 @@ void WAVSource::update(obs_data_t *settings)
             m_cap_verts[j].y = m_cap_radius * std::sin(a);
         }
     }
+
+    // roll-off
+    if((m_rolloff_q > 0.0f) && (m_rolloff_rate > 0.0f))
+        init_rolloff();
+    else
+        m_rolloff_modifiers.clear();
 }
 
 void WAVSource::tick(float seconds)

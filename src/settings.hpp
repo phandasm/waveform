@@ -76,6 +76,8 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_FLOOR             "floor"
 #define P_CEILING           "ceiling"
 #define P_SLOPE             "slope"
+#define P_ROLLOFF_Q         "rolloff_q"
+#define P_ROLLOFF_RATE      "rolloff_rate"
 
 #define P_GRAVITY           "gravity"
 #define P_TSMOOTHING        "temporal_smoothing"
@@ -115,3 +117,5 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_SLOPE_DESC        "slope_desc"
 #define P_DEADZONE_DESC     "deadzone_desc"
 #define P_CAPS_DESC         "caps_desc"
+#define P_ROLLOFF_Q_DESC    "rolloff_q_desc"
+#define P_ROLLOFF_RATE_DESC "rolloff_rate_desc"

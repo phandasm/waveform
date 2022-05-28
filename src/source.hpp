@@ -158,10 +158,15 @@ protected:
     bool m_rounded_caps = false;
     bool m_hide_on_silent = false;
     int m_channel_spacing = 0;
+    float m_rolloff_q = 0.0f;
+    float m_rolloff_rate = 0.0f;
 
     // interpolation
     std::vector<float> m_interp_indices;
     std::vector<float> m_interp_bufs[2];
+
+    // roll-off
+    std::vector<float> m_rolloff_modifiers;
 
     // filter
     Kernel<float> m_kernel;
@@ -183,6 +188,7 @@ protected:
     void free_bufs();
 
     void init_interp(unsigned int sz);
+    void init_rolloff();
 
     void render_curve(gs_effect_t *effect);
     void render_bars(gs_effect_t *effect);
