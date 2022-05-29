@@ -19,7 +19,6 @@
 #include "math_funcs.hpp"
 #include "source.hpp"
 #include "settings.hpp"
-#include <graphics/matrix4.h>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -896,8 +895,7 @@ void WAVSource::update(obs_data_t *settings)
         for(auto j = 0; j < verts; ++j)
         {
             auto a = j * angle;
-            m_cap_verts[j].x = m_cap_radius * std::cos(a);
-            m_cap_verts[j].y = m_cap_radius * std::sin(a);
+            vec3_set(&m_cap_verts[j], m_cap_radius * std::cos(a), m_cap_radius * std::sin(a), 0.0f);
         }
     }
 
@@ -1281,13 +1279,11 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                     auto stop = m_radial ? m_cap_tris : (start + half);
                     for(auto j = start; j < stop; ++j)
                     {
-                        auto cx1 = m_cap_verts[j].x;
-                        auto cy1 = m_cap_verts[j].y;
-                        auto cx2 = m_cap_verts[j + 1].x;
-                        auto cy2 = m_cap_verts[j + 1].y;
-                        vec3_set(&vbdata->points[vertpos], cx1 + ccx, cy1 + val, 0);
-                        vec3_set(&vbdata->points[vertpos + 1], cx2 + ccx, cy2 + val, 0);
-                        vec3_set(&vbdata->points[vertpos + 2], ccx, val, 0);
+                        vec3 cvert;
+                        vec3_set(&cvert, ccx, val, 0.0f);
+                        vec3_add(&vbdata->points[vertpos], &m_cap_verts[j], &cvert);
+                        vec3_add(&vbdata->points[vertpos + 1], &m_cap_verts[j + 1], &cvert);
+                        vec3_copy(&vbdata->points[vertpos + 2], &cvert);
                         vertpos += 3;
                     }
                     if(!m_stereo || (m_channel_spacing > 0))
@@ -1297,13 +1293,11 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                         stop = m_radial ? m_cap_tris : (start + half);
                         for(auto j = start; j < stop; ++j)
                         {
-                            auto cx1 = m_cap_verts[j].x;
-                            auto cy1 = m_cap_verts[j].y;
-                            auto cx2 = m_cap_verts[j + 1].x;
-                            auto cy2 = m_cap_verts[j + 1].y;
-                            vec3_set(&vbdata->points[vertpos], cx1 + ccx, cy1 + ccy, 0);
-                            vec3_set(&vbdata->points[vertpos + 1], cx2 + ccx, cy2 + ccy, 0);
-                            vec3_set(&vbdata->points[vertpos + 2], ccx, ccy, 0);
+                            vec3 cvert;
+                            vec3_set(&cvert, ccx, ccy, 0.0f);
+                            vec3_add(&vbdata->points[vertpos], &m_cap_verts[j], &cvert);
+                            vec3_add(&vbdata->points[vertpos + 1], &m_cap_verts[j + 1], &cvert);
+                            vec3_copy(&vbdata->points[vertpos + 2], &cvert);
                             vertpos += 3;
                         }
                     }

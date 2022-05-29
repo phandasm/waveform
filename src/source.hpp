@@ -19,6 +19,7 @@
 #include <mutex>
 #include <obs-module.h>
 #include <util/circlebuf.h>
+#include <graphics/vec3.h>
 #include <fftw3.h>
 #include <memory>
 #include "module.hpp"
@@ -178,7 +179,7 @@ protected:
     // rounded caps
     float m_cap_radius = 0.0f;
     int m_cap_tris = 4;             // number of triangles each cap is composed of (4 min)
-    std::vector<vec2> m_cap_verts;  // pre-rotated cap vertices (to be translated to final pos)
+    std::vector<vec3> m_cap_verts;  // pre-rotated cap vertices (to be translated to final pos)
 
     void get_settings(obs_data_t *settings);
 
