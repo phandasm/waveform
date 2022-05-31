@@ -325,7 +325,7 @@ namespace callbacks {
         obs_property_set_long_description(slope, T(P_SLOPE_DESC));
         auto rolloff_q = obs_properties_add_float_slider(props, P_ROLLOFF_Q, T(P_ROLLOFF_Q), 0.0, 10.0, 0.01);
         obs_property_set_long_description(rolloff_q, T(P_ROLLOFF_Q_DESC));
-        auto rolloff_rate = obs_properties_add_float_slider(props, P_ROLLOFF_RATE, T(P_ROLLOFF_RATE), 0.0, 60.0, 0.01);
+        auto rolloff_rate = obs_properties_add_float_slider(props, P_ROLLOFF_RATE, T(P_ROLLOFF_RATE), 0.0, 65.0, 0.01);
         obs_property_set_long_description(rolloff_rate, T(P_ROLLOFF_RATE_DESC));
         auto renderlist = obs_properties_add_list(props, P_RENDER_MODE, T(P_RENDER_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         obs_property_list_add_string(renderlist, T(P_LINE), P_LINE);
