@@ -6,6 +6,8 @@ on:
   
   pull_request:
     paths-ignore: ['**.md']
+  
+  workflow_dispatch:
 
 jobs:
   ubuntu64:
@@ -30,12 +32,12 @@ jobs:
         run: make && make install
       
       - name: 'Package Binaries'
-        if: success() && github.ref_type == 'tag' && github.event_name != 'pull_request'
+        if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
         working-directory: ${{github.workspace}}/bin
         run: tar -czf Waveform_${{github.ref_name}}_Ubuntu_${{runner.arch}}.tar.gz *
       
       - name: 'Publish Release'
-        if: success() && github.ref_type == 'tag' && github.event_name != 'pull_request'
+        if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v1
         with:
           files: ${{github.workspace}}/bin/*.tar.gz
