@@ -31,15 +31,6 @@ if(WIN32 OR APPLE)
 endif()
 find_package(LibObs REQUIRED)
 
-# arch flags
-if(NOT DISABLE_X86_SIMD)
-    if(MSVC)
-        add_compile_options("/arch:AVX")
-    else()
-        add_compile_options("-mavx")
-    endif()
-endif()
-
 if(MSVC)
     add_definitions(/MP) # parallel builds
 
@@ -47,6 +38,11 @@ if(MSVC)
     if(EXTRA_OPTIMIZATIONS)
         add_compile_options("$<$<CONFIG:Release>:/GL>" "$<$<CONFIG:Release>:/Oi>")
         add_link_options("$<$<CONFIG:Release>:/LTCG>")
+    endif()
+
+    # enable SSE2 globally for 32-bit build
+    if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+        add_compile_options("/arch:SSE2")
     endif()
 
     # enable PDB for release builds
@@ -133,6 +129,15 @@ if(NOT DISABLE_X86_SIMD)
         "src/source_avx.cpp"
         "src/aligned_mem.hpp"
     )
+
+    # arch flags
+    if(MSVC)
+        set_source_files_properties("src/source_avx.cpp" PROPERTIES COMPILE_FLAGS "/arch:AVX")
+        set_source_files_properties("src/source_avx2.cpp" PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+    else()
+        set_source_files_properties("src/source_avx.cpp" PROPERTIES COMPILE_FLAGS "-mavx")
+        set_source_files_properties("src/source_avx2.cpp" PROPERTIES COMPILE_FLAGS "-mavx2")
+    endif()
 
     add_subdirectory(deps/cpu_features EXCLUDE_FROM_ALL)
     if(NOT MSVC AND NOT BUILD_SHARED_LIBS) # Clang complains
