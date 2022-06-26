@@ -164,7 +164,7 @@ protected:
 
     // interpolation
     std::vector<float> m_interp_indices;
-    std::vector<float> m_interp_bufs[2];
+    std::vector<float> m_interp_bufs[3]; // third buffer used as intermediate for gauss filter
 
     // roll-off
     std::vector<float> m_rolloff_modifiers;

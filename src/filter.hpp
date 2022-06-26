@@ -170,36 +170,36 @@ T weighted_avg_fma3(const std::vector<T>& samples, const Kernel<T>& kernel, intm
 #endif // !DISABLE_X86_SIMD
 
 template<typename T>
-std::vector<T> apply_filter(const std::vector<T>& samples, const Kernel<T>& kernel)
+std::vector<T>& apply_filter(const std::vector<T>& samples, const Kernel<T>& kernel, std::vector<T>& output)
 {
-    auto sz = samples.size();
-    std::vector<T> filtered;
-    filtered.resize(sz);
+    const auto sz = samples.size();
+    if(output.size() < sz)
+        output.resize(sz);
     for(auto i = 0u; i < sz; ++i)
-        filtered[i] = weighted_avg(samples, kernel, i);
-    return filtered;
+        output[i] = weighted_avg(samples, kernel, i);
+    return output;
 }
 
 #ifndef DISABLE_X86_SIMD
 
 template<typename T>
 DECORATE_AVX
-std::vector<T> apply_filter_fma3(const std::vector<T>& samples, const Kernel<T>& kernel)
+std::vector<T>& apply_filter_fma3(const std::vector<T>& samples, const Kernel<T>& kernel, std::vector<T>& output)
 {
-    auto sz = samples.size();
-    std::vector<T> filtered;
-    filtered.resize(sz);
+    const auto sz = samples.size();
+    if(output.size() < sz)
+        output.resize(sz);
     if((size_t)kernel.sse_size >= ((sizeof(__m128) / sizeof(T)) * 2)) // make sure we get at least 2 SIMD iterations
     {
         for(auto i = 0u; i < sz; ++i)
-            filtered[i] = weighted_avg_fma3(samples, kernel, i);
+            output[i] = weighted_avg_fma3(samples, kernel, i);
     }
     else // otherwise use the plain C version
     {
         for(auto i = 0u; i < sz; ++i)
-            filtered[i] = weighted_avg(samples, kernel, i);
+            output[i] = weighted_avg(samples, kernel, i);
     }
-    return filtered;
+    return output;
 }
 
 #endif // !DISABLE_X86_SIMD
