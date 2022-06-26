@@ -20,6 +20,7 @@ endif()
 
 option(DISABLE_X86_SIMD "Disable x86 SIMD optimizations" OFF)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF) # static link dependencies
+option(NO_LIB_PREFIX "Don't add the lib prefix to output filename" OFF)
 if(NOT MSVC)
     option(STATIC_FFTW "Static link FFTW" OFF) # allow static linking FFTW on non-windows platforms
     option(BUILTIN_FFTW "Build FFTW from source" OFF)
@@ -151,6 +152,9 @@ if(MSVC)
 else()
     target_compile_options(waveform PRIVATE "-Wall" "-Wextra")
     set(DECORATE_SIMD_FUNCS ON)
+endif()
+if(NO_LIB_PREFIX)
+    set_target_properties(waveform PROPERTIES PREFIX "")
 endif()
 
 set(CMAKE_REQUIRED_INCLUDES ${LIBOBS_INCLUDE_DIRS})

@@ -39,7 +39,7 @@ jobs:
         run: cmake --build ${{github.workspace}}/deps/obs-studio/build --config=Release
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DCMAKE_OSX_ARCHITECTURES="arm64" -DDISABLE_X86_SIMD=ON -DLibObs_ROOT="${{github.workspace}}/deps/obs-studio" -DBUILTIN_FFTW=ON -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/bin
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DCMAKE_OSX_ARCHITECTURES="arm64" -DNO_LIB_PREFIX=ON -DDISABLE_X86_SIMD=ON -DLibObs_ROOT="${{github.workspace}}/deps/obs-studio" -DBUILTIN_FFTW=ON -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/bin
       
       - name: 'Build'
         run: |
