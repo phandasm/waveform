@@ -954,9 +954,9 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
     auto tech = gs_effect_get_technique(shader, techname);
     
-    const auto center = (float)m_height / 2 + 0.5f;
-    const auto right = (float)m_width + 0.5f;
-    const auto bottom = (float)m_height + 0.5f;
+    const auto center = (float)m_height / 2;
+    const auto right = (float)m_width;
+    const auto bottom = (float)m_height;
     const auto dbrange = m_ceiling - m_floor;
     const auto cpos = m_stereo ? center : bottom;
     const auto channel_offset = m_channel_spacing * 0.5f;
@@ -1012,7 +1012,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         const auto step = (m_render_mode == RenderMode::LINE) ? 1 : 2;
         for(auto i = 0u; i < m_width; i += step)
         {
-            auto val = lerp(0.5f, cpos - channel_offset, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
+            auto val = lerp(0.0f, cpos - channel_offset, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
             if(val < miny)
                 miny = val;
             m_interp_bufs[channel][i] = val;
@@ -1035,21 +1035,22 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         auto bot = cpos - offset;
         vbdata = gs_vertexbuffer_get_data(vbuf);
         if(m_render_mode != RenderMode::LINE)
-            vec3_set(&vbdata->points[vertpos++], -0.5, bot, 0);
+            vec3_set(&vbdata->points[vertpos++], 0, bot, 0);
 
         for(auto i = 0u; i < m_width; ++i)
         {
+            auto x = (float)i;
             if((m_render_mode != RenderMode::LINE) && (i & 1))
             {
-                vec3_set(&vbdata->points[vertpos++], (float)i + 0.5f, bot, 0);
+                vec3_set(&vbdata->points[vertpos++], x, bot, 0);
                 continue;
             }
 
             auto val = m_interp_bufs[channel][i];
             if(channel == 0)
-                vec3_set(&vbdata->points[vertpos++], (float)i + 0.5f, val, 0);
+                vec3_set(&vbdata->points[vertpos++], x, val, 0);
             else
-                vec3_set(&vbdata->points[vertpos++], (float)i + 0.5f, bottom - val, 0);
+                vec3_set(&vbdata->points[vertpos++], x, bottom - val, 0);
         }
 
         if(m_render_mode != RenderMode::LINE)
@@ -1088,8 +1089,8 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
     const auto bar_stride = m_bar_width + m_bar_gap;
     const auto step_stride = m_step_width + m_step_gap;
-    const auto center = (float)m_height / 2 + 0.5f;
-    const auto bottom = (float)m_height + 0.5f;
+    const auto center = (float)m_height / 2;
+    const auto bottom = (float)m_height;
     const auto dbrange = m_ceiling - m_floor;
     const auto cpos = m_stereo ? center : bottom;
     const auto channel_offset = m_channel_spacing * 0.5f;
@@ -1197,7 +1198,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             }
         }
 
-        auto border_top = (m_rounded_caps) ? m_cap_radius : 0.5f;
+        auto border_top = (m_rounded_caps) ? m_cap_radius : 0.0f;
         auto border_bottom = (m_rounded_caps && (!m_stereo || (m_channel_spacing > 0))) ? cpos - m_cap_radius : cpos;
         if(m_channel_spacing > 0)
             border_bottom -= channel_offset;
