@@ -131,8 +131,8 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
             auto chunk2 = _mm256_permutevar8x32_ps(_mm256_load_ps(&buf[step]), shuffle_mask);
 
             // pack the real and imaginary components into separate vectors
-            auto rvec = _mm256_permute2f128_ps(chunk1, chunk2, 0 | (2 << 4));
-            auto ivec = _mm256_permute2f128_ps(chunk1, chunk2, 1 | (3 << 4));
+            auto rvec = _mm256_insertf128_ps(chunk1, _mm256_castps256_ps128(chunk2), 1); // faster than vperm2f128 on AMD until Zen2
+            auto ivec = _mm256_permute2f128_ps(chunk1, chunk2, 1 | (3 << 4)); // no choice here (without using more instructions)
 
             // calculate normalized magnitude
             // 2 * magnitude / N

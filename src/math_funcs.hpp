@@ -56,7 +56,9 @@ std::enable_if_t<std::is_floating_point_v<T>, T> lanczos_interp(T x, T w, const 
     T val = 0;
     const auto floorx = (intmax_t)x;
     const auto floorw = (intmax_t)w;
-    for(auto i = std::max(floorx - floorw + 1, (intmax_t)0); i <= std::min(floorx + floorw, (intmax_t)len - 1); ++i)
+    const auto start = std::max(floorx - floorw + 1, (intmax_t)0);
+    const auto stop = std::min(floorx + floorw, (intmax_t)len - 1);
+    for(auto i = start; i <= stop; ++i)
         val += (T)buf[i] * (T)lanczos(x - i, w);
     return val;
 }
