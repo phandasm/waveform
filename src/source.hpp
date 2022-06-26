@@ -181,6 +181,9 @@ protected:
     int m_cap_tris = 4;             // number of triangles each cap is composed of (4 min)
     std::vector<vec3> m_cap_verts;  // pre-rotated cap vertices (to be translated to final pos)
 
+    // stepped bars
+    std::vector<vec3> m_step_verts;  // vertices for one step of a bar (to be translated to final pos)
+
     void get_settings(obs_data_t *settings);
 
     void recapture_audio();
@@ -190,6 +193,7 @@ protected:
 
     void init_interp(unsigned int sz);
     void init_rolloff();
+    void init_steps();
 
     void render_curve(gs_effect_t *effect);
     void render_bars(gs_effect_t *effect);

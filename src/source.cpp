@@ -668,6 +668,23 @@ void WAVSource::init_rolloff()
     }
 }
 
+void WAVSource::init_steps()
+{
+    m_step_verts.resize(6);
+
+    const auto x1 = 0.0f;
+    const auto x2 = (float)m_bar_width;
+    const auto y1 = 0.0f;
+    const auto y2 = (float)m_step_width;
+
+    vec3_set(&m_step_verts[0], x1, y1, 0);
+    vec3_set(&m_step_verts[1], x2, y1, 0);
+    vec3_set(&m_step_verts[2], x1, y2, 0);
+    vec3_set(&m_step_verts[3], x2, y1, 0);
+    vec3_set(&m_step_verts[4], x1, y2, 0);
+    vec3_set(&m_step_verts[5], x2, y2, 0);
+}
+
 WAVSource::WAVSource(obs_data_t *settings, obs_source_t *source)
 {
     m_source = source;
@@ -898,6 +915,10 @@ void WAVSource::update(obs_data_t *settings)
             vec3_set(&m_cap_verts[j], m_cap_radius * std::cos(a), m_cap_radius * std::sin(a), 0.0f);
         }
     }
+
+    // stepped bars
+    if((m_display_mode == DisplayMode::STEPPED_BAR) || (m_display_mode == DisplayMode::STEPPED_METER))
+        init_steps();
 
     // roll-off
     if((m_rolloff_q > 0.0f) && (m_rolloff_rate > 0.0f))
@@ -1225,39 +1246,37 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
         for(auto i = 0; i < m_num_bars; ++i)
         {
-            auto x1 = (float)(i * bar_stride);
-            auto x2 = x1 + m_bar_width;
             auto val = m_interp_bufs[channel][i];
 
             if((m_display_mode == DisplayMode::STEPPED_BAR) || (m_display_mode == DisplayMode::STEPPED_METER))
             {
+                const auto x = (float)(i * bar_stride);
+                const auto maxheight = (cpos - val - channel_offset);
                 for(auto j = 0u; j < max_steps; ++j)
                 {
-                    auto y1 = (float)(j * step_stride);
-                    auto y2 = y1 + m_step_width;
-                    if((cpos - val - channel_offset) < y2)
+                    auto y = (float)(j * step_stride);
+                    if(y >= maxheight)
                         break;
                     if(channel)
-                    {
-                        y1 = cpos + y1 + channel_offset;
-                        y2 = cpos + y2 + channel_offset;
-                    }
+                        y = cpos + y + channel_offset;
                     else
-                    {
-                        y1 = cpos - y1 - channel_offset;
-                        y2 = cpos - y2 - channel_offset;
-                    }
-                    vec3_set(&vbdata->points[vertpos], x1, y1, 0);
-                    vec3_set(&vbdata->points[vertpos + 1], x2, y1, 0);
-                    vec3_set(&vbdata->points[vertpos + 2], x1, y2, 0);
-                    vec3_set(&vbdata->points[vertpos + 3], x2, y1, 0);
-                    vec3_set(&vbdata->points[vertpos + 4], x1, y2, 0);
-                    vec3_set(&vbdata->points[vertpos + 5], x2, y2, 0);
+                        y = cpos - y - channel_offset;
+
+                    vec3 vert;
+                    vec3_set(&vert, x, y, 0.0f);
+                    vec3_add(&vbdata->points[vertpos], &m_step_verts[0], &vert);
+                    vec3_add(&vbdata->points[vertpos + 1], &m_step_verts[1], &vert);
+                    vec3_add(&vbdata->points[vertpos + 2], &m_step_verts[2], &vert);
+                    vec3_add(&vbdata->points[vertpos + 3], &m_step_verts[3], &vert);
+                    vec3_add(&vbdata->points[vertpos + 4], &m_step_verts[4], &vert);
+                    vec3_add(&vbdata->points[vertpos + 5], &m_step_verts[5], &vert);
                     vertpos += 6;
                 }
             }
             else
             {
+                auto x1 = (float)(i * bar_stride);
+                auto x2 = x1 + m_bar_width;
                 auto offset = (m_rounded_caps ? m_cap_radius : 0.0f) + channel_offset;
                 if(channel)
                 {
