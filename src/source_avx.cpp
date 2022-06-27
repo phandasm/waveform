@@ -15,7 +15,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "waveform_config.hpp"
 #include "source.hpp"
 #include <immintrin.h>
 #include <algorithm>
@@ -23,7 +22,6 @@
 
 // adaptation of WAVSourceAVX2 to support CPUs without AVX2
 // see comments of WAVSourceAVX2
-DECORATE_AVX
 void WAVSourceAVX::tick_spectrum(float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
@@ -188,7 +186,6 @@ void WAVSourceAVX::tick_spectrum(float seconds)
     }
 }
 
-DECORATE_AVX
 void WAVSourceAVX::tick_meter(float seconds)
 {
     if(!check_audio_capture(seconds))

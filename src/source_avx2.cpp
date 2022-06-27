@@ -15,13 +15,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "waveform_config.hpp"
 #include "source.hpp"
 #include <immintrin.h>
 #include <algorithm>
 #include <cstring>
 
-DECORATE_AVX2
 void WAVSourceAVX2::tick_spectrum(float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()

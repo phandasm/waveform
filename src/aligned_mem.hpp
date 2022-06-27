@@ -17,7 +17,7 @@
 
 #pragma once
 #include <cstddef>
-#include <immintrin.h>
+#include <emmintrin.h>
 
 template<typename T>
 T *avx_alloc(std::size_t num_elements)

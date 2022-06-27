@@ -85,10 +85,10 @@ if(BUILTIN_FFTW)
         option(WITH_COMBINED_THREADS "Merge thread library" ON)
     endif()
     option(ENABLE_FLOAT "single-precision" ON)
-    if(NOT MSVC AND NOT DISABLE_X86_SIMD) # enable FFTW AVX support by default for GCC/Clang builds
+    if(NOT MSVC AND NOT DISABLE_X86_SIMD)
         option(ENABLE_SSE "Compile with SSE instruction set support" ON)
         option(ENABLE_SSE2 "Compile with SSE2 instruction set support" ON)
-        option(ENABLE_AVX "Compile with AVX instruction set support" ON)
+        #option(ENABLE_AVX "Compile with AVX instruction set support" ON) # i think this results in global VEX when building with CMake
     endif()
     add_subdirectory("deps/fftw-3.3.10" EXCLUDE_FROM_ALL)
     if(NOT MSVC AND NOT BUILD_SHARED_LIBS)
@@ -127,6 +127,7 @@ if(NOT DISABLE_X86_SIMD)
     list(APPEND PLUGIN_SOURCES
         "src/source_avx2.cpp"
         "src/source_avx.cpp"
+        "src/filter_fma3.cpp"
         "src/aligned_mem.hpp"
     )
 
@@ -134,9 +135,11 @@ if(NOT DISABLE_X86_SIMD)
     if(MSVC)
         set_source_files_properties("src/source_avx.cpp" PROPERTIES COMPILE_FLAGS "/arch:AVX")
         set_source_files_properties("src/source_avx2.cpp" PROPERTIES COMPILE_FLAGS "/arch:AVX2")
+        set_source_files_properties("src/filter_fma3.cpp" PROPERTIES COMPILE_FLAGS "/arch:AVX")
     else()
-        set_source_files_properties("src/source_avx.cpp" PROPERTIES COMPILE_FLAGS "-mavx")
-        set_source_files_properties("src/source_avx2.cpp" PROPERTIES COMPILE_FLAGS "-mavx2")
+        set_source_files_properties("src/source_avx.cpp" PROPERTIES COMPILE_FLAGS "-mavx -mfma")
+        set_source_files_properties("src/source_avx2.cpp" PROPERTIES COMPILE_FLAGS "-mavx2 -mfma")
+        set_source_files_properties("src/filter_fma3.cpp" PROPERTIES COMPILE_FLAGS "-mavx -mfma")
     endif()
 
     add_subdirectory(deps/cpu_features EXCLUDE_FROM_ALL)
@@ -156,7 +159,6 @@ if(MSVC)
     target_compile_options(waveform PRIVATE "/W4") # warning level
 else()
     target_compile_options(waveform PRIVATE "-Wall" "-Wextra")
-    set(DECORATE_SIMD_FUNCS ON)
 endif()
 if(NO_LIB_PREFIX)
     set_target_properties(waveform PROPERTIES PREFIX "")
