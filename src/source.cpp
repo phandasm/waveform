@@ -19,6 +19,7 @@
 #include "math_funcs.hpp"
 #include "source.hpp"
 #include "settings.hpp"
+#include "log.hpp"
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -59,7 +60,7 @@ static void update_audio_info(obs_audio_info *info)
 {
     if(!obs_get_audio_info(info))
     {
-        blog(LOG_WARNING, "[" MODULE_NAME "]: Could not determine audio configuration");
+        LogWarn << "Could not determine audio configuration";
         info->samples_per_sec = 44100;
         info->speakers = SPEAKERS_UNKNOWN;
     }
@@ -541,7 +542,7 @@ void WAVSource::recapture_audio()
         else if(!p_equ(src_name, "none"))
         {
             if(m_retries++ == 0)
-                blog(LOG_WARNING, "[" MODULE_NAME "]: Failed to get audio source: \"%s\"", src_name);
+                LogWarn << "Failed to get audio source: \"" << src_name << "\"";
         }
     }
 }
@@ -657,7 +658,7 @@ void WAVSource::init_rolloff()
 
     m_rolloff_modifiers.resize(m_fft_size / 2);
     m_rolloff_modifiers[0] = 0.0f;
-    for(auto i = 1; i < sz; ++i)
+    for(size_t i = 1u; i < sz; ++i)
     {
         auto freq = i * coeff;
         auto ratio_low = freq_low / freq;
@@ -740,11 +741,11 @@ void WAVSource::update(obs_data_t *settings)
         if(channels > 0)
         {
             m_capture_channels = std::min((uint32_t)channels, 2u);
-            blog(LOG_WARNING, "[" MODULE_NAME "]: Attempting to support unknown channel config: %s", std::to_string(channels).c_str());
+            LogWarn << "Attempting to support unknown channel config: " << channels;
         }
         else
         {
-            blog(LOG_WARNING, "[" MODULE_NAME "]: Could not determine audio channel count");
+            LogWarn << "Could not determine audio channel count";
         }
     }
 
@@ -1368,17 +1369,17 @@ void WAVSource::register_source()
 #endif // !DISABLE_X86_SIMD
 
 #if defined(__x86_64__) || defined(_M_X64)
-    blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s 64-bit", VERSION_STRING);
+    LogInfo << "Registered v" VERSION_STRING " x64";
 #elif defined(__i386__) || defined(_M_IX86)
-    blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s 32-bit", VERSION_STRING);
+    LogInfo << "Registered v" VERSION_STRING " x86";
 #elif defined(__arm__) || defined(_M_ARM)
-    blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s ARM", VERSION_STRING);
+    LogInfo << "Registered v" VERSION_STRING " ARM";
 #elif defined(__aarch64__)
-    blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s ARM64", VERSION_STRING);
+    LogInfo << "Registered v" VERSION_STRING " ARM64";
 #else
-    blog(LOG_INFO, "[" MODULE_NAME "]: Registered v%s Unknown Arch", VERSION_STRING);
+    LogInfo << "Registered v" VERSION_STRING " Unknown Arch";
 #endif
-    blog(LOG_INFO, "[" MODULE_NAME "]: Using CPU capabilities:%s", arch.c_str());
+    LogInfo << "Using CPU capabilities:" << arch;
 
     obs_source_info info{};
     info.id = MODULE_NAME "_source";

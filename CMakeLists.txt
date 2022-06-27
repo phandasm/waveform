@@ -121,6 +121,7 @@ set(PLUGIN_SOURCES
     "src/math_funcs.hpp"
     "src/filter.hpp"
     "src/settings.hpp"
+    "src/log.hpp"
 )
 
 if(NOT DISABLE_X86_SIMD)
