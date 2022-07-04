@@ -1118,7 +1118,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     const auto channel_offset = m_channel_spacing * 0.5f;
 
     auto max_steps = (size_t)((cpos - channel_offset) / step_stride);
-    if(((int)cpos - (int)(max_steps * step_stride) - (int)channel_offset) >= m_step_width)
+    if(((int)cpos - (int)(max_steps * step_stride) - (int)channel_offset) > m_step_width)
         ++max_steps;
 
     // vertex buffer
@@ -1261,7 +1261,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                     if(channel)
                         y = cpos + y + channel_offset;
                     else
-                        y = cpos - y - channel_offset;
+                        y = cpos - y - channel_offset - m_step_width;
 
                     vec3 vert;
                     vec3_set(&vert, x, y, 0.0f);
