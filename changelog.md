@@ -1,5 +1,5 @@
 - Fix rendering artifacts when using curve graph
-- Fix compatibility issues (rosetta 2, non-AVX CPUs)
+- Restore support for non-AVX CPUs
 - Update Chinese localization
 
 <details>
@@ -11,8 +11,6 @@
 </details>
 
 ## Installation
-Note that on x86 Waveform requires an AVX capable CPU (all Intel and AMD since ~2011).
-
 ### Windows
 Either  
 - Use the installer and select your OBS folder.  
@@ -42,7 +40,7 @@ Both methods include 32-bit and 64-bit binaries.
 - Extract Waveform\_v#.#.#\_MacOS\_x64.zip to your `/Library/Application Support/obs-studio/plugins` folder.  
 
 Note: Even if you have an M1 Mac, you probably want the x64. Use the ARM version only if you have a native ARM build of OBS.  
-If upgrading from a previous ARM build, please be sure to delete `libwaveform.so` if present.
+If upgrading from a 1.4.0 ARM build, please be sure to delete `libwaveform.so` if present as it has been renamed in future builds.
 </details>
 
 ### [OBS Music Edition 27.2.4 (Windows x64)](https://github.com/pkviet/obs-studio/releases/tag/v27.2.4)
