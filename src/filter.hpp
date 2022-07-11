@@ -48,7 +48,7 @@ Kernel<T> make_gauss_kernel(T sigma)
     constexpr auto pi2 = (T)M_PI * (T)2;
     const auto sigsqr = sigma * sigma;
     const auto expdenom = (T)2 * sigsqr;
-    const auto coeff = ((T)1 / (pi2 * sigsqr));
+    const auto coeff = ((T)1 / (std::sqrt(pi2) * sigma));
     auto j = 0;
     for(auto i = -w + 1; i < w; ++i)
     {
