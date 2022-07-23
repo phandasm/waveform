@@ -27,11 +27,12 @@
 template<typename T>
 struct Kernel
 {
+    static_assert(std::is_floating_point_v<T>, "Kernel must be a floating point type.");
     std::unique_ptr<T[], MembufDeleter> weights;
     int radius = 0;
     int size = 0;
     int sse_size = 0;
-    std::enable_if_t<std::is_floating_point_v<T>, T> sum = (T)0;
+    T sum = (T)0;
 };
 
 template<typename T>
@@ -68,8 +69,10 @@ T weighted_avg(const std::vector<T>& samples, const Kernel<T>& kernel, intmax_t 
     T sum = (T)0;
     if((start < 0) || (stop > (intmax_t)samples.size()))
     {
+        const auto loopstart = std::max(start, (intmax_t)0);
+        const auto loopstop = std::min(stop, (intmax_t)samples.size());
         T wsum = (T)0;
-        for(auto i = std::max(start, (intmax_t)0); i < std::min(stop, (intmax_t)samples.size()); ++i)
+        for(auto i = loopstart; i < loopstop; ++i)
         {
             auto weight = kernel.weights[i - start];
             wsum += weight;

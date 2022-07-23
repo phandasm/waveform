@@ -48,14 +48,15 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
         return;
     }
 
+    const auto dtsize = size_t(seconds * m_audio_info.samples_per_sec) * sizeof(float);
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
         // get captured audio
         if(m_capturebufs[channel].size >= bufsz)
         {
+            circlebuf_pop_front(&m_capturebufs[channel], nullptr, std::min(dtsize, m_capturebufs[channel].size - bufsz));
             circlebuf_peek_front(&m_capturebufs[channel], m_fft_input.get(), bufsz);
-            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - bufsz);
         }
         else
             continue;

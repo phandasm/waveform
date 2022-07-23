@@ -34,8 +34,10 @@ float weighted_avg_fma3(const std::vector<float>& samples, const Kernel<float>& 
     float sum = 0.0f;
     if((start < 0) || (stop > (intmax_t)samples.size()))
     {
+        const auto loopstart = std::max(start, (intmax_t)0);
+        const auto loopstop = std::min(stop, (intmax_t)samples.size());
         float wsum = 0.0f;
-        for(auto i = std::max(start, (intmax_t)0); i < std::min(stop, (intmax_t)samples.size()); ++i)
+        for(auto i = loopstart; i < loopstop; ++i)
         {
             auto weight = kernel.weights[i - start];
             wsum += weight;
