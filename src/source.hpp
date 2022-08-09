@@ -184,6 +184,12 @@ protected:
     // stepped bars
     std::vector<vec3> m_step_verts;  // vertices for one step of a bar (to be translated to final pos)
 
+    // render vars
+    gs_effect_t *m_shader = NULL;
+    gs_vertbuffer_t *m_vbuf = NULL;
+
+    void create_vbuf();
+
     void get_settings(obs_data_t *settings);
 
     void recapture_audio();
