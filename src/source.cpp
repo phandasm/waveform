@@ -953,10 +953,6 @@ void WAVSource::update(obs_data_t *settings)
             i.resize(m_num_bars);
     }
 
-    // vertex buffer must be rebuilt if the settings have changed
-    // this must be done after m_num_bars has been initialized
-    create_vbuf();
-
     // filter
     if(m_filter_mode == FilterMode::GAUSS)
         m_kernel = make_gauss_kernel(m_filter_radius);
@@ -996,6 +992,10 @@ void WAVSource::update(obs_data_t *settings)
         init_rolloff();
     else
         m_rolloff_modifiers.clear();
+
+    // vertex buffer must be rebuilt if the settings have changed
+    // this must be done after m_num_bars has been initialized
+    create_vbuf();
 }
 
 void WAVSource::tick(float seconds)
