@@ -691,11 +691,28 @@ WAVSource::WAVSource(obs_data_t *settings, obs_source_t *source)
     m_source = source;
     for(auto& i : m_capturebufs)
         circlebuf_init(&i);
+
     update(settings);
+
+    obs_enter_graphics();
+
+    // create shader
+    auto filename = obs_module_file("gradient.effect");
+    m_shader = gs_effect_create_from_file(filename, nullptr);
+    bfree(filename);
+
+    obs_leave_graphics();
 }
 
 WAVSource::~WAVSource()
 {
+    obs_enter_graphics();
+
+    gs_vertexbuffer_destroy(m_vbuf);
+    gs_effect_destroy(m_shader);
+
+    obs_leave_graphics();
+
     std::lock_guard lock(m_mtx);
     release_audio_capture();
     free_bufs();
@@ -722,6 +739,55 @@ unsigned int WAVSource::height()
     if(m_radial)
         return (unsigned int)((m_height + m_deadzone) * 2);
     return m_height;
+}
+
+void WAVSource::create_vbuf() {
+    size_t num_verts = 0;
+
+    if(m_display_mode == DisplayMode::CURVE)
+        num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2));
+    else
+    {
+        const auto bar_stride = m_bar_width + m_bar_gap;
+        const auto step_stride = m_step_width + m_step_gap;
+        const auto center = (float)m_height / 2;
+        const auto bottom = (float)m_height;
+        const auto dbrange = m_ceiling - m_floor;
+        const auto cpos = m_stereo ? center : bottom;
+        const auto channel_offset = m_channel_spacing * 0.5f;
+
+        auto max_steps = (size_t)((cpos - channel_offset) / step_stride);
+        if(((int)cpos - (int)(max_steps * step_stride) - (int)channel_offset) > m_step_width)
+            ++max_steps;
+
+        num_verts = (size_t)(m_num_bars * 6);
+        if((m_display_mode == DisplayMode::STEPPED_BAR) || (m_display_mode == DisplayMode::STEPPED_METER))
+            num_verts *= max_steps;
+        else if(m_rounded_caps)
+            num_verts += m_cap_tris * ((m_channel_spacing > 0) ? 12 : 6) * m_num_bars; // 2 caps per bar (middle omitted when 0 spacing)
+    }
+
+    obs_enter_graphics();
+
+    gs_vertexbuffer_destroy(m_vbuf);
+
+    auto vbdata = gs_vbdata_create();
+    vbdata->num = num_verts;
+    vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
+    vbdata->num_tex = 1;
+    vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
+    vbdata->tvarray->width = 2;
+    vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
+    m_vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
+
+    if(m_display_mode == DisplayMode::CURVE) {
+        for(auto i = 0u; i < num_verts; ++i)
+        {
+            vec3_set(&vbdata->points[i], i, 0, 0);
+        }
+    }
+
+    obs_leave_graphics();
 }
 
 void WAVSource::update(obs_data_t *settings)
@@ -926,6 +992,10 @@ void WAVSource::update(obs_data_t *settings)
         init_rolloff();
     else
         m_rolloff_modifiers.clear();
+
+    // vertex buffer must be rebuilt if the settings have changed
+    // this must be done after m_num_bars has been initialized
+    create_vbuf();
 }
 
 void WAVSource::tick(float seconds)
@@ -942,6 +1012,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
     std::lock_guard lock(m_mtx);
     if(m_last_silent && m_hide_on_silent)
         return;
+
     if(m_display_mode == DisplayMode::CURVE)
         render_curve(effect);
     else
@@ -954,27 +1025,12 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     //if(m_last_silent)
     //    return;
 
-    // vertex buffer
-    const auto num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2));
-    auto vbdata = gs_vbdata_create();
-    vbdata->num = num_verts;
-    vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
-    vbdata->num_tex = 1;
-    vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
-    vbdata->tvarray->width = 2;
-    vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
-    auto vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
-
-    auto filename = obs_module_file("gradient.effect");
-    auto shader = gs_effect_create_from_file(filename, nullptr);
-    bfree(filename);
-
     const char *techname;
     if(m_radial)
         techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
     else
         techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
-    auto tech = gs_effect_get_technique(shader, techname);
+    auto tech = gs_effect_get_technique(m_shader, techname);
     
     const auto center = (float)m_height / 2;
     const auto right = (float)m_width;
@@ -983,26 +1039,26 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     const auto cpos = m_stereo ? center : bottom;
     const auto channel_offset = m_channel_spacing * 0.5f;
 
-    auto grad_center = gs_effect_get_param_by_name(shader, "grad_center");
+    auto grad_center = gs_effect_get_param_by_name(m_shader, "grad_center");
     gs_effect_set_float(grad_center, cpos);
-    auto grad_offset = gs_effect_get_param_by_name(shader, "grad_offset");
+    auto grad_offset = gs_effect_get_param_by_name(m_shader, "grad_offset");
     gs_effect_set_float(grad_offset, channel_offset);
-    auto color_base = gs_effect_get_param_by_name(shader, "color_base");
+    auto color_base = gs_effect_get_param_by_name(m_shader, "color_base");
     gs_effect_set_vec4(color_base, &m_color_base);
-    auto color_crest = gs_effect_get_param_by_name(shader, "color_crest");
+    auto color_crest = gs_effect_get_param_by_name(m_shader, "color_crest");
     gs_effect_set_vec4(color_crest, &m_color_crest);
 
     if(m_radial)
     {
-        auto graph_width = gs_effect_get_param_by_name(shader, "graph_width");
+        auto graph_width = gs_effect_get_param_by_name(m_shader, "graph_width");
         gs_effect_set_float(graph_width, (float)m_width);
-        auto graph_height = gs_effect_get_param_by_name(shader, "graph_height");
+        auto graph_height = gs_effect_get_param_by_name(m_shader, "graph_height");
         gs_effect_set_float(graph_height, (float)m_height);
-        auto graph_deadzone = gs_effect_get_param_by_name(shader, "graph_deadzone");
+        auto graph_deadzone = gs_effect_get_param_by_name(m_shader, "graph_deadzone");
         gs_effect_set_float(graph_deadzone, m_deadzone);
-        auto graph_invert = gs_effect_get_param_by_name(shader, "graph_invert");
+        auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
         gs_effect_set_bool(graph_invert, m_invert);
-        auto radial_center = gs_effect_get_param_by_name(shader, "radial_center");
+        auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
         vec2 rc;
         vec2_set(&rc, (float)m_height + m_deadzone, (float)m_height + m_deadzone);
         gs_effect_set_vec2(radial_center, &rc);
@@ -1040,13 +1096,15 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
             m_interp_bufs[channel][i] = val;
         }
     }
-    auto grad_height = gs_effect_get_param_by_name(shader, "grad_height");
+    auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
     gs_effect_set_float(grad_height, (cpos - miny - channel_offset) * m_grad_ratio);
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
-    gs_load_vertexbuffer(vbuf);
+    gs_load_vertexbuffer(m_vbuf);
     gs_load_indexbuffer(nullptr);
+
+    auto vbdata = gs_vertexbuffer_get_data(m_vbuf);
 
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
@@ -1055,7 +1113,6 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         if(channel)
             offset = -offset;
         auto bot = cpos - offset;
-        vbdata = gs_vertexbuffer_get_data(vbuf);
         if(m_render_mode != RenderMode::LINE)
             vec3_set(&vbdata->points[vertpos++], 0, bot, 0);
 
@@ -1064,31 +1121,28 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
             auto x = (float)i;
             if((m_render_mode != RenderMode::LINE) && (i & 1))
             {
-                vec3_set(&vbdata->points[vertpos++], x, bot, 0);
+                vbdata->points[vertpos++].y = bot;
                 continue;
             }
 
             auto val = m_interp_bufs[channel][i];
             if(channel == 0)
-                vec3_set(&vbdata->points[vertpos++], x, val, 0);
+                vbdata->points[vertpos++].y = val;
             else
-                vec3_set(&vbdata->points[vertpos++], x, bottom - val, 0);
+                vbdata->points[vertpos++].y = bottom - val;
         }
 
         if(m_render_mode != RenderMode::LINE)
-            vec3_set(&vbdata->points[vertpos++], right, bot, 0);
+            vbdata->points[vertpos++].y = bot;
 
-        gs_vertexbuffer_flush(vbuf);
+        gs_vertexbuffer_flush(m_vbuf);
 
-        gs_draw((m_render_mode != RenderMode::LINE) ? GS_TRISTRIP : GS_LINESTRIP, 0, (uint32_t)num_verts);
+        gs_draw((m_render_mode != RenderMode::LINE) ? GS_TRISTRIP : GS_LINESTRIP, 0, (uint32_t)vbdata->num);
     }
 
     gs_load_vertexbuffer(nullptr);
-    gs_vertexbuffer_destroy(vbuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
-
-    gs_effect_destroy(shader);
 }
 
 // FIXME: DESPERATELY needs cleanup
@@ -1098,16 +1152,12 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     //if(m_last_silent)
     //    return;
 
-    auto filename = obs_module_file("gradient.effect");
-    auto shader = gs_effect_create_from_file(filename, nullptr);
-    bfree(filename);
-
     const char *techname;
     if(m_radial)
         techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
     else
         techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
-    auto tech = gs_effect_get_technique(shader, techname);
+    auto tech = gs_effect_get_technique(m_shader, techname);
 
     const auto bar_stride = m_bar_width + m_bar_gap;
     const auto step_stride = m_step_width + m_step_gap;
@@ -1121,41 +1171,26 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     if(((int)cpos - (int)(max_steps * step_stride) - (int)channel_offset) > m_step_width)
         ++max_steps;
 
-    // vertex buffer
-    auto num_verts = (size_t)(m_num_bars * 6);
-    if((m_display_mode == DisplayMode::STEPPED_BAR) || (m_display_mode == DisplayMode::STEPPED_METER))
-        num_verts *= max_steps;
-    else if(m_rounded_caps)
-        num_verts += m_cap_tris * ((m_channel_spacing > 0) ? 12 : 6) * m_num_bars; // 2 caps per bar (middle omitted when 0 spacing)
-    auto vbdata = gs_vbdata_create();
-    vbdata->num = num_verts;
-    vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
-    vbdata->num_tex = 1;
-    vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
-    vbdata->tvarray->width = 2;
-    vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
-    auto vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
-
-    auto grad_center = gs_effect_get_param_by_name(shader, "grad_center");
+    auto grad_center = gs_effect_get_param_by_name(m_shader, "grad_center");
     gs_effect_set_float(grad_center, cpos);
-    auto grad_offset = gs_effect_get_param_by_name(shader, "grad_offset");
+    auto grad_offset = gs_effect_get_param_by_name(m_shader, "grad_offset");
     gs_effect_set_float(grad_offset, channel_offset);
-    auto color_base = gs_effect_get_param_by_name(shader, "color_base");
+    auto color_base = gs_effect_get_param_by_name(m_shader, "color_base");
     gs_effect_set_vec4(color_base, &m_color_base);
-    auto color_crest = gs_effect_get_param_by_name(shader, "color_crest");
+    auto color_crest = gs_effect_get_param_by_name(m_shader, "color_crest");
     gs_effect_set_vec4(color_crest, &m_color_crest);
 
     if(m_radial)
     {
-        auto graph_width = gs_effect_get_param_by_name(shader, "graph_width");
+        auto graph_width = gs_effect_get_param_by_name(m_shader, "graph_width");
         gs_effect_set_float(graph_width, (float)m_width);
-        auto graph_height = gs_effect_get_param_by_name(shader, "graph_height");
+        auto graph_height = gs_effect_get_param_by_name(m_shader, "graph_height");
         gs_effect_set_float(graph_height, (float)m_height);
-        auto graph_deadzone = gs_effect_get_param_by_name(shader, "graph_deadzone");
+        auto graph_deadzone = gs_effect_get_param_by_name(m_shader, "graph_deadzone");
         gs_effect_set_float(graph_deadzone, m_deadzone);
-        auto graph_invert = gs_effect_get_param_by_name(shader, "graph_invert");
+        auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
         gs_effect_set_bool(graph_invert, m_invert);
-        auto radial_center = gs_effect_get_param_by_name(shader, "radial_center");
+        auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
         vec2 rc;
         vec2_set(&rc, (float)m_height + m_deadzone, (float)m_height + m_deadzone);
         gs_effect_set_vec2(radial_center, &rc);
@@ -1232,18 +1267,19 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             m_interp_bufs[channel][i] = val;
         }
     }
-    auto grad_height = gs_effect_get_param_by_name(shader, "grad_height");
+    auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
     gs_effect_set_float(grad_height, (cpos - miny - channel_offset) * m_grad_ratio);
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
-    gs_load_vertexbuffer(vbuf);
+    gs_load_vertexbuffer(m_vbuf);
     gs_load_indexbuffer(nullptr);
+
+    auto vbdata = gs_vertexbuffer_get_data(m_vbuf);
 
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         auto vertpos = 0u;
-        vbdata = gs_vertexbuffer_get_data(vbuf);
 
         for(auto i = 0; i < m_num_bars; ++i)
         {
@@ -1327,18 +1363,15 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             }
         }
 
-        gs_vertexbuffer_flush(vbuf);
+        gs_vertexbuffer_flush(m_vbuf);
 
         if(vertpos > 0)
             gs_draw(GS_TRIS, 0, vertpos);
     }
 
     gs_load_vertexbuffer(nullptr);
-    gs_vertexbuffer_destroy(vbuf);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
-
-    gs_effect_destroy(shader);
 }
 
 void WAVSource::show()
