@@ -706,6 +706,7 @@ WAVSource::WAVSource(obs_data_t *settings, obs_source_t *source)
 
 WAVSource::~WAVSource()
 {
+    std::lock_guard lock(m_mtx);
     obs_enter_graphics();
 
     gs_vertexbuffer_destroy(m_vbuf);
@@ -713,7 +714,6 @@ WAVSource::~WAVSource()
 
     obs_leave_graphics();
 
-    std::lock_guard lock(m_mtx);
     release_audio_capture();
     free_bufs();
 
@@ -748,11 +748,9 @@ void WAVSource::create_vbuf() {
         num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2));
     else
     {
-        const auto bar_stride = m_bar_width + m_bar_gap;
         const auto step_stride = m_step_width + m_step_gap;
         const auto center = (float)m_height / 2;
         const auto bottom = (float)m_height;
-        const auto dbrange = m_ceiling - m_floor;
         const auto cpos = m_stereo ? center : bottom;
         const auto channel_offset = m_channel_spacing * 0.5f;
 
@@ -783,7 +781,7 @@ void WAVSource::create_vbuf() {
     if(m_display_mode == DisplayMode::CURVE) {
         for(auto i = 0u; i < num_verts; ++i)
         {
-            vec3_set(&vbdata->points[i], i, 0, 0);
+            vec3_set(&vbdata->points[i], (float)i, 0, 0);
         }
     }
 
@@ -1033,7 +1031,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     auto tech = gs_effect_get_technique(m_shader, techname);
     
     const auto center = (float)m_height / 2;
-    const auto right = (float)m_width;
+    //const auto right = (float)m_width;
     const auto bottom = (float)m_height;
     const auto dbrange = m_ceiling - m_floor;
     const auto cpos = m_stereo ? center : bottom;
@@ -1118,7 +1116,6 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 
         for(auto i = 0u; i < m_width; ++i)
         {
-            auto x = (float)i;
             if((m_render_mode != RenderMode::LINE) && (i & 1))
             {
                 vbdata->points[vertpos++].y = bot;
