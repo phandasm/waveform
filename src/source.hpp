@@ -161,6 +161,7 @@ protected:
     int m_channel_spacing = 0;
     float m_rolloff_q = 0.0f;
     float m_rolloff_rate = 0.0f;
+    bool m_normalize_volume = false;
 
     // interpolation
     std::vector<float> m_interp_indices;
@@ -188,6 +189,12 @@ protected:
     gs_effect_t *m_shader = NULL;
     gs_vertbuffer_t *m_vbuf = NULL;
 
+    // volume normalization
+    float m_input_rms = 0.0f;
+    AVXBufR m_input_rms_buf;
+    size_t m_input_rms_size = 0;
+    size_t m_input_rms_pos = 0;
+
     void create_vbuf();
 
     void get_settings(obs_data_t *settings);
@@ -203,6 +210,8 @@ protected:
 
     void render_curve(gs_effect_t *effect);
     void render_bars(gs_effect_t *effect);
+
+    virtual void update_input_rms(const audio_data *audio) = 0; // compute RMS of input audio and adjust graph viewport accordingly
 
     virtual void tick_spectrum(float) = 0;  // process audio data in frequency spectrum mode
     virtual void tick_meter(float) = 0;     // process audio data in meter mode
@@ -220,7 +229,7 @@ protected:
     }
 
 public:
-    WAVSource(obs_data_t *settings, obs_source_t *source);
+    WAVSource(obs_source_t *source);
     virtual ~WAVSource();
 
     // no copying
@@ -254,31 +263,38 @@ public:
 #endif // !DISABLE_X86_SIMD
 };
 
-class WAVSourceAVX : public WAVSource
+class WAVSourceGeneric : public WAVSource
 {
-public:
-    using WAVSource::WAVSource;
-    ~WAVSourceAVX() override {}
-
+protected:
     void tick_spectrum(float seconds) override;
     void tick_meter(float seconds) override;
+
+    void update_input_rms(const audio_data *audio) override;
+
+public:
+    using WAVSource::WAVSource;
+    ~WAVSourceGeneric() override {}
+};
+
+class WAVSourceAVX : public WAVSourceGeneric
+{
+protected:
+    void tick_spectrum(float seconds) override;
+    void tick_meter(float seconds) override;
+
+    void update_input_rms(const audio_data *audio) override;
+
+public:
+    using WAVSourceGeneric::WAVSourceGeneric;
+    ~WAVSourceAVX() override {}
 };
 
 class WAVSourceAVX2 : public WAVSourceAVX
 {
+protected:
+    void tick_spectrum(float seconds) override;
+
 public:
     using WAVSourceAVX::WAVSourceAVX;
     ~WAVSourceAVX2() override {}
-
-    void tick_spectrum(float seconds) override;
-};
-
-class WAVSourceGeneric : public WAVSource
-{
-public:
-    using WAVSource::WAVSource;
-    ~WAVSourceGeneric() override {}
-
-    void tick_spectrum(float seconds) override;
-    void tick_meter(float seconds) override;
 };

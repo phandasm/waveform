@@ -158,6 +158,14 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
             m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 
+    if(m_normalize_volume)
+    {
+        const auto volume_compensation = m_last_silent ? 0.0f : std::min(-3.0f - dbfs(m_input_rms), 30.0f);
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 1; i < outsz; ++i)
+                m_decibels[channel][i] += volume_compensation;
+    }
+
     if((m_rolloff_q > 0.0f) && (m_rolloff_rate > 0.0f))
     {
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
@@ -231,4 +239,35 @@ void WAVSourceGeneric::tick_meter(float seconds)
         m_meter_buf[channel] = out;
         m_meter_val[channel] = dbfs(out);
     }
+}
+
+void WAVSourceGeneric::update_input_rms(const audio_data *audio)
+{
+    const auto sz = audio->frames;
+    auto data = (float**)&audio->data;
+    if(m_capture_channels > 1)
+    {
+        for(auto i = 0u; i < sz; ++i)
+        {
+            auto val = std::max(std::abs(data[0][i]), std::abs(data[1][i]));
+            m_input_rms_buf[m_input_rms_pos++] = val * val;
+            if(m_input_rms_pos >= m_input_rms_size)
+                m_input_rms_pos = 0;
+        }
+    }
+    else
+    {
+        for(auto i = 0u; i < sz; ++i)
+        {
+            auto val = data[0][i];
+            m_input_rms_buf[m_input_rms_pos++] = val * val;
+            if(m_input_rms_pos >= m_input_rms_size)
+                m_input_rms_pos = 0;
+        }
+    }
+
+    float sum = 0.0f;
+    for(size_t i = 0; i < m_input_rms_size; ++i)
+        sum += m_input_rms_buf[i];
+    m_input_rms = std::sqrt(sum / m_input_rms_size);
 }

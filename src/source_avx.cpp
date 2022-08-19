@@ -20,6 +20,26 @@
 #include <algorithm>
 #include <cstring>
 
+static inline float horizontal_sum(__m256 vec)
+{
+    auto high = _mm256_extractf128_ps(vec, 1); // split into two 128-bit vecs
+    auto low = _mm_add_ps(high, _mm256_castps256_ps128(vec)); // (h[0] + l[0]) (h[1] + l[1]) (h[2] + l[2]) (h[3] + l[3])
+    high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
+    low = _mm_add_ps(high, low); // (h[0] + l[0]) (h[1] + l[1])
+    high = _mm_movehdup_ps(low); // high[0] = low[1]
+    return _mm_cvtss_f32(_mm_add_ss(high, low));
+}
+
+static inline float horizontal_max(__m256 vec)
+{
+    auto high = _mm256_extractf128_ps(vec, 1); // split into two 128-bit vecs
+    auto low = _mm_max_ps(high, _mm256_castps256_ps128(vec)); // max(h[0], l[0]) max(h[1], l[1]) max(h[2], l[2]) max(h[3], l[3])
+    high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
+    low = _mm_max_ps(high, low); // max(h[0], l[0]) max(h[1], l[1])
+    high = _mm_movehdup_ps(low); // high[0] = low[1]
+    return _mm_cvtss_f32(_mm_max_ss(high, low));
+}
+
 // adaptation of WAVSourceAVX2 to support CPUs without AVX2
 // see comments of WAVSourceAVX2
 void WAVSourceAVX::tick_spectrum(float seconds)
@@ -174,6 +194,14 @@ void WAVSourceAVX::tick_spectrum(float seconds)
             m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 
+    if(m_normalize_volume)
+    {
+        const auto volume_compensation = m_last_silent ? 0.0f : std::min(-3.0f - dbfs(m_input_rms), 30.0f);
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 1; i < outsz; ++i)
+                m_decibels[channel][i] += volume_compensation;
+    }
+
     if((m_rolloff_q > 0.0f) && (m_rolloff_rate > 0.0f))
     {
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
@@ -234,14 +262,7 @@ void WAVSourceAVX::tick_meter(float seconds)
                 sum = _mm256_fmadd_ps(chunk, chunk, sum);
             }
 
-            auto high = _mm256_extractf128_ps(sum, 1); // split into two 128-bit vecs
-            auto low = _mm_add_ps(high, _mm256_castps256_ps128(sum)); // (h[0] + l[0]) (h[1] + l[1]) (h[2] + l[2]) (h[3] + l[3])
-            high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
-            low = _mm_add_ps(high, low); // (h[0] + l[0]) (h[1] + l[1])
-            high = _mm_movehdup_ps(low); // high[0] = low[1]
-            out = _mm_cvtss_f32(_mm_add_ss(high, low));
-
-            out = std::sqrt(out / m_fft_size);
+            out = std::sqrt(horizontal_sum(sum) / m_fft_size);
         }
         else
         {
@@ -255,12 +276,7 @@ void WAVSourceAVX::tick_meter(float seconds)
                 maxvec = _mm256_max_ps(maxvec, chunk);
             }
 
-            auto high = _mm256_extractf128_ps(maxvec, 1); // split into two 128-bit vecs
-            auto low = _mm_max_ps(high, _mm256_castps256_ps128(maxvec)); // max(h[0], l[0]) max(h[1], l[1]) max(h[2], l[2]) max(h[3], l[3])
-            high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
-            low = _mm_max_ps(high, low); // max(h[0], l[0]) max(h[1], l[1])
-            high = _mm_movehdup_ps(low); // high[0] = low[1]
-            out = _mm_cvtss_f32(_mm_max_ss(high, low));
+            out = horizontal_max(maxvec);
         }
 
         if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
@@ -273,4 +289,40 @@ void WAVSourceAVX::tick_meter(float seconds)
         m_meter_buf[channel] = out;
         m_meter_val[channel] = dbfs(out);
     }
+}
+
+void WAVSourceAVX::update_input_rms(const audio_data *audio)
+{
+    const auto sz = audio->frames;
+    auto data = (float**)&audio->data;
+    if(m_capture_channels > 1)
+    {
+        for(auto i = 0u; i < sz; ++i)
+        {
+            auto val = std::max(std::abs(data[0][i]), std::abs(data[1][i]));
+            m_input_rms_buf[m_input_rms_pos++] = val * val;
+            if(m_input_rms_pos >= m_input_rms_size)
+                m_input_rms_pos = 0;
+        }
+    }
+    else
+    {
+        for(auto i = 0u; i < sz; ++i)
+        {
+            auto val = data[0][i];
+            m_input_rms_buf[m_input_rms_pos++] = val * val;
+            if(m_input_rms_pos >= m_input_rms_size)
+                m_input_rms_pos = 0;
+        }
+    }
+
+    constexpr auto step = (sizeof(__m256) / sizeof(float)) * 2; // buffer size is 64-byte multiple
+    constexpr auto halfstep = step / 2;
+    auto sum = _mm256_setzero_ps();
+    for(size_t i = 0; i < m_input_rms_size; i += step)
+    {
+        sum = _mm256_add_ps(sum, _mm256_load_ps(&m_input_rms_buf[i]));
+        sum = _mm256_add_ps(sum, _mm256_load_ps(&m_input_rms_buf[i + halfstep]));
+    }
+    m_input_rms = std::sqrt(horizontal_sum(sum) / m_input_rms_size);
 }

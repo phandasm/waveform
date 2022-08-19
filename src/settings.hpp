@@ -32,6 +32,8 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 
 #define P_HIDE_SILENT       "hide_on_silent"
 
+#define P_NORMALIZE_VOLUME  "normalize_volume"
+
 #define P_RENDER_MODE       "render_mode"
 #define P_LINE              "line"
 #define P_SOLID             "solid"
@@ -119,3 +121,4 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_CAPS_DESC         "caps_desc"
 #define P_ROLLOFF_Q_DESC    "rolloff_q_desc"
 #define P_ROLLOFF_RATE_DESC "rolloff_rate_desc"
+#define P_VOLUME_NORM_DESC  "volume_normalization_desc"

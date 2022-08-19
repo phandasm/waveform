@@ -183,6 +183,15 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
             m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 
+    // volume normalization
+    if(m_normalize_volume)
+    {
+        const auto volume_compensation = m_last_silent ? 0.0f : std::min(-3.0f - dbfs(m_input_rms), 30.0f);
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 1; i < outsz; ++i)
+                m_decibels[channel][i] += volume_compensation;
+    }
+
     // roll-off
     if((m_rolloff_q > 0.0f) && (m_rolloff_rate > 0.0f))
     {

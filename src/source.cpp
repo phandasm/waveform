@@ -83,15 +83,18 @@ namespace callbacks {
     static void *create(obs_data_t *settings, obs_source_t *source)
     {
 #ifndef DISABLE_X86_SIMD
+        WAVSource *obj;
         if(WAVSource::HAVE_AVX2)
-            return static_cast<void*>(new WAVSourceAVX2(settings, source));
+            obj = new WAVSourceAVX2(source);
         else if(WAVSource::HAVE_AVX)
-            return static_cast<void*>(new WAVSourceAVX(settings, source));
+            obj = new WAVSourceAVX(source);
         else
-            return static_cast<void*>(new WAVSourceGeneric(settings, source));
+            obj = new WAVSourceGeneric(source);
 #else
-        return static_cast<void*>(new WAVSourceGeneric(settings, source));
+        WAVSource *obj = new WAVSourceGeneric(settings, source);
 #endif // !DISABLE_X86_SIMD
+        obj->update(settings); // must be fully constructed before calling update()
+        return static_cast<void*>(obj);
     }
 
     static void destroy(void *data)
@@ -149,6 +152,7 @@ namespace callbacks {
         obs_data_set_default_int(settings, P_METER_BUF, 150);
         obs_data_set_default_bool(settings, P_RMS_MODE, true);
         obs_data_set_default_bool(settings, P_HIDE_SILENT, false);
+        obs_data_set_default_bool(settings, P_NORMALIZE_VOLUME, false);
     }
 
     static obs_properties_t *get_properties([[maybe_unused]] void *data)
@@ -165,6 +169,10 @@ namespace callbacks {
 
         // hide on silent audio
         obs_properties_add_bool(props, P_HIDE_SILENT, T(P_HIDE_SILENT));
+
+        // volume normalization
+        auto vol = obs_properties_add_bool(props, P_NORMALIZE_VOLUME, T(P_NORMALIZE_VOLUME));
+        obs_property_set_long_description(vol, T(P_VOLUME_NORM_DESC));
 
         // display type
         auto displaylist = obs_properties_add_list(props, P_DISPLAY_MODE, T(P_DISPLAY_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
@@ -213,6 +221,7 @@ namespace callbacks {
             set_prop_visible(props, P_FFT_SIZE, notmeter);
             set_prop_visible(props, P_RMS_MODE, !notmeter);
             set_prop_visible(props, P_METER_BUF, !notmeter);
+            set_prop_visible(props, P_NORMALIZE_VOLUME, notmeter);
             return true;
             });
 
@@ -421,6 +430,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_meter_rms = obs_data_get_bool(settings, P_RMS_MODE);
     m_meter_ms = (int)obs_data_get_int(settings, P_METER_BUF);
     m_hide_on_silent = obs_data_get_bool(settings, P_HIDE_SILENT);
+    m_normalize_volume = obs_data_get_bool(settings, P_NORMALIZE_VOLUME);
 
     m_color_base = { (uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f };
     m_color_crest = { (uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f };
@@ -617,6 +627,7 @@ void WAVSource::free_bufs()
     m_fft_output.reset();
     m_window_coefficients.reset();
     m_slope_modifiers.reset();
+    m_input_rms_buf.reset();
 
     if(m_fft_plan != nullptr)
     {
@@ -686,13 +697,12 @@ void WAVSource::init_steps()
     vec3_set(&m_step_verts[5], x2, y2, 0);
 }
 
-WAVSource::WAVSource(obs_data_t *settings, obs_source_t *source)
+WAVSource::WAVSource(obs_source_t *source)
 {
+    std::lock_guard lock(m_mtx); // update() spins up callbacks
     m_source = source;
     for(auto& i : m_capturebufs)
         circlebuf_init(&i);
-
-    update(settings);
 
     obs_enter_graphics();
 
@@ -824,6 +834,7 @@ void WAVSource::update(obs_data_t *settings)
         m_slope = 0.0f;
         m_stereo = false;
         m_radial = false;
+        m_normalize_volume = false;
 
         // repurpose m_fft_size for meter buffer size
         m_fft_size = size_t(m_audio_info.samples_per_sec * (m_meter_ms / 1000.0)) & -16;
@@ -833,6 +844,15 @@ void WAVSource::update(obs_data_t *settings)
             i = DB_MIN;
         for(auto& i : m_meter_val)
             i = DB_MIN;
+    }
+
+    if(m_normalize_volume)
+    {
+        m_input_rms = 0.0f;
+        m_input_rms_size = size_t(m_audio_info.samples_per_sec) & -16;
+        m_input_rms_pos = 0;
+        m_input_rms_buf.reset(membuf_alloc<float>(m_input_rms_size));
+        memset(m_input_rms_buf.get(), 0, m_input_rms_size * sizeof(float));
     }
 
     // calculate FFT size based on video FPS
@@ -1440,6 +1460,9 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     if(m_audio_source == nullptr)
         return;
 
+    if(m_normalize_volume)
+        update_input_rms(audio);
+
     auto sz = size_t(audio->frames * sizeof(float));
     for(auto i = 0u; i < m_capture_channels; ++i)
     {
@@ -1460,6 +1483,9 @@ void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_
     if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
+
+    if(m_normalize_volume)
+        update_input_rms(audio);
 
     auto sz = size_t(audio->frames * sizeof(float));
     for(auto i = 0u; i < m_capture_channels; ++i)
