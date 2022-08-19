@@ -91,7 +91,7 @@ namespace callbacks {
         else
             obj = new WAVSourceGeneric(source);
 #else
-        WAVSource *obj = new WAVSourceGeneric(settings, source);
+        WAVSource *obj = new WAVSourceGeneric(source);
 #endif // !DISABLE_X86_SIMD
         obj->update(settings); // must be fully constructed before calling update()
         return static_cast<void*>(obj);
