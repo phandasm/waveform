@@ -168,11 +168,17 @@ if(MSVC)
 else()
     target_compile_options(waveform PRIVATE "-Wall" "-Wextra")
 endif()
+
+# collect all the locale files to install
+file(GLOB LOCALE_FILES "data/locale/*.ini")
+
+# OSX bundles
 if(APPLE)
     set_target_properties(waveform PROPERTIES PREFIX "")
     if(MAKE_BUNDLE)
         set_target_properties(waveform PROPERTIES
             BUNDLE ON
+            BUNDLE_EXTENSION "plugin"
             MACOSX_BUNDLE_GUI_IDENTIFIER com.github.phandasm.waveform
             MACOSX_BUNDLE_BUNDLE_NAME waveform
             MACOSX_BUNDLE_BUNDLE_VERSION ${WAVEFORM_VERSION}
@@ -181,6 +187,9 @@ if(APPLE)
             MACOSX_BUNDLE_COPYRIGHT "GPLv3"
             MACOSX_BUNDLE_INFO_STRING "Audio visualization plugin for OBS Studio"
         )
+        set_source_files_properties(${LOCALE_FILES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/locale")
+        set_source_files_properties("data/gradient.effect" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+        list(APPEND PLUGIN_SOURCES ${LOCALE_FILES} "data/gradient.effect")
     endif()
 endif()
 
@@ -191,9 +200,6 @@ configure_file("src/waveform_config.hpp.in" "include/waveform_config.hpp")
 if(WIN32)
     configure_file("installer/installer.iss.in" "${CMAKE_CURRENT_SOURCE_DIR}/installer/installer.iss" @ONLY)
 endif()
-
-# collect all the locale files to install
-file(GLOB LOCALE_FILES "data/locale/*.ini")
 
 if(WIN32)
     install(TARGETS waveform DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
@@ -209,9 +215,7 @@ else()
     else()
         if(APPLE)
             if(MAKE_BUNDLE)
-                install(TARGETS waveform DESTINATION "waveform.plugin/Contents/MacOS")
-                install(FILES "data/gradient.effect" DESTINATION "waveform.plugin/Contents/Resources/")
-                install(FILES ${LOCALE_FILES} DESTINATION "waveform.plugin/Contents/Resources/locale")
+                install(TARGETS waveform)
             else()
                 install(TARGETS waveform DESTINATION "waveform/bin")
                 install(FILES "data/gradient.effect" DESTINATION "waveform/data/")
