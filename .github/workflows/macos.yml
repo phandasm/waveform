@@ -51,4 +51,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: Waveform_${{github.ref_name}}_MacOS_x64
-          path: ${{github.workspace}}/bin/*.tar.gz
+          path: ${{github.workspace}}/bin/
