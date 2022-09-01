@@ -156,6 +156,15 @@ if(NOT DISABLE_X86_SIMD)
     endif()
 endif()
 
+# collect all the locale files to install
+file(GLOB LOCALE_FILES "data/locale/*.ini")
+
+if(MAKE_BUNDLE)
+    set_source_files_properties(${LOCALE_FILES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/locale")
+    set_source_files_properties("data/gradient.effect" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+    list(APPEND PLUGIN_SOURCES ${LOCALE_FILES} "data/gradient.effect")
+endif()
+
 add_library(waveform MODULE ${PLUGIN_SOURCES})
 target_include_directories(waveform PRIVATE ${LIBOBS_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_link_libraries(waveform PRIVATE ${LIBOBS_LIBRARIES} ${FFTW_LIBRARIES})
@@ -168,9 +177,6 @@ if(MSVC)
 else()
     target_compile_options(waveform PRIVATE "-Wall" "-Wextra")
 endif()
-
-# collect all the locale files to install
-file(GLOB LOCALE_FILES "data/locale/*.ini")
 
 # OSX bundles
 if(APPLE)
@@ -187,9 +193,6 @@ if(APPLE)
             MACOSX_BUNDLE_COPYRIGHT "GPLv3"
             MACOSX_BUNDLE_INFO_STRING "Audio visualization plugin for OBS Studio"
         )
-        set_source_files_properties(${LOCALE_FILES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/locale")
-        set_source_files_properties("data/gradient.effect" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-        list(APPEND PLUGIN_SOURCES ${LOCALE_FILES} "data/gradient.effect")
     endif()
 endif()
 
