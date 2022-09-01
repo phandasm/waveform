@@ -22,7 +22,7 @@ jobs:
       - name: 'Extract obs-deps'
         run: |
           mkdir ${{github.workspace}}/deps/obs-deps
-          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/CI/deps/macos-deps-2022-08-02-arm64.tar.xz
+          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/CI/deps/macos-deps-2022-02-13-arm64.tar.xz
       
       - name: 'Checkout obs-studio'
         uses: actions/checkout@v3
