@@ -3,3 +3,4 @@ build*/*
 installer/bin/*
 installer/redist/*
 installer/Output/*
+installer/installer.iss

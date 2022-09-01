@@ -7,6 +7,8 @@ include(CheckSymbolExists)
 
 project(waveform)
 
+set(WAVEFORM_VERSION "1.5.0-beta1")
+
 # set default install prefix to OBS plugin path on linux
 # otherwise set it to the windows installer source folder
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -24,6 +26,11 @@ option(NO_LIB_PREFIX "Don't add the lib prefix to output filename" OFF)
 if(NOT MSVC)
     option(STATIC_FFTW "Static link FFTW" OFF) # allow static linking FFTW on non-windows platforms
     option(BUILTIN_FFTW "Build FFTW from source" OFF)
+endif()
+
+# OSX bundles
+if(APPLE)
+    option(MAKE_BUNDLE "Make Mac OSX bundle" OFF)
 endif()
 
 if(WIN32 OR APPLE)
@@ -161,14 +168,29 @@ if(MSVC)
 else()
     target_compile_options(waveform PRIVATE "-Wall" "-Wextra")
 endif()
-if(NO_LIB_PREFIX)
+if(APPLE)
     set_target_properties(waveform PROPERTIES PREFIX "")
+    if(MAKE_BUNDLE)
+        set_target_properties(waveform PROPERTIES
+            BUNDLE ON
+            MACOSX_BUNDLE_GUI_IDENTIFIER com.github.phandasm.waveform
+            MACOSX_BUNDLE_BUNDLE_NAME waveform
+            MACOSX_BUNDLE_BUNDLE_VERSION ${WAVEFORM_VERSION}
+            MACOSX_BUNDLE_SHORT_VERSION_STRING ${WAVEFORM_VERSION}
+            MACOSX_BUNDLE_LONG_VERSION_STRING ${WAVEFORM_VERSION}
+            MACOSX_BUNDLE_COPYRIGHT "GPLv3"
+            MACOSX_BUNDLE_INFO_STRING "Audio visualization plugin for OBS Studio"
+        )
+    endif()
 endif()
 
 set(CMAKE_REQUIRED_INCLUDES ${LIBOBS_INCLUDE_DIRS})
 set(CMAKE_REQUIRED_LIBRARIES ${LIBOBS_LIBRARIES})
 check_symbol_exists(obs_properties_add_color_alpha "obs-module.h" HAVE_OBS_PROP_ALPHA)
 configure_file("src/waveform_config.hpp.in" "include/waveform_config.hpp")
+if(WIN32)
+    configure_file("installer/installer.iss.in" "${CMAKE_CURRENT_SOURCE_DIR}/installer/installer.iss" @ONLY)
+endif()
 
 # collect all the locale files to install
 file(GLOB LOCALE_FILES "data/locale/*.ini")
@@ -186,11 +208,19 @@ else()
         install(FILES ${LOCALE_FILES} DESTINATION "share/obs/obs-plugins/waveform/locale")
     else()
         if(APPLE)
-            install(TARGETS waveform DESTINATION "waveform/bin")
+            if(MAKE_BUNDLE)
+                install(TARGETS waveform DESTINATION "waveform.plugin/Contents/MacOS")
+                install(FILES "data/gradient.effect" DESTINATION "waveform.plugin/Contents/Resources/")
+                install(FILES ${LOCALE_FILES} DESTINATION "waveform.plugin/Contents/Resources/locale")
+            else()
+                install(TARGETS waveform DESTINATION "waveform/bin")
+                install(FILES "data/gradient.effect" DESTINATION "waveform/data/")
+                install(FILES ${LOCALE_FILES} DESTINATION "waveform/data/locale")
+            endif()
         else()
             install(TARGETS waveform DESTINATION "waveform/bin/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
+            install(FILES "data/gradient.effect" DESTINATION "waveform/data/")
+            install(FILES ${LOCALE_FILES} DESTINATION "waveform/data/locale")
         endif()
-        install(FILES "data/gradient.effect" DESTINATION "waveform/data/")
-        install(FILES ${LOCALE_FILES} DESTINATION "waveform/data/locale")
     endif()
 endif()

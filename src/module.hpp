@@ -16,7 +16,8 @@
 */
 
 #pragma once
+#include "waveform_config.hpp"
 
 #define MODULE_DISPLAY_NAME "Waveform Visualizer"
 #define MODULE_NAME "phandasm_waveform"
-#define VERSION_STRING "1.4.1"
+#define VERSION_STRING WAVEFORM_VERSION

@@ -1,14 +1,8 @@
-- Fix rendering artifacts when using curve graph
-- Restore support for non-AVX CPUs
-- Update Chinese localization
-
-<details>
-<summary>Changes from 1.4.0</summary>
-
-- Add native support for Arm64 (aka 'Apple Silicon') based Macs
-- Add Simplified Chinese localization (#14 thanks to [神枪968](https://github.com/GodGun968))
-- Add option to roll-off the edges of the graph (#12)
-</details>
+# Mac users please uninstall older versions first
+- Experimental support for OBS 28 on M1 Macs
+- Add volume normalization option
+- Rendering performance improvements (#24 thanks to Ori Sky)
+- Fix typo resulting in slightly incorect gaussian kernels
 
 ## Installation
 ### Windows
@@ -40,7 +34,7 @@ Both methods include 32-bit and 64-bit binaries.
 - Extract Waveform\_v#.#.#\_MacOS\_x64.zip to your `/Library/Application Support/obs-studio/plugins` folder.  
 
 Note: Even if you have an M1 Mac, you probably want the x64. Use the ARM version only if you have a native ARM build of OBS.  
-If upgrading from a 1.4.0 ARM build, please be sure to delete `libwaveform.so` if present as it has been renamed in future builds.
+The ARM version requires OBS 28.0 or newer.
 </details>
 
 ### [OBS Music Edition 27.2.4 (Windows x64)](https://github.com/pkviet/obs-studio/releases/tag/v27.2.4)
