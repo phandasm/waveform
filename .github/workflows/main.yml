@@ -8,6 +8,11 @@ on:
     paths-ignore: ['**.md']
   
   workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish Release'
+        required: true
+        type: boolean
 
 jobs:
   ubuntu64:
@@ -37,7 +42,7 @@ jobs:
         run: tar -czf Waveform_${{github.ref_name}}_Ubuntu_${{runner.arch}}.tar.gz *
       
       - name: 'Publish Release'
-        if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
+        if: success() && ((github.ref_type == 'tag') || (inputs.publish == true)) && github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v1
         with:
           files: ${{github.workspace}}/bin/*.tar.gz
