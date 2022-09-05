@@ -1,8 +1,8 @@
-# Mac users please uninstall older versions first
+# Mac and Linux users please uninstall older versions first
 - Experimental support for OBS 28 on M1 Macs
 - Add volume normalization option
 - Rendering performance improvements (#24 thanks to Ori Sky)
-- Fix typo resulting in slightly incorect gaussian kernels
+- Fix typo resulting in slightly incorrect gaussian kernels
 
 ## Installation
 ### Windows
@@ -33,7 +33,7 @@ Both methods include 32-bit and 64-bit binaries.
 
 - Extract Waveform\_v#.#.#\_MacOS\_x64.zip to your `/Library/Application Support/obs-studio/plugins` folder.  
 
-Note: Even if you have an M1 Mac, you probably want the x64. Use the ARM version only if you have a native ARM build of OBS.  
+Note: Use the ARM version only if you have a native ARM build of OBS.  
 The ARM version requires OBS 28.0 or newer.
 </details>
 

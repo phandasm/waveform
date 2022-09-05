@@ -22,7 +22,7 @@ DefaultGroupName={#MyAppName}
 LicenseFile={#SourcePath}\..\LICENSE
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
-OutputBaseFilename=Waveform_setup
+OutputBaseFilename=Waveform_v{#MyAppVersion}_setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

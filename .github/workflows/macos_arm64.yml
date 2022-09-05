@@ -22,7 +22,7 @@ jobs:
       - name: 'Extract obs-deps'
         run: |
           mkdir ${{github.workspace}}/deps/obs-deps
-          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/CI/deps/macos-deps-2022-02-13-arm64.tar.xz
+          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/CI/deps/macos-deps-2022-08-02-arm64.tar.xz
       
       - name: 'Checkout obs-studio'
         uses: actions/checkout@v3
@@ -30,21 +30,23 @@ jobs:
           repository: 'obsproject/obs-studio'
           submodules: recursive
           path: 'deps/obs-studio'
-          ref: '27.2.4'
+          ref: '28.0.0'
       
       - name: 'OBS Cmake'
-        run: cmake -B ${{github.workspace}}/deps/obs-studio/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DCMAKE_OSX_ARCHITECTURES="arm64" -DENABLE_PLUGINS=OFF -DDISABLE_UI=ON -DENABLE_UI=OFF -DCOMPILE_PYTHON=OFF -DDISABLE_PYTHON=ON -DENABLE_SCRIPTING=OFF -DBUILD_BROWSER=OFF -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" ${{github.workspace}}/deps/obs-studio
+        run: cmake -B ${{github.workspace}}/deps/obs-studio/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DENABLE_PLUGINS=OFF -DDISABLE_UI=ON -DENABLE_UI=OFF -DCOMPILE_PYTHON=OFF -DDISABLE_PYTHON=ON -DENABLE_SCRIPTING=OFF -DBUILD_BROWSER=OFF -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/deps/obs-deps" ${{github.workspace}}/deps/obs-studio
       
       - name: 'Build OBS'
-        run: cmake --build ${{github.workspace}}/deps/obs-studio/build --config=Release
+        run: |
+          cmake --build ${{github.workspace}}/deps/obs-studio/build --config=Release
+          cmake --install ${{github.workspace}}/deps/obs-studio/build --config=Release
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DDISABLE_X86_SIMD=ON -DLibObs_ROOT="${{github.workspace}}/deps/obs-studio" -DBUILTIN_FFTW=ON -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/bin
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DDISABLE_X86_SIMD=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/bin
       
       - name: 'Build'
         run: |
-          cmake --build ${{github.workspace}}/build --config=Release
-          cmake --install ${{github.workspace}}/build --config=Release
+          cmake --build ${{github.workspace}}/build --config=RelWithDebInfo
+          cmake --install ${{github.workspace}}/build --config=RelWithDebInfo
       
       - name: 'Upload'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'

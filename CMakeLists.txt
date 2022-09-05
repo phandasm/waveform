@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(CheckSymbolExists)
 
@@ -22,7 +23,6 @@ endif()
 
 option(DISABLE_X86_SIMD "Disable x86 SIMD optimizations" OFF)
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF) # static link dependencies
-option(NO_LIB_PREFIX "Don't add the lib prefix to output filename" OFF)
 if(NOT MSVC)
     option(STATIC_FFTW "Static link FFTW" OFF) # allow static linking FFTW on non-windows platforms
     option(BUILTIN_FFTW "Build FFTW from source" OFF)
@@ -33,10 +33,17 @@ if(APPLE)
     option(MAKE_BUNDLE "Make Mac OSX bundle" OFF)
 endif()
 
-if(WIN32 OR APPLE)
-    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+# link OBS
+find_package(libobs)
+if(NOT TARGET OBS::libobs)
+    message(WARNING "No modern OBS target found, trying fallback method.")
+    find_package(LibObs REQUIRED)
+
+    # emulate modern target
+    add_library(OBS::libobs INTERFACE IMPORTED GLOBAL)
+    target_link_libraries(OBS::libobs INTERFACE ${LIBOBS_LIBRARIES})
+    target_include_directories(OBS::libobs INTERFACE ${LIBOBS_INCLUDE_DIRS})
 endif()
-find_package(LibObs REQUIRED)
 
 if(MSVC)
     add_definitions(/MP) # parallel builds
@@ -88,7 +95,7 @@ endif()
 
 if(BUILTIN_FFTW)    
     option(ENABLE_THREADS "Use pthread for multithreading" ON)
-    if(WIN32 OR APPLE)
+    if(WIN32)
         option(WITH_COMBINED_THREADS "Merge thread library" ON)
     endif()
     option(ENABLE_FLOAT "single-precision" ON)
@@ -163,11 +170,19 @@ if(MAKE_BUNDLE)
     set_source_files_properties(${LOCALE_FILES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/locale")
     set_source_files_properties("data/gradient.effect" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
     list(APPEND PLUGIN_SOURCES ${LOCALE_FILES} "data/gradient.effect")
+
+    # these settings stolen from https://github.com/obsproject/obs-plugintemplate/blob/0f60ca33f95905f248b9dd92b3f504921b823b4d/cmake/ObsPluginHelpers.cmake#L353
+    set(CMAKE_MACOSX_RPATH ON)
+    set(CMAKE_SKIP_BUILD_RPATH OFF)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH OFF)
+    set(CMAKE_INSTALL_RPATH "@executable_path/../Frameworks/")
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH OFF)
 endif()
 
 add_library(waveform MODULE ${PLUGIN_SOURCES})
-target_include_directories(waveform PRIVATE ${LIBOBS_INCLUDE_DIRS} ${FFTW_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/include)
-target_link_libraries(waveform PRIVATE ${LIBOBS_LIBRARIES} ${FFTW_LIBRARIES})
+set_target_properties(waveform PROPERTIES PREFIX "")
+target_include_directories(waveform PRIVATE ${FFTW_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/include)
+target_link_libraries(waveform PRIVATE OBS::libobs ${FFTW_LIBRARIES})
 if(NOT DISABLE_X86_SIMD)
     target_link_libraries(waveform PRIVATE cpu_features)
 endif()
@@ -180,13 +195,13 @@ endif()
 
 # OSX bundles
 if(APPLE)
-    set_target_properties(waveform PROPERTIES PREFIX "")
+    target_compile_options(waveform PRIVATE "-stdlib=libc++")
     if(MAKE_BUNDLE)
         set_target_properties(waveform PROPERTIES
             BUNDLE ON
             BUNDLE_EXTENSION "plugin"
-            MACOSX_BUNDLE_GUI_IDENTIFIER com.github.phandasm.waveform
-            MACOSX_BUNDLE_BUNDLE_NAME waveform
+            MACOSX_BUNDLE_GUI_IDENTIFIER "com.github.phandasm.waveform"
+            MACOSX_BUNDLE_BUNDLE_NAME "waveform"
             MACOSX_BUNDLE_BUNDLE_VERSION ${WAVEFORM_VERSION}
             MACOSX_BUNDLE_SHORT_VERSION_STRING ${WAVEFORM_VERSION}
             MACOSX_BUNDLE_LONG_VERSION_STRING ${WAVEFORM_VERSION}
@@ -196,8 +211,7 @@ if(APPLE)
     endif()
 endif()
 
-set(CMAKE_REQUIRED_INCLUDES ${LIBOBS_INCLUDE_DIRS})
-set(CMAKE_REQUIRED_LIBRARIES ${LIBOBS_LIBRARIES})
+set(CMAKE_REQUIRED_LIBRARIES OBS::libobs)
 check_symbol_exists(obs_properties_add_color_alpha "obs-module.h" HAVE_OBS_PROP_ALPHA)
 configure_file("src/waveform_config.hpp.in" "include/waveform_config.hpp")
 if(WIN32)
@@ -207,7 +221,6 @@ endif()
 if(WIN32)
     install(TARGETS waveform DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
     install(FILES $<TARGET_PDB_FILE:waveform> DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>" OPTIONAL)
-    #install(TARGETS fftw3f DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
     install(FILES "data/gradient.effect" DESTINATION "data/obs-plugins/waveform")
     install(FILES ${LOCALE_FILES} DESTINATION "data/obs-plugins/waveform/locale")
 else()
