@@ -1,5 +1,5 @@
 # Waveform
-![Linux CI](https://github.com/phandasm/waveform/actions/workflows/main.yml/badge.svg?event=push) ![Mac CI](https://github.com/phandasm/waveform/actions/workflows/macos.yml/badge.svg?event=push)  
+![Mac/Linux CI](https://github.com/phandasm/waveform/actions/workflows/main.yml/badge.svg?event=push)  
 Waveform is an audio spectral analysis plugin for [OBS Studio](https://obsproject.com/).  
 It is based on [FFTW](https://www.fftw.org/) and optimized for AVX2/FMA3.  
 ![Screenshot](https://i.imgur.com/y40gfQB.png)
@@ -10,9 +10,9 @@ Clone the repo with submodules: `git clone --recurse-submodules`
 Or if you already cloned without them: `git submodule update --init --recursive`
 
 ## Windows
-Waveform's only external dependency is libObs.  
+Waveform's only external dependency is libobs.  
 You'll need to build obs-studio separately and point [CMake](https://cmake.org/) to it when building Waveform.  
-From the CLI interface, the latter can be accomplished via `-DLibObs_ROOT="path/to/obs-studio"`.
+From the CLI interface, the latter can be accomplished via `-DCMAKE_PREFIX_PATH="path/to/obs-studio/build"`.
 
 ## Linux (Ubuntu 20.04.3 LTS)
 ```bash
