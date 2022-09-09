@@ -50,10 +50,12 @@ jobs:
           cmake --install ${{github.workspace}}/deps/obs-studio/build --config=Release
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DDISABLE_X86_SIMD=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps;${{github.workspace}}/deps/obs-studio/build"
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DDISABLE_X86_SIMD=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps;${{github.workspace}}/deps/obs-studio/build" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
       
       - name: 'Build'
-        run: cmake --build ${{github.workspace}}/build --config=RelWithDebInfo
+        run: |
+          cmake --build ${{github.workspace}}/build --config=RelWithDebInfo
+          cmake --install ${{github.workspace}}/build --config=RelWithDebInfo
       
       - name: 'Package'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
@@ -64,7 +66,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: Waveform_${{github.ref_name}}_MacOS_arm64
-          path: ${{github.workspace}}/build/*.dmg
+          path: ${{github.workspace}}/build/*.pkg
 
   macos64:
     name: 'MacOS x64'
@@ -97,10 +99,12 @@ jobs:
           cmake --install ${{github.workspace}}/deps/obs-studio/build --config=Release
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps"
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
       
       - name: 'Build'
-        run: cmake --build ${{github.workspace}}/build --config=RelWithDebInfo
+        run: |
+          cmake --build ${{github.workspace}}/build --config=RelWithDebInfo
+          cmake --install ${{github.workspace}}/build --config=RelWithDebInfo
       
       - name: 'Package'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
@@ -110,8 +114,8 @@ jobs:
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v3
         with:
-          name: Waveform_${{github.ref_name}}_MacOS_x64
-          path: ${{github.workspace}}/build/*.dmg
+          name: Waveform_${{github.ref_name}}_MacOS_x86_64
+          path: ${{github.workspace}}/build/*.pkg
 
   ubuntu64:
     name: 'Ubuntu x64'
@@ -143,7 +147,7 @@ jobs:
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v3
         with:
-          name: Waveform_${{github.ref_name}}_Ubuntu_x64
+          name: Waveform_${{github.ref_name}}_Ubuntu_x86_64
           path: ${{github.workspace}}/build/*.deb
 
   publish_release:
@@ -163,7 +167,9 @@ jobs:
       - name: 'Publish'
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{github.workspace}}/assets/*/*
+          files: |
+            ${{github.workspace}}/assets/*/*.deb
+            ${{github.workspace}}/assets/*/*.pkg
           body_path: ${{github.workspace}}/changelog.md
           tag_name: ${{inputs.publish && inputs.tagname || github.ref_name}}
           name: ${{inputs.publish && inputs.tagname || github.ref_name}}

@@ -171,10 +171,9 @@ if(NOT DISABLE_X86_SIMD)
     endif()
 endif()
 
-# collect all the locale files to install
-file(GLOB LOCALE_FILES "data/locale/*.ini")
-
 if(MAKE_BUNDLE)
+    # collect all the locale files to install
+    file(GLOB LOCALE_FILES "data/locale/*.ini")
     set_source_files_properties(${LOCALE_FILES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/locale")
     set_source_files_properties("data/gradient.effect" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
     list(APPEND PLUGIN_SOURCES ${LOCALE_FILES} "data/gradient.effect")
@@ -209,6 +208,7 @@ if(APPLE)
             BUNDLE ON
             BUNDLE_EXTENSION "plugin"
             MACOSX_BUNDLE_GUI_IDENTIFIER "com.github.phandasm.waveform"
+            XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.github.phandasm.waveform"
             MACOSX_BUNDLE_BUNDLE_NAME "waveform"
             MACOSX_BUNDLE_BUNDLE_VERSION ${WAVEFORM_VERSION}
             MACOSX_BUNDLE_SHORT_VERSION_STRING ${WAVEFORM_VERSION}
@@ -226,29 +226,36 @@ if(WIN32)
     configure_file("installer/installer.iss.in" "${CMAKE_CURRENT_SOURCE_DIR}/installer/installer.iss" @ONLY)
 endif()
 
+set(INSTALL_PERMS
+    OWNER_READ OWNER_WRITE OWNER_EXECUTE
+    GROUP_READ GROUP_EXECUTE
+    WORLD_READ WORLD_EXECUTE
+)
+
 if(WIN32)
-    install(TARGETS waveform DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
-    install(FILES $<TARGET_PDB_FILE:waveform> DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>" OPTIONAL)
-    install(FILES "data/gradient.effect" DESTINATION "data/obs-plugins/waveform")
-    install(FILES ${LOCALE_FILES} DESTINATION "data/obs-plugins/waveform/locale")
+    install(TARGETS waveform DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>" COMPONENT "waveform" PERMISSIONS ${INSTALL_PERMS})
+    install(FILES $<TARGET_PDB_FILE:waveform> DESTINATION "obs-plugins/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>" COMPONENT "waveform" OPTIONAL PERMISSIONS ${INSTALL_PERMS})
+    install(DIRECTORY "data/" DESTINATION "data/obs-plugins/waveform" COMPONENT "waveform" FILE_PERMISSIONS ${INSTALL_PERMS} DIRECTORY_PERMISSIONS ${INSTALL_PERMS})
 else()
     if(PACKAGED_INSTALL OR MAKE_DEB)
-        install(TARGETS waveform DESTINATION "${CMAKE_INSTALL_LIBDIR}/obs-plugins")
-        install(FILES "data/gradient.effect" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/obs/obs-plugins/waveform")
-        install(FILES ${LOCALE_FILES} DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/obs/obs-plugins/waveform/locale")
+        install(TARGETS waveform DESTINATION "${CMAKE_INSTALL_LIBDIR}/obs-plugins" COMPONENT "waveform" PERMISSIONS ${INSTALL_PERMS})
+        install(DIRECTORY "data/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/obs/obs-plugins/waveform" COMPONENT "waveform" FILE_PERMISSIONS ${INSTALL_PERMS} DIRECTORY_PERMISSIONS ${INSTALL_PERMS})
     else()
         if(APPLE)
             if(MAKE_BUNDLE)
-                install(TARGETS waveform DESTINATION ${CMAKE_INSTALL_PREFIX})
+                install(TARGETS waveform
+                    BUNDLE DESTINATION "." COMPONENT "waveform"
+                    RUNTIME DESTINATION "." COMPONENT "waveform"
+                    LIBRARY DESTINATION "." COMPONENT "waveform"
+                    PERMISSIONS ${INSTALL_PERMS}
+                )
             else()
-                install(TARGETS waveform DESTINATION "waveform/bin")
-                install(FILES "data/gradient.effect" DESTINATION "waveform/data/")
-                install(FILES ${LOCALE_FILES} DESTINATION "waveform/data/locale")
+                install(TARGETS waveform DESTINATION "waveform/bin" COMPONENT "waveform" PERMISSIONS ${INSTALL_PERMS})
+                install(DIRECTORY "data/" DESTINATION "waveform/data/" COMPONENT "waveform" FILE_PERMISSIONS ${INSTALL_PERMS} DIRECTORY_PERMISSIONS ${INSTALL_PERMS})
             endif()
         else()
-            install(TARGETS waveform DESTINATION "waveform/bin/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>")
-            install(FILES "data/gradient.effect" DESTINATION "waveform/data/")
-            install(FILES ${LOCALE_FILES} DESTINATION "waveform/data/locale")
+            install(TARGETS waveform DESTINATION "waveform/bin/$<IF:$<EQUAL:${CMAKE_SIZEOF_VOID_P},8>,64bit,32bit>" COMPONENT "waveform" PERMISSIONS ${INSTALL_PERMS})
+            install(DIRECTORY "data/" DESTINATION "waveform/data/" COMPONENT "waveform" FILE_PERMISSIONS ${INSTALL_PERMS} DIRECTORY_PERMISSIONS ${INSTALL_PERMS})
         endif()
     endif()
 endif()

@@ -1,0 +1,2 @@
+Waveform is hosted at: https://github.com/phandasm/waveform.
+Questions and bug reports can be directed to the issue tracker there or in the thread over at OBS Forums: https://obsproject.com/forum/resources/waveform.1423/

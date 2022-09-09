@@ -18,20 +18,22 @@ Both methods include 32-bit and 64-bit binaries.
 <summary>Click for instructions</summary>
 
 #### Prebuilt Binaries
-- Extract Waveform\_v#.#.#\_Ubuntu\_x64.tar.gz to your `~/.config/obs-studio/plugins` folder.  
+- Download Waveform\_v#.#.#\_Ubuntu\_x86_64.deb and install it using your distro's package manager (Debian/Ubuntu only).  
 
 #### Flatpak
 - `flatpak install flathub com.obsproject.Studio.Plugins.waveform`  
 
 #### Source Build
-- Step-by-step instructions in the [readme](https://github.com/phandasm/waveform/blob/master/README.md#linux-ubuntu-20043-lts).
+- Step-by-step instructions in the [readme](https://github.com/phandasm/waveform/blob/master/README.md#linux-ubuntu-20043-lts).  
+
+Note: Should work for most distros, but do not mix with the .deb package above.
 </details>
 
 ### MacOS (10.13+)
 <details>
 <summary>Click for instructions</summary>
 
-- Extract Waveform\_v#.#.#\_MacOS\_x64.zip to your `/Library/Application Support/obs-studio/plugins` folder.  
+- Download Waveform\_v#.#.#\_MacOS\_x86_64.pkg and run it.  
 
 Note: Use the ARM version only if you have a native ARM build of OBS.  
 The ARM version requires OBS 28.0 or newer.
