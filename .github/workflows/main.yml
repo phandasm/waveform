@@ -50,7 +50,7 @@ jobs:
           cmake --install ${{github.workspace}}/deps/obs-studio/build --config=Release
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DDISABLE_X86_SIMD=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps;${{github.workspace}}/deps/obs-studio/build" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin" -DCPACK_PACKAGING_INSTALL_PREFIX="~/Library/Application Support/obs-studio/plugins"
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DDISABLE_X86_SIMD=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps;${{github.workspace}}/deps/obs-studio/build" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin" -DCPACK_PACKAGING_INSTALL_PREFIX="$HOME/Library/Application Support/obs-studio/plugins"
       
       - name: 'Build'
         run: |
