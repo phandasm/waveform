@@ -6,6 +6,12 @@ set(CPACK_PRODUCTBUILD_IDENTIFIER "com.github.phandasm.waveform")
 
 if(NOT DEFINED CPACK_PACKAGING_INSTALL_PREFIX)
     set(CPACK_PACKAGING_INSTALL_PREFIX "/Library/Application Support/obs-studio/plugins")
+    if(${CMAKE_OSX_ARCHITECTURES} STREQUAL "arm64")
+        set(CPACK_PRODUCTBUILD_DOMAINS ON)
+        set(CPACK_PRODUCTBUILD_DOMAINS_USER ON)
+        set(CPACK_PRODUCTBUILD_DOMAINS_ROOT OFF)
+        set(CPACK_PRODUCTBUILD_DOMAINS_ANYWHERE OFF)
+    endif()
 endif()
 
 set(CPACK_GENERATOR "productbuild")
