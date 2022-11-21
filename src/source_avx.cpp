@@ -15,12 +15,13 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include "waveform_config.hpp"
 #include "source.hpp"
 #include <immintrin.h>
 #include <algorithm>
 #include <cstring>
 
-static inline float horizontal_sum(__m256 vec)
+static FORCE_INLINE float horizontal_sum(__m256 vec)
 {
     auto high = _mm256_extractf128_ps(vec, 1); // split into two 128-bit vecs
     auto low = _mm_add_ps(high, _mm256_castps256_ps128(vec)); // (h[0] + l[0]) (h[1] + l[1]) (h[2] + l[2]) (h[3] + l[3])
@@ -30,7 +31,7 @@ static inline float horizontal_sum(__m256 vec)
     return _mm_cvtss_f32(_mm_add_ss(high, low));
 }
 
-static inline float horizontal_max(__m256 vec)
+static FORCE_INLINE float horizontal_max(__m256 vec)
 {
     auto high = _mm256_extractf128_ps(vec, 1); // split into two 128-bit vecs
     auto low = _mm_max_ps(high, _mm256_castps256_ps128(vec)); // max(h[0], l[0]) max(h[1], l[1]) max(h[2], l[2]) max(h[3], l[3])
@@ -196,20 +197,21 @@ void WAVSourceAVX::tick_spectrum(float seconds)
 
     if(m_normalize_volume && !m_last_silent)
     {
-        const auto volume_compensation = std::min(-3.0f - dbfs(m_input_rms), 30.0f);
+        const auto volume_compensation = _mm256_set1_ps(std::min(-3.0f - dbfs(m_input_rms), 30.0f));
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
-            for(size_t i = 1; i < outsz; ++i)
-                m_decibels[channel][i] += volume_compensation;
+            for(size_t i = 1; i < outsz; i += step)
+                _mm256_store_ps(&m_decibels[channel][i], _mm256_add_ps(volume_compensation, _mm256_load_ps(&m_decibels[channel][i])));
     }
 
     if((m_rolloff_q > 0.0f) && (m_rolloff_rate > 0.0f))
     {
+        const auto dbmin = _mm256_set1_ps(DB_MIN);
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
         {
-            for(size_t i = 1; i < outsz; ++i)
+            for(size_t i = 1; i < outsz; i += step)
             {
-                auto val = m_decibels[channel][i] - m_rolloff_modifiers[i];
-                m_decibels[channel][i] = std::max(val, DB_MIN);
+                auto val = _mm256_sub_ps(_mm256_load_ps(&m_decibels[channel][i]), _mm256_load_ps(&m_rolloff_modifiers[i]));
+                _mm256_store_ps(&m_decibels[channel][i], _mm256_max_ps(val, dbmin));
             }
         }
     }
@@ -253,30 +255,32 @@ void WAVSourceAVX::tick_meter(float seconds)
         constexpr auto halfstep = step / 2;
         if(m_meter_rms)
         {
-            auto sum = _mm256_setzero_ps();
+            auto sum1 = _mm256_setzero_ps(); // split sum into 2 'lanes' for better pipelining
+            auto sum2 = _mm256_setzero_ps();
             for(size_t i = 0; i < m_fft_size; i += step)
             {
-                auto chunk = _mm256_load_ps(&m_decibels[channel][i]);
-                sum = _mm256_fmadd_ps(chunk, chunk, sum);
-                chunk = _mm256_load_ps(&m_decibels[channel][i + halfstep]); // unroll loop to cache line size
-                sum = _mm256_fmadd_ps(chunk, chunk, sum);
+                auto chunk1 = _mm256_load_ps(&m_decibels[channel][i]);
+                sum1 = _mm256_fmadd_ps(chunk1, chunk1, sum1);
+                auto chunk2 = _mm256_load_ps(&m_decibels[channel][i + halfstep]); // unroll loop to cache line size
+                sum2 = _mm256_fmadd_ps(chunk2, chunk2, sum2);
             }
 
-            out = std::sqrt(horizontal_sum(sum) / m_fft_size);
+            out = std::sqrt(horizontal_sum(_mm256_add_ps(sum1, sum2)) / m_fft_size);
         }
         else
         {
             const auto signbit = _mm256_set1_ps(-0.0f);
-            auto maxvec = _mm256_setzero_ps();
+            auto max1 = _mm256_setzero_ps(); // split max into 2 'lanes' for better pipelining
+            auto max2 = _mm256_setzero_ps();
             for(size_t i = 0; i < m_fft_size; i += step)
             {
-                auto chunk = _mm256_andnot_ps(signbit, _mm256_load_ps(&m_decibels[channel][i])); // absolute value
-                maxvec = _mm256_max_ps(maxvec, chunk);
-                chunk = _mm256_andnot_ps(signbit, _mm256_load_ps(&m_decibels[channel][i + halfstep])); // unroll loop to cache line size
-                maxvec = _mm256_max_ps(maxvec, chunk);
+                auto chunk1 = _mm256_andnot_ps(signbit, _mm256_load_ps(&m_decibels[channel][i])); // absolute value
+                max1 = _mm256_max_ps(max1, chunk1);
+                auto chunk2 = _mm256_andnot_ps(signbit, _mm256_load_ps(&m_decibels[channel][i + halfstep])); // unroll loop to cache line size
+                max2 = _mm256_max_ps(max2, chunk2);
             }
 
-            out = horizontal_max(maxvec);
+            out = horizontal_max(_mm256_max_ps(max1, max2));
         }
 
         if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
@@ -318,11 +322,12 @@ void WAVSourceAVX::update_input_rms(const audio_data *audio)
 
     constexpr auto step = (sizeof(__m256) / sizeof(float)) * 2; // buffer size is 64-byte multiple
     constexpr auto halfstep = step / 2;
-    auto sum = _mm256_setzero_ps();
+    auto sum1 = _mm256_setzero_ps();
+    auto sum2 = _mm256_setzero_ps();
     for(size_t i = 0; i < m_input_rms_size; i += step)
     {
-        sum = _mm256_add_ps(sum, _mm256_load_ps(&m_input_rms_buf[i]));
-        sum = _mm256_add_ps(sum, _mm256_load_ps(&m_input_rms_buf[i + halfstep]));
+        sum1 = _mm256_add_ps(sum1, _mm256_load_ps(&m_input_rms_buf[i])); // split sum into 2 'lanes' for better pipelining
+        sum2 = _mm256_add_ps(sum2, _mm256_load_ps(&m_input_rms_buf[i + halfstep]));
     }
-    m_input_rms = std::sqrt(horizontal_sum(sum) / m_input_rms_size);
+    m_input_rms = std::sqrt(horizontal_sum(_mm256_add_ps(sum1, sum2)) / m_input_rms_size);
 }

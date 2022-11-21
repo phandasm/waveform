@@ -628,6 +628,7 @@ void WAVSource::free_bufs()
     m_window_coefficients.reset();
     m_slope_modifiers.reset();
     m_input_rms_buf.reset();
+    m_rolloff_modifiers.reset();
 
     if(m_fft_plan != nullptr)
     {
@@ -667,7 +668,7 @@ void WAVSource::init_rolloff()
     const auto freq_low = (float)m_cutoff_low * ratio;
     const auto freq_high = (float)m_cutoff_high / ratio;
 
-    m_rolloff_modifiers.resize(m_fft_size / 2);
+    m_rolloff_modifiers.reset(membuf_alloc<float>(m_fft_size / 2));
     m_rolloff_modifiers[0] = 0.0f;
     for(size_t i = 1u; i < sz; ++i)
     {
@@ -699,7 +700,6 @@ void WAVSource::init_steps()
 
 WAVSource::WAVSource(obs_source_t *source)
 {
-    std::lock_guard lock(m_mtx); // update() spins up callbacks
     m_source = source;
     for(auto& i : m_capturebufs)
         circlebuf_init(&i);
@@ -1008,8 +1008,6 @@ void WAVSource::update(obs_data_t *settings)
     // roll-off
     if((m_rolloff_q > 0.0f) && (m_rolloff_rate > 0.0f))
         init_rolloff();
-    else
-        m_rolloff_modifiers.clear();
 
     // vertex buffer must be rebuilt if the settings have changed
     // this must be done after m_num_bars has been initialized
@@ -1352,10 +1350,10 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                     auto half = m_cap_tris / 2; // m_cap_tris always even
                     auto start = m_radial ? 0 : (channel ? 0 : half);
                     auto stop = m_radial ? m_cap_tris : (start + half);
+                    vec3 cvert;
+                    vec3_set(&cvert, ccx, val, 0.0f);
                     for(auto j = start; j < stop; ++j)
                     {
-                        vec3 cvert;
-                        vec3_set(&cvert, ccx, val, 0.0f);
                         vec3_add(&vbdata->points[vertpos], &m_cap_verts[j], &cvert);
                         vec3_add(&vbdata->points[vertpos + 1], &m_cap_verts[j + 1], &cvert);
                         vec3_copy(&vbdata->points[vertpos + 2], &cvert);
@@ -1366,10 +1364,9 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                         auto ccy = cpos - offset;
                         start = m_radial ? 0 : (channel ? half : 0);
                         stop = m_radial ? m_cap_tris : (start + half);
+                        vec3_set(&cvert, ccx, ccy, 0.0f);
                         for(auto j = start; j < stop; ++j)
                         {
-                            vec3 cvert;
-                            vec3_set(&cvert, ccx, ccy, 0.0f);
                             vec3_add(&vbdata->points[vertpos], &m_cap_verts[j], &cvert);
                             vec3_add(&vbdata->points[vertpos + 1], &m_cap_verts[j + 1], &cvert);
                             vec3_copy(&vbdata->points[vertpos + 2], &cvert);

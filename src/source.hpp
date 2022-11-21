@@ -168,7 +168,7 @@ protected:
     std::vector<float> m_interp_bufs[3]; // third buffer used as intermediate for gauss filter
 
     // roll-off
-    std::vector<float> m_rolloff_modifiers;
+    AVXBufR m_rolloff_modifiers;
 
     // filter
     Kernel<float> m_kernel;

@@ -15,10 +15,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include "waveform_config.hpp"
 #include "filter.hpp"
 #include <immintrin.h>
 
-static inline float horizontal_sum(__m128 vec)
+static FORCE_INLINE float horizontal_sum(__m128 vec)
 {
     auto low = vec;
     auto high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
