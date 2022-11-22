@@ -44,9 +44,12 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 
 #define P_LOG_SCALE         "log_scale"
 
+#define P_MIRROR_FREQ_AXIS  "mirror_freq_axis"
+
 #define P_RADIAL            "radial_layout"
 #define P_INVERT            "invert_direction"
 #define P_DEADZONE          "deadzone"
+#define P_RADIAL_ARC        "radial_arc"
 
 #define P_CAPS              "rounded_caps"
 
@@ -122,3 +125,5 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_ROLLOFF_Q_DESC    "rolloff_q_desc"
 #define P_ROLLOFF_RATE_DESC "rolloff_rate_desc"
 #define P_VOLUME_NORM_DESC  "volume_normalization_desc"
+#define P_MIRROR_DESC       "mirror_desc"
+#define P_RADIAL_ARC_DESC   "radial_arc_desc"

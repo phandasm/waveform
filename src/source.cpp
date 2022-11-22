@@ -119,9 +119,11 @@ namespace callbacks {
         obs_data_set_default_int(settings, P_WIDTH, 800);
         obs_data_set_default_int(settings, P_HEIGHT, 225);
         obs_data_set_default_bool(settings, P_LOG_SCALE, true);
+        obs_data_set_default_bool(settings, P_MIRROR_FREQ_AXIS, false);
         obs_data_set_default_bool(settings, P_RADIAL, false);
         obs_data_set_default_bool(settings, P_INVERT, false);
         obs_data_set_default_double(settings, P_DEADZONE, 20.0);
+        obs_data_set_default_double(settings, P_RADIAL_ARC, 360.0);
         obs_data_set_default_bool(settings, P_CAPS, false);
         obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
         obs_data_set_default_int(settings, P_CHANNEL_SPACING, 0);
@@ -214,8 +216,10 @@ namespace callbacks {
             set_prop_visible(props, P_WINDOW, notmeter);
             set_prop_visible(props, P_RADIAL, notmeter);
             set_prop_visible(props, P_DEADZONE, notmeter && obs_data_get_bool(settings, P_RADIAL));
+            set_prop_visible(props, P_RADIAL_ARC, notmeter && obs_data_get_bool(settings, P_RADIAL));
             set_prop_visible(props, P_INVERT, notmeter && obs_data_get_bool(settings, P_RADIAL));
             set_prop_visible(props, P_LOG_SCALE, notmeter);
+            set_prop_visible(props, P_MIRROR_FREQ_AXIS, notmeter);
             set_prop_visible(props, P_WIDTH, notmeter);
             set_prop_visible(props, P_AUTO_FFT_SIZE, notmeter);
             set_prop_visible(props, P_FFT_SIZE, notmeter);
@@ -232,15 +236,23 @@ namespace callbacks {
         // log scale
         obs_properties_add_bool(props, P_LOG_SCALE, T(P_LOG_SCALE));
 
+        // mirror frequency axis
+        auto mirror = obs_properties_add_bool(props, P_MIRROR_FREQ_AXIS, T(P_MIRROR_FREQ_AXIS));
+        obs_property_set_long_description(mirror, T(P_MIRROR_DESC));
+
         // radial layout
         auto rad = obs_properties_add_bool(props, P_RADIAL, T(P_RADIAL));
         obs_properties_add_bool(props, P_INVERT, T(P_INVERT));
         auto deadzone = obs_properties_add_float_slider(props, P_DEADZONE, T(P_DEADZONE), 0.0, 100.0, 0.1);
+        auto arc = obs_properties_add_float_slider(props, P_RADIAL_ARC, T(P_RADIAL_ARC), 0.0, 360.0, 0.1);
         obs_property_float_set_suffix(deadzone, "%");
         obs_property_set_long_description(deadzone, T(P_DEADZONE_DESC));
+        obs_property_float_set_suffix(arc, "°");
+        obs_property_set_long_description(arc, T(P_RADIAL_ARC_DESC));
         obs_property_set_modified_callback(rad, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto enable = obs_data_get_bool(settings, P_RADIAL) && obs_property_visible(obs_properties_get(props, P_RADIAL));
             set_prop_visible(props, P_DEADZONE, enable);
+            set_prop_visible(props, P_RADIAL_ARC, enable);
             set_prop_visible(props, P_INVERT, enable);
             return true;
             });
@@ -396,9 +408,11 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_width = (unsigned int)obs_data_get_int(settings, P_WIDTH);
     m_height = (unsigned int)obs_data_get_int(settings, P_HEIGHT);
     m_log_scale = obs_data_get_bool(settings, P_LOG_SCALE);
+    m_mirror_freq_axis = obs_data_get_bool(settings, P_MIRROR_FREQ_AXIS);
     m_radial = obs_data_get_bool(settings, P_RADIAL);
     m_invert = obs_data_get_bool(settings, P_INVERT);
     auto deadzone = (float)obs_data_get_double(settings, P_DEADZONE) / 100.0f;
+    m_radial_arc = (float)obs_data_get_double(settings, P_RADIAL_ARC) / 360.0f;
     m_rounded_caps = obs_data_get_bool(settings, P_CAPS);
     m_stereo = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO);
     m_channel_spacing = (int)obs_data_get_int(settings, P_CHANNEL_SPACING);
@@ -657,6 +671,13 @@ void WAVSource::init_interp(unsigned int sz)
         for(auto i = 0u; i < sz; ++i)
             m_interp_indices[i] = lerp(lowbin, highbin, (float)i / (float)(sz - 1));
     }
+
+    if(m_mirror_freq_axis)
+    {
+        const auto half = (sz / 2);
+        for(auto i = half + 1; i < sz; ++i)
+            m_interp_indices[i] = m_interp_indices[half - std::min(i - half, half)];
+    }
 }
 
 void WAVSource::init_rolloff()
@@ -755,7 +776,7 @@ void WAVSource::create_vbuf() {
     size_t num_verts = 0;
 
     if(m_display_mode == DisplayMode::CURVE)
-        num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width + 2));
+        num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width * 2));
     else
     {
         const auto step_stride = m_step_width + m_step_gap;
@@ -789,9 +810,18 @@ void WAVSource::create_vbuf() {
     m_vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
 
     if(m_display_mode == DisplayMode::CURVE) {
-        for(auto i = 0u; i < num_verts; ++i)
+        if(m_render_mode == RenderMode::LINE)
         {
-            vec3_set(&vbdata->points[i], (float)i, 0, 0);
+            for(auto i = 0u; i < m_width; ++i)
+                vec3_set(&vbdata->points[i], (float)i, 0, 0);
+        }
+        else
+        {
+            for(auto i = 0u; i < m_width; ++i)
+            {
+                vec3_set(&vbdata->points[i * 2], (float)i, 0, 0);
+                vec3_set(&vbdata->points[(i * 2) + 1], (float)i, 0, 0);
+            }
         }
     }
 
@@ -835,6 +865,7 @@ void WAVSource::update(obs_data_t *settings)
         m_stereo = false;
         m_radial = false;
         m_normalize_volume = false;
+        m_mirror_freq_axis = false;
 
         // repurpose m_fft_size for meter buffer size
         m_fft_size = size_t(m_audio_info.samples_per_sec * (m_meter_ms / 1000.0)) & -16;
@@ -1067,11 +1098,13 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     if(m_radial)
     {
         auto graph_width = gs_effect_get_param_by_name(m_shader, "graph_width");
-        gs_effect_set_float(graph_width, (float)m_width);
+        gs_effect_set_float(graph_width, float(m_width - 1));
         auto graph_height = gs_effect_get_param_by_name(m_shader, "graph_height");
         gs_effect_set_float(graph_height, (float)m_height);
         auto graph_deadzone = gs_effect_get_param_by_name(m_shader, "graph_deadzone");
         gs_effect_set_float(graph_deadzone, m_deadzone);
+        auto radial_arc = gs_effect_get_param_by_name(m_shader, "radial_arc");
+        gs_effect_set_float(radial_arc, m_radial_arc);
         auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
         gs_effect_set_bool(graph_invert, m_invert);
         auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
@@ -1103,8 +1136,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 #endif // !DISABLE_X86_SIMD
         }
         
-        const auto step = (m_render_mode == RenderMode::LINE) ? 1 : 2;
-        for(auto i = 0u; i < m_width; i += step)
+        for(auto i = 0u; i < m_width; ++i)
         {
             auto val = lerp(0.0f, cpos - channel_offset, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
             if(val < miny)
@@ -1124,31 +1156,30 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
-        auto vertpos = 0u;
         auto offset = channel_offset;
         if(channel)
             offset = -offset;
         auto bot = cpos - offset;
-        if(m_render_mode != RenderMode::LINE)
-            vec3_set(&vbdata->points[vertpos++], 0, bot, 0);
 
         for(auto i = 0u; i < m_width; ++i)
         {
-            if((m_render_mode != RenderMode::LINE) && (i & 1))
-            {
-                vbdata->points[vertpos++].y = bot;
-                continue;
-            }
-
             auto val = m_interp_bufs[channel][i];
-            if(channel == 0)
-                vbdata->points[vertpos++].y = val;
+            if(m_render_mode == RenderMode::LINE)
+            {
+                if(channel == 0)
+                    vbdata->points[i].y = val;
+                else
+                    vbdata->points[i].y = bottom - val;
+            }
             else
-                vbdata->points[vertpos++].y = bottom - val;
+            {
+                if(channel == 0)
+                    vbdata->points[i * 2].y = val;
+                else
+                    vbdata->points[i * 2].y = bottom - val;
+                vbdata->points[(i * 2) + 1].y = bot;
+            }
         }
-
-        if(m_render_mode != RenderMode::LINE)
-            vbdata->points[vertpos++].y = bot;
 
         gs_vertexbuffer_flush(m_vbuf);
 
@@ -1160,7 +1191,6 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     gs_technique_end(tech);
 }
 
-// FIXME: DESPERATELY needs cleanup
 void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 {
     //std::lock_guard lock(m_mtx); // now locked in render()
@@ -1198,11 +1228,13 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     if(m_radial)
     {
         auto graph_width = gs_effect_get_param_by_name(m_shader, "graph_width");
-        gs_effect_set_float(graph_width, (float)m_width);
+        gs_effect_set_float(graph_width, float(m_width - 1));
         auto graph_height = gs_effect_get_param_by_name(m_shader, "graph_height");
         gs_effect_set_float(graph_height, (float)m_height);
         auto graph_deadzone = gs_effect_get_param_by_name(m_shader, "graph_deadzone");
         gs_effect_set_float(graph_deadzone, m_deadzone);
+        auto radial_arc = gs_effect_get_param_by_name(m_shader, "radial_arc");
+        gs_effect_set_float(radial_arc, m_radial_arc);
         auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
         gs_effect_set_bool(graph_invert, m_invert);
         auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");

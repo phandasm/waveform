@@ -148,6 +148,7 @@ protected:
     vec4 m_color_crest{ 1.0, 1.0, 1.0, 1.0 };
     float m_slope = 0.0f;
     bool m_log_scale = true;
+    bool m_mirror_freq_axis = false;
     int m_bar_width = 0;
     int m_bar_gap = 0;
     int m_step_width = 0;
@@ -156,6 +157,7 @@ protected:
     bool m_radial = false;
     bool m_invert = false;
     float m_deadzone = 0.0f; // radial display deadzone
+    float m_radial_arc = 1.0f;
     bool m_rounded_caps = false;
     bool m_hide_on_silent = false;
     int m_channel_spacing = 0;
