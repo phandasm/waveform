@@ -107,6 +107,7 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_BAR_GAP           "bar_gap"
 #define P_STEP_WIDTH        "step_width"
 #define P_STEP_GAP          "step_gap"
+#define P_MIN_BAR_HEIGHT    "min_bar_height"
 
 
 // tooltip descriptions

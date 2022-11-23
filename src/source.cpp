@@ -151,6 +151,7 @@ namespace callbacks {
         obs_data_set_default_int(settings, P_BAR_GAP, 6);
         obs_data_set_default_int(settings, P_STEP_WIDTH, 8);
         obs_data_set_default_int(settings, P_STEP_GAP, 4);
+        obs_data_set_default_int(settings, P_MIN_BAR_HEIGHT, 0);
         obs_data_set_default_int(settings, P_METER_BUF, 150);
         obs_data_set_default_bool(settings, P_RMS_MODE, true);
         obs_data_set_default_bool(settings, P_HIDE_SILENT, false);
@@ -187,6 +188,7 @@ namespace callbacks {
         obs_properties_add_int(props, P_BAR_GAP, T(P_BAR_GAP), 0, 256, 1);
         obs_properties_add_int(props, P_STEP_WIDTH, T(P_STEP_WIDTH), 1, 256, 1);
         obs_properties_add_int(props, P_STEP_GAP, T(P_STEP_GAP), 0, 256, 1);
+        obs_properties_add_int(props, P_MIN_BAR_HEIGHT, T(P_MIN_BAR_HEIGHT), 0, 1080, 1);
         obs_property_set_modified_callback(displaylist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto disp = obs_data_get_string(settings, P_DISPLAY_MODE);
             auto meter = p_equ(disp, P_LEVEL_METER);
@@ -198,6 +200,7 @@ namespace callbacks {
             set_prop_visible(props, P_BAR_GAP, bar || step);
             set_prop_visible(props, P_STEP_WIDTH, step);
             set_prop_visible(props, P_STEP_GAP, step);
+            set_prop_visible(props, P_MIN_BAR_HEIGHT, bar || step);
             set_prop_visible(props, P_CAPS, bar);
             obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, !curve);
 
@@ -441,6 +444,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_bar_gap = (int)obs_data_get_int(settings, P_BAR_GAP);
     m_step_width = (int)obs_data_get_int(settings, P_STEP_WIDTH);
     m_step_gap = (int)obs_data_get_int(settings, P_STEP_GAP);
+    m_min_bar_height = (int)obs_data_get_int(settings, P_MIN_BAR_HEIGHT);
     m_meter_rms = obs_data_get_bool(settings, P_RMS_MODE);
     m_meter_ms = (int)obs_data_get_int(settings, P_METER_BUF);
     m_hide_on_silent = obs_data_get_bool(settings, P_HIDE_SILENT);
@@ -1306,6 +1310,8 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         auto border_bottom = (m_rounded_caps && (!m_stereo || (m_channel_spacing > 0))) ? cpos - m_cap_radius : cpos;
         if(m_channel_spacing > 0)
             border_bottom -= channel_offset;
+        if(m_min_bar_height > 0)
+            border_bottom -= m_min_bar_height;
         for(auto i = 0; i < m_num_bars; ++i)
         {
             auto val = lerp(border_top, border_bottom, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);

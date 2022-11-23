@@ -164,6 +164,7 @@ protected:
     float m_rolloff_q = 0.0f;
     float m_rolloff_rate = 0.0f;
     bool m_normalize_volume = false;
+    int m_min_bar_height = 0;
 
     // interpolation
     std::vector<float> m_interp_indices;
