@@ -1,9 +1,7 @@
-# Mac and Linux users please uninstall older versions first
-- Support for OBS 28 on M1 Macs
-- Add volume normalization option
-- Rendering performance improvements (#24 thanks to Ori Sky)
-- Fix typo resulting in slightly incorrect gaussian kernels
-- Dropped 32-bit support
+- Add option to mirror frequency axis
+- Add option to adjust arc in radial mode
+- Add option for minimum bar height
+- Improve rendering of curve graph in some cases
 
 ## Installation
 ### Windows
