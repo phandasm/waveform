@@ -196,6 +196,7 @@ endif()
 target_compile_definitions(waveform PRIVATE _USE_MATH_DEFINES)
 if(MSVC)
     target_compile_options(waveform PRIVATE "/W4") # warning level
+    target_link_options(waveform PRIVATE "$<$<CONFIG:Release>:/OPT:REF>") # reduce size of release binaries
 else()
     target_compile_options(waveform PRIVATE "-Wall" "-Wextra")
 endif()
