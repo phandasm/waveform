@@ -675,13 +675,6 @@ void WAVSource::init_interp(unsigned int sz)
         for(auto i = 0u; i < sz; ++i)
             m_interp_indices[i] = lerp(lowbin, highbin, (float)i / (float)(sz - 1));
     }
-
-    if(m_mirror_freq_axis)
-    {
-        const auto half = (sz / 2);
-        for(auto i = half + 1; i < sz; ++i)
-            m_interp_indices[i] = m_interp_indices[half - std::min(i - half, half)];
-    }
 }
 
 void WAVSource::init_rolloff()
@@ -1147,6 +1140,13 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
                 miny = val;
             m_interp_bufs[channel][i] = val;
         }
+
+        if(m_mirror_freq_axis)
+        {
+            const auto half = (m_width / 2u);
+            for(auto i = half + 1; i < m_width; ++i)
+                m_interp_bufs[channel][i] = m_interp_bufs[channel][half - std::min(i - half, half)]; // sanity check, i - half should always be <= half
+        }
     }
     auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
     gs_effect_set_float(grad_height, (cpos - miny - channel_offset) * m_grad_ratio);
@@ -1318,6 +1318,13 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             if(val < miny)
                 miny = val;
             m_interp_bufs[channel][i] = val;
+        }
+
+        if(m_mirror_freq_axis)
+        {
+            const auto half = (m_num_bars / 2u);
+            for(auto i = half + 1; i < (unsigned int)m_num_bars; ++i)
+                m_interp_bufs[channel][i] = m_interp_bufs[channel][half - std::min(i - half, half)]; // sanity check, i - half should always be <= half
         }
     }
     auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
