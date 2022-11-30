@@ -1312,6 +1312,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             border_bottom -= channel_offset;
         if(m_min_bar_height > 0)
             border_bottom -= m_min_bar_height;
+        border_bottom = std::clamp(border_bottom, border_top, cpos);
         for(auto i = 0; i < m_num_bars; ++i)
         {
             auto val = lerp(border_top, border_bottom, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
