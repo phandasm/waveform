@@ -668,12 +668,12 @@ void WAVSource::init_interp(unsigned int sz)
     if(m_log_scale)
     {
         for(auto i = 0u; i < sz; ++i)
-            m_interp_indices[i] = log_interp(lowbin, highbin, (float)i / (float)(sz - 1));
+            m_interp_indices[i] = std::clamp(log_interp(lowbin, highbin, (m_mirror_freq_axis ? i * 2.0f : (float)i) / (float)(sz - 1)), lowbin, highbin);
     }
     else
     {
         for(auto i = 0u; i < sz; ++i)
-            m_interp_indices[i] = lerp(lowbin, highbin, (float)i / (float)(sz - 1));
+            m_interp_indices[i] = std::clamp(lerp(lowbin, highbin, (m_mirror_freq_axis ? i * 2.0f : (float)i) / (float)(sz - 1)), lowbin, highbin);
     }
 }
 
