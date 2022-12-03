@@ -1,3 +1,9 @@
+## Beta 2 changes
+- Fix possible crash when using volume normalization or rolloff
+- Adjustments to mirror frequency axis option
+- Update Chinese localization (#32 thanks to GodGun968)
+
+## Beta 1 changes
 - Add option to mirror frequency axis
 - Add option to adjust arc in radial mode
 - Add option for minimum bar height
