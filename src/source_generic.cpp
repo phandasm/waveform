@@ -19,9 +19,10 @@
 #include <algorithm>
 #include <cstring>
 #include <cmath>
+#include <util/platform.h>
 
 // portable non-SIMD implementation
-// see comments of WAVSourceAVX2
+// see comments of WAVSourceAVX2 and WAVSourceAVX
 void WAVSourceGeneric::tick_spectrum(float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
@@ -35,7 +36,9 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
     const auto outsz = m_fft_size / 2;
     constexpr auto step = 1;
 
-    if(!m_show)
+    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+
+    if(!m_show || (dtcapture > CAPTURE_TIMEOUT))
     {
         if(m_last_silent)
             return;
@@ -186,6 +189,20 @@ void WAVSourceGeneric::tick_meter(float seconds)
 
     if(m_capture_channels == 0)
         return;
+
+    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+    if(dtcapture > CAPTURE_TIMEOUT)
+    {
+        for(auto channel = 0u; channel < m_capture_channels; ++channel)
+            for(size_t i = 0u; i < m_fft_size; ++i)
+                m_decibels[channel][i] = 0.0f;
+
+        for(auto& i : m_meter_buf)
+            i = 0.0f;
+        for(auto& i : m_meter_val)
+            i = DB_MIN;
+        return;
+    }
 
     const auto outsz = m_fft_size;
 

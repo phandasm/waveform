@@ -19,6 +19,7 @@
 #include <immintrin.h>
 #include <algorithm>
 #include <cstring>
+#include <util/platform.h>
 
 void WAVSourceAVX2::tick_spectrum(float seconds)
 {
@@ -33,8 +34,11 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
     const auto outsz = m_fft_size / 2; // discard bins at nyquist and above
     constexpr auto step = sizeof(__m256) / sizeof(float);
 
+    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+
     // reset and stop processing when source is not being displayed
-    if(!m_show)
+    // or we haven't received audio data for more than the timeout value
+    if(!m_show || (dtcapture > CAPTURE_TIMEOUT))
     {
         if(m_last_silent)
             return;

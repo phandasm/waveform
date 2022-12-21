@@ -20,6 +20,7 @@
 #include <immintrin.h>
 #include <algorithm>
 #include <cstring>
+#include <util/platform.h>
 
 static FORCE_INLINE float horizontal_sum(__m256 vec)
 {
@@ -56,7 +57,9 @@ void WAVSourceAVX::tick_spectrum(float seconds)
     const auto outsz = m_fft_size / 2;
     constexpr auto step = sizeof(__m256) / sizeof(float);
 
-    if(!m_show)
+    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+
+    if(!m_show || (dtcapture > CAPTURE_TIMEOUT))
     {
         if(m_last_silent)
             return;
@@ -224,6 +227,23 @@ void WAVSourceAVX::tick_meter(float seconds)
 
     if(m_capture_channels == 0)
         return;
+
+    // handle audio dropouts
+    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+    if(dtcapture > CAPTURE_TIMEOUT)
+    {
+        constexpr auto step = sizeof(__m256) / sizeof(float);
+        const auto zero = _mm256_setzero_ps();
+        for(auto channel = 0u; channel < m_capture_channels; ++channel)
+            for(size_t i = 0u; i < m_fft_size; i += step)
+                _mm256_store_ps(&m_decibels[channel][i], zero);
+
+        for(auto& i : m_meter_buf)
+            i = 0.0f;
+        for(auto& i : m_meter_val)
+            i = DB_MIN;
+        return;
+    }
 
     // repurpose m_decibels as circular buffer for sample data
     for(auto channel = 0u; channel < m_capture_channels; ++channel)

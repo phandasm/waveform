@@ -24,6 +24,7 @@
 #include <string>
 #include <algorithm>
 #include <limits>
+#include <util/platform.h>
 
 #ifndef DISABLE_X86_SIMD
 
@@ -970,6 +971,7 @@ void WAVSource::update(obs_data_t *settings)
         if(i.size < bufsz)
             circlebuf_push_back_zero(&i, bufsz - i.size);
     }
+    m_capture_ts = os_gettime_ns();
 
     // precomupte interpolated indices
     if(m_display_mode == DisplayMode::CURVE)
@@ -1506,6 +1508,8 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     if(m_normalize_volume)
         update_input_rms(audio);
 
+    m_capture_ts = os_gettime_ns();
+
     auto sz = size_t(audio->frames * sizeof(float));
     for(auto i = 0u; i < m_capture_channels; ++i)
     {
@@ -1529,6 +1533,8 @@ void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_
 
     if(m_normalize_volume)
         update_input_rms(audio);
+
+    m_capture_ts = os_gettime_ns();
 
     auto sz = size_t(audio->frames * sizeof(float));
     for(auto i = 0u; i < m_capture_channels; ++i)

@@ -128,6 +128,9 @@ protected:
     int m_retries = 0;
     float m_next_retry = 0.0f;
 
+    // timestamp of last audio callback in nanoseconds
+    uint64_t m_capture_ts = 0;
+
     // settings
     RenderMode m_render_mode = RenderMode::SOLID;
     FFTWindow m_window_func = FFTWindow::HANN;
@@ -222,6 +225,7 @@ protected:
     // constants
     static const float DB_MIN;
     static constexpr auto RETRY_DELAY = 2.0f;
+    static constexpr uint64_t CAPTURE_TIMEOUT = 100000000ull; // time in nanoseconds before audio capture is considered "lost"
 
     inline float dbfs(float mag)
     {
