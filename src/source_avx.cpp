@@ -232,6 +232,8 @@ void WAVSourceAVX::tick_meter(float seconds)
     const auto dtcapture = os_gettime_ns() - m_capture_ts;
     if(dtcapture > CAPTURE_TIMEOUT)
     {
+        if(m_last_silent)
+            return;
         constexpr auto step = sizeof(__m256) / sizeof(float);
         const auto zero = _mm256_setzero_ps();
         for(auto channel = 0u; channel < m_capture_channels; ++channel)
@@ -242,6 +244,7 @@ void WAVSourceAVX::tick_meter(float seconds)
             i = 0.0f;
         for(auto& i : m_meter_val)
             i = DB_MIN;
+        m_last_silent = true;
         return;
     }
 
@@ -313,6 +316,14 @@ void WAVSourceAVX::tick_meter(float seconds)
         m_meter_buf[channel] = out;
         m_meter_val[channel] = dbfs(out);
     }
+
+    // hide on silent
+    auto silent_channels = 0;
+    for(auto channel = 0u; channel < m_capture_channels; ++channel)
+        if(m_meter_val[channel] < (m_floor - 10))
+            ++silent_channels;
+
+    m_last_silent = (silent_channels >= m_capture_channels);
 }
 
 void WAVSourceAVX::update_input_rms(const audio_data *audio)

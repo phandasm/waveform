@@ -193,6 +193,8 @@ void WAVSourceGeneric::tick_meter(float seconds)
     const auto dtcapture = os_gettime_ns() - m_capture_ts;
     if(dtcapture > CAPTURE_TIMEOUT)
     {
+        if(m_last_silent)
+            return;
         for(auto channel = 0u; channel < m_capture_channels; ++channel)
             for(size_t i = 0u; i < m_fft_size; ++i)
                 m_decibels[channel][i] = 0.0f;
@@ -201,6 +203,7 @@ void WAVSourceGeneric::tick_meter(float seconds)
             i = 0.0f;
         for(auto& i : m_meter_val)
             i = DB_MIN;
+        m_last_silent = true;
         return;
     }
 
@@ -256,6 +259,13 @@ void WAVSourceGeneric::tick_meter(float seconds)
         m_meter_buf[channel] = out;
         m_meter_val[channel] = dbfs(out);
     }
+
+    auto silent_channels = 0;
+    for(auto channel = 0u; channel < m_capture_channels; ++channel)
+        if(m_meter_val[channel] < (m_floor - 10))
+            ++silent_channels;
+
+    m_last_silent = (silent_channels >= m_capture_channels);
 }
 
 void WAVSourceGeneric::update_input_rms(const audio_data *audio)
