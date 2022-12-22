@@ -80,7 +80,7 @@ jobs:
       - name: 'Extract obs-deps'
         run: |
           mkdir ${{github.workspace}}/deps/obs-deps
-          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/CI/deps/macos-deps-2022-02-13-x86_64.tar.xz
+          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/CI/deps/macos-deps-2022-08-02-x86_64.tar.xz
       
       - name: 'Checkout obs-studio'
         uses: actions/checkout@v3
@@ -88,10 +88,10 @@ jobs:
           repository: 'obsproject/obs-studio'
           submodules: recursive
           path: 'deps/obs-studio'
-          ref: '27.2.4'
+          ref: '28.1.2'
       
       - name: 'OBS Cmake'
-        run: cmake -B ${{github.workspace}}/deps/obs-studio/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DENABLE_PLUGINS=OFF -DDISABLE_UI=ON -DENABLE_UI=OFF -DCOMPILE_PYTHON=OFF -DDISABLE_PYTHON=ON -DENABLE_SCRIPTING=OFF -DBUILD_BROWSER=OFF -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/deps/obs-deps" ${{github.workspace}}/deps/obs-studio
+        run: cmake -B ${{github.workspace}}/deps/obs-studio/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DENABLE_PLUGINS=OFF -DDISABLE_UI=ON -DENABLE_UI=OFF -DCOMPILE_PYTHON=OFF -DDISABLE_PYTHON=ON -DENABLE_SCRIPTING=OFF -DBUILD_BROWSER=OFF -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/deps/obs-deps" ${{github.workspace}}/deps/obs-studio
       
       - name: 'Build OBS'
         run: |
@@ -99,7 +99,7 @@ jobs:
           cmake --install ${{github.workspace}}/deps/obs-studio/build --config=Release
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DMAKE_BUNDLE=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps;${{github.workspace}}/deps/obs-studio/build" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
       
       - name: 'Build'
         run: |
