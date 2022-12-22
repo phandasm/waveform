@@ -1,3 +1,10 @@
+# Notice to Intel Mac users
+OBS requirement has been bumped to 28, please uninstall older versions of waveform first.
+
+## Beta 3 changes
+- Fix graph frozen after playback of media file finishes
+- Fix "Hide graph when audio is silent" option for level meters
+
 ## Beta 2 changes
 - Fix possible crash when using volume normalization or rolloff
 - Adjustments to mirror frequency axis option
@@ -32,14 +39,15 @@ or
 Note: Should work for most distros, but do not mix with the .deb package above.
 </details>
 
-### MacOS (10.13+)
+### MacOS (11.0+, OBS 28+)
 <details>
 <summary>Click for instructions</summary>
 
 #### Intel Macs
+- **Uninstall waveform versions prior to 1.6.0-beta3**
 - Download Waveform\_v#.#.#\_MacOS\_x86\_64.pkg and run it.  
 
-#### ARM64/Apple Silicon Macs (OBS 28+ required)
+#### ARM64/Apple Silicon Macs
 - Download Waveform\_v#.#.#\_MacOS\_arm64.pkg and run it.  
 Note: Use the ARM version only if you have a native ARM build of OBS.
 </details>
