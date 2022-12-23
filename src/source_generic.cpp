@@ -260,7 +260,7 @@ void WAVSourceGeneric::tick_meter(float seconds)
         m_meter_val[channel] = dbfs(out);
     }
 
-    auto silent_channels = 0;
+    auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
         if(m_meter_val[channel] < (m_floor - 10))
             ++silent_channels;
