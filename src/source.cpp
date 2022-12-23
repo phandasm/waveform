@@ -965,12 +965,6 @@ void WAVSource::update(obs_data_t *settings)
     m_next_retry = 0.0f;
 
     recapture_audio();
-    for(auto& i : m_capturebufs)
-    {
-        auto bufsz = m_fft_size * sizeof(float);
-        if(i.size < bufsz)
-            circlebuf_push_back_zero(&i, bufsz - i.size);
-    }
     m_capture_ts = os_gettime_ns();
 
     // precomupte interpolated indices
@@ -1513,7 +1507,7 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     auto sz = size_t(audio->frames * sizeof(float));
     for(auto i = 0u; i < m_capture_channels; ++i)
     {
-        if(muted)
+        if(muted || (audio->data[i] == nullptr))
             circlebuf_push_back_zero(&m_capturebufs[i], sz);
         else
             circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
@@ -1539,7 +1533,10 @@ void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_
     auto sz = size_t(audio->frames * sizeof(float));
     for(auto i = 0u; i < m_capture_channels; ++i)
     {
-        circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
+        if(audio->data[i] == nullptr)
+            circlebuf_push_back_zero(&m_capturebufs[i], sz);
+        else
+            circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
 
         auto total = m_capturebufs[i].size;
         auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
