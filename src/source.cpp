@@ -1493,6 +1493,8 @@ void WAVSource::register_source()
 
 void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio_data *audio, bool muted)
 {
+    if(audio == nullptr)
+        return;
     if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
@@ -1521,6 +1523,8 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
 
 void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_data *audio)
 {
+    if(audio == nullptr)
+        return;
     if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
