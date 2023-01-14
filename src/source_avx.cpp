@@ -328,10 +328,14 @@ void WAVSourceAVX::tick_meter(float seconds)
 
 void WAVSourceAVX::update_input_rms(const audio_data *audio)
 {
+    if(audio == nullptr)
+        return;
     const auto sz = audio->frames;
     auto data = (float**)&audio->data;
     if(m_capture_channels > 1)
     {
+        if((data[0] == nullptr) || (data[1] == nullptr))
+            return;
         for(auto i = 0u; i < sz; ++i)
         {
             auto val = std::max(std::abs(data[0][i]), std::abs(data[1][i]));
@@ -342,6 +346,8 @@ void WAVSourceAVX::update_input_rms(const audio_data *audio)
     }
     else
     {
+        if(data[0] == nullptr)
+            return;
         for(auto i = 0u; i < sz; ++i)
         {
             auto val = data[0][i];
