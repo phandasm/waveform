@@ -19,7 +19,7 @@
 #include "filter.hpp"
 #include <immintrin.h>
 
-static FORCE_INLINE float horizontal_sum(__m128 vec)
+static WAV_FORCE_INLINE float horizontal_sum(__m128 vec)
 {
     auto low = vec;
     auto high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]

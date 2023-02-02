@@ -127,10 +127,11 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
 
             if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
             {
+                auto oldval = m_tsmooth_buf[channel][i];
                 if(m_fast_peaks)
-                    m_tsmooth_buf[channel][i] = std::max(mag, m_tsmooth_buf[channel][i]);
+                    oldval = std::max(mag, oldval);
 
-                mag = (g * m_tsmooth_buf[channel][i]) + (g2 * mag);
+                mag = (g * oldval) + (g2 * mag);
                 m_tsmooth_buf[channel][i] = mag;
             }
 

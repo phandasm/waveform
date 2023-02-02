@@ -189,7 +189,7 @@ protected:
     std::vector<vec3> m_cap_verts;  // pre-rotated cap vertices (to be translated to final pos)
 
     // stepped bars
-    std::vector<vec3> m_step_verts;  // vertices for one step of a bar (to be translated to final pos)
+    vec3 m_step_verts[6]{};         // vertices for one step of a bar (to be translated to final pos)
 
     // render vars
     gs_effect_t *m_shader = NULL;

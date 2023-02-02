@@ -551,7 +551,9 @@ void WAVSource::recapture_audio()
 
     // add new capture
     auto src_name = m_audio_source_name.c_str();
-    if(p_equ(src_name, P_OUTPUT_BUS))
+    if(p_equ(src_name, P_NONE))
+        return;
+    else if(p_equ(src_name, P_OUTPUT_BUS))
     {
         audio_convert_info cvt{};
         cvt.format = audio_format::AUDIO_FORMAT_FLOAT_PLANAR;
@@ -568,7 +570,7 @@ void WAVSource::recapture_audio()
             m_audio_source = obs_source_get_weak_source(asrc);
             obs_source_release(asrc);
         }
-        else if(!p_equ(src_name, "none"))
+        else
         {
             if(m_retries++ == 0)
                 LogWarn << "Failed to get audio source: \"" << src_name << "\"";
@@ -702,8 +704,6 @@ void WAVSource::init_rolloff()
 
 void WAVSource::init_steps()
 {
-    m_step_verts.resize(6);
-
     const auto x1 = 0.0f;
     const auto x2 = (float)m_bar_width;
     const auto y1 = 0.0f;
@@ -1141,7 +1141,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         {
             const auto half = (m_width / 2u);
             for(auto i = half + 1; i < m_width; ++i)
-                m_interp_bufs[channel][i] = m_interp_bufs[channel][half - std::min(i - half, half)]; // sanity check, i - half should always be <= half
+                m_interp_bufs[channel][i] = m_interp_bufs[channel][half - (i - half)];
         }
     }
     auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
@@ -1321,7 +1321,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         {
             const auto half = (m_num_bars / 2u);
             for(auto i = half + 1; i < (unsigned int)m_num_bars; ++i)
-                m_interp_bufs[channel][i] = m_interp_bufs[channel][half - std::min(i - half, half)]; // sanity check, i - half should always be <= half
+                m_interp_bufs[channel][i] = m_interp_bufs[channel][half - (i - half)];
         }
     }
     auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
@@ -1463,7 +1463,7 @@ void WAVSource::register_source()
     LogInfo << "Registered v" VERSION_STRING " x86";
 #elif defined(__arm__) || defined(_M_ARM)
     LogInfo << "Registered v" VERSION_STRING " ARM";
-#elif defined(__aarch64__)
+#elif defined(__aarch64__) || defined(_M_ARM64)
     LogInfo << "Registered v" VERSION_STRING " ARM64";
 #else
     LogInfo << "Registered v" VERSION_STRING " Unknown Arch";
