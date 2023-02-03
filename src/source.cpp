@@ -24,6 +24,7 @@
 #include <string>
 #include <algorithm>
 #include <limits>
+#include <cassert>
 #include <util/platform.h>
 
 #ifndef DISABLE_X86_SIMD
@@ -127,6 +128,7 @@ namespace callbacks {
         obs_data_set_default_double(settings, P_RADIAL_ARC, 360.0);
         obs_data_set_default_bool(settings, P_CAPS, false);
         obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
+        obs_data_set_default_int(settings, P_CHANNEL, 0);
         obs_data_set_default_int(settings, P_CHANNEL_SPACING, 0);
         obs_data_set_default_int(settings, P_FFT_SIZE, 4096);
         obs_data_set_default_bool(settings, P_AUTO_FFT_SIZE, false);
@@ -216,6 +218,7 @@ namespace callbacks {
             set_prop_visible(props, P_FILTER_RADIUS, notmeter && !p_equ(obs_data_get_string(settings, P_FILTER_MODE), P_NONE));
             set_prop_visible(props, P_INTERP_MODE, notmeter);
             set_prop_visible(props, P_CHANNEL_MODE, notmeter);
+            set_prop_visible(props, P_CHANNEL, notmeter && p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_SINGLE));
             set_prop_visible(props, P_CHANNEL_SPACING, notmeter && p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO));
             set_prop_visible(props, P_WINDOW, notmeter);
             set_prop_visible(props, P_RADIAL, notmeter);
@@ -274,13 +277,19 @@ namespace callbacks {
         auto chanlst = obs_properties_add_list(props, P_CHANNEL_MODE, T(P_CHANNEL_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         obs_property_list_add_string(chanlst, T(P_MONO), P_MONO);
         obs_property_list_add_string(chanlst, T(P_STEREO), P_STEREO);
+        obs_property_list_add_string(chanlst, T(P_SINGLE), P_SINGLE);
         obs_property_set_long_description(chanlst, T(P_CHAN_DESC));
+
+        obs_properties_add_int(props, P_CHANNEL, T(P_CHANNEL), 0, MAX_AUDIO_CHANNELS - 1, 1);
 
         // channel spacing
         obs_properties_add_int(props, P_CHANNEL_SPACING, T(P_CHANNEL_SPACING), 0, 2160, 1);
         obs_property_set_modified_callback(chanlst, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
-            auto enable = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO) && obs_property_visible(obs_properties_get(props, P_CHANNEL_MODE));
-            set_prop_visible(props, P_CHANNEL_SPACING, enable);
+            auto vis = obs_property_visible(obs_properties_get(props, P_CHANNEL_MODE));
+            auto enable_spacing = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO) && vis;
+            auto enable_channel = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_SINGLE) && vis;
+            set_prop_visible(props, P_CHANNEL_SPACING, enable_spacing);
+            set_prop_visible(props, P_CHANNEL, enable_channel);
             return true;
             });
 
@@ -418,7 +427,9 @@ void WAVSource::get_settings(obs_data_t *settings)
     auto deadzone = (float)obs_data_get_double(settings, P_DEADZONE) / 100.0f;
     m_radial_arc = (float)obs_data_get_double(settings, P_RADIAL_ARC) / 360.0f;
     m_rounded_caps = obs_data_get_bool(settings, P_CAPS);
-    m_stereo = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO);
+    auto channel_mode = obs_data_get_string(settings, P_CHANNEL_MODE);
+    m_stereo = p_equ(channel_mode, P_STEREO);
+    m_channel_base = (int)obs_data_get_int(settings, P_CHANNEL);
     m_channel_spacing = (int)obs_data_get_int(settings, P_CHANNEL_SPACING);
     m_fft_size = (size_t)obs_data_get_int(settings, P_FFT_SIZE);
     m_auto_fft_size = obs_data_get_bool(settings, P_AUTO_FFT_SIZE);
@@ -542,6 +553,13 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_deadzone = std::min(std::floor((float)m_height * deadzone), max_deadzone);
         m_height -= (int)m_deadzone;
     }
+
+    if(!m_meter_mode && p_equ(channel_mode, P_SINGLE))
+        m_channel_mode = ChannelMode::SINGLE;
+    else if(p_equ(channel_mode, P_STEREO))
+        m_channel_mode = ChannelMode::STEREO;
+    else
+        m_channel_mode = ChannelMode::MONO;
 }
 
 void WAVSource::recapture_audio()
@@ -848,9 +866,22 @@ void WAVSource::update(obs_data_t *settings)
 
     // get current audio settings
     update_audio_info(&m_audio_info);
-    m_capture_channels = std::min(get_audio_channels(m_audio_info.speakers), 2u);
+    const auto max_channels = get_audio_channels(m_audio_info.speakers);
+    m_capture_channels = std::min(max_channels, 2u);
     if(m_capture_channels == 0)
         LogWarn << "Unknown channel config: " << (unsigned int)m_audio_info.speakers;
+    if(m_channel_mode == ChannelMode::SINGLE)
+    {
+        if((m_channel_base < 0) || (m_channel_base >= (int)max_channels) || (m_channel_base >= MAX_AUDIO_CHANNELS))
+        {
+            m_capture_channels = 0;
+            m_channel_base = 0;
+        }
+        else
+            m_capture_channels = std::min(m_capture_channels, 1u);
+    }
+    else
+        m_channel_base = 0;
 
     // meter mode
     if(m_meter_mode)
@@ -1501,6 +1532,8 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     std::lock_guard lock(m_mtx, std::adopt_lock);
     if((m_audio_source == nullptr) || (m_capture_channels == 0))
         return;
+    assert((m_channel_base >= 0) && (m_channel_base < (int)get_audio_channels(m_audio_info.speakers)));
+    assert((m_channel_base == 0) || (m_capture_channels == 1));
 
     if(m_normalize_volume)
         update_input_rms(audio);
@@ -1508,17 +1541,19 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     m_capture_ts = os_gettime_ns();
 
     auto sz = size_t(audio->frames * sizeof(float));
-    for(auto i = 0u; i < m_capture_channels; ++i)
+    for(auto i = m_channel_base; i < (m_channel_base + (int)m_capture_channels); ++i)
     {
+        auto j = i - m_channel_base;
+        assert((j == 0) || (j == 1));
         if(muted || (audio->data[i] == nullptr))
-            circlebuf_push_back_zero(&m_capturebufs[i], sz);
+            circlebuf_push_back_zero(&m_capturebufs[j], sz);
         else
-            circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
+            circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
 
-        auto total = m_capturebufs[i].size;
+        auto total = m_capturebufs[j].size;
         auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
         if(total > max)
-            circlebuf_pop_front(&m_capturebufs[i], nullptr, total - max);
+            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max);
     }
 }
 
@@ -1531,6 +1566,8 @@ void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_
     std::lock_guard lock(m_mtx, std::adopt_lock);
     if(m_capture_channels == 0)
         return;
+    assert((m_channel_base >= 0) && (m_channel_base < (int)get_audio_channels(m_audio_info.speakers)));
+    assert((m_channel_base == 0) || (m_capture_channels == 1));
 
     if(m_normalize_volume)
         update_input_rms(audio);
@@ -1538,16 +1575,18 @@ void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_
     m_capture_ts = os_gettime_ns();
 
     auto sz = size_t(audio->frames * sizeof(float));
-    for(auto i = 0u; i < m_capture_channels; ++i)
+    for(auto i = m_channel_base; i < (m_channel_base + (int)m_capture_channels); ++i)
     {
+        auto j = i - m_channel_base;
+        assert((j == 0) || (j == 1));
         if(audio->data[i] == nullptr)
-            circlebuf_push_back_zero(&m_capturebufs[i], sz);
+            circlebuf_push_back_zero(&m_capturebufs[j], sz);
         else
-            circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
+            circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
 
-        auto total = m_capturebufs[i].size;
+        auto total = m_capturebufs[j].size;
         auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
         if(total > max)
-            circlebuf_pop_front(&m_capturebufs[i], nullptr, total - max);
+            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max);
     }
 }

@@ -73,6 +73,13 @@ enum class DisplayMode
     STEPPED_METER
 };
 
+enum class ChannelMode
+{
+    MONO,
+    STEREO,
+    SINGLE
+};
+
 class WAVSource
 {
 protected:
@@ -138,6 +145,7 @@ protected:
     FilterMode m_filter_mode = FilterMode::GAUSS;
     TSmoothingMode m_tsmoothing = TSmoothingMode::EXPONENTIAL;
     DisplayMode m_display_mode = DisplayMode::CURVE;
+    ChannelMode m_channel_mode = ChannelMode::MONO;
     bool m_stereo = false;
     bool m_auto_fft_size = true;
     int m_cutoff_low = 0;
@@ -168,6 +176,7 @@ protected:
     float m_rolloff_rate = 0.0f;
     bool m_normalize_volume = false;
     int m_min_bar_height = 0;
+    int m_channel_base = 0; // channel to use in single channel mode
 
     // interpolation
     std::vector<float> m_interp_indices;
