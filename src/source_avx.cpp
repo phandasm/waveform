@@ -329,7 +329,7 @@ void WAVSourceAVX::tick_meter(float seconds)
 
 void WAVSourceAVX::update_input_rms(const audio_data *audio)
 {
-    if(audio == nullptr)
+    if((audio == nullptr) || (m_capture_channels == 0))
         return;
     const auto sz = audio->frames;
     auto data = (float**)&audio->data;

@@ -555,11 +555,23 @@ void WAVSource::recapture_audio()
         return;
     else if(p_equ(src_name, P_OUTPUT_BUS))
     {
-        audio_convert_info cvt{};
-        cvt.format = audio_format::AUDIO_FORMAT_FLOAT_PLANAR;
-        cvt.samples_per_sec = m_audio_info.samples_per_sec;
-        cvt.speakers = (m_audio_info.speakers != speaker_layout::SPEAKERS_UNKNOWN) ? m_audio_info.speakers : speaker_layout::SPEAKERS_STEREO;
-        m_output_bus_captured = audio_output_connect(obs_get_audio(), 0, &cvt, &callbacks::capture_output_bus, this);
+        if(m_audio_info.speakers != speaker_layout::SPEAKERS_UNKNOWN)
+        {
+            auto audio = obs_get_audio();
+            auto info = audio_output_get_info(audio);
+            if((info->format == audio_format::AUDIO_FORMAT_FLOAT_PLANAR) && (info->samples_per_sec == m_audio_info.samples_per_sec) && (info->speakers == m_audio_info.speakers))
+            {
+                m_output_bus_captured = audio_output_connect(audio, 0, nullptr, &callbacks::capture_output_bus, this);
+            }
+            else
+            {
+                audio_convert_info cvt{};
+                cvt.format = audio_format::AUDIO_FORMAT_FLOAT_PLANAR;
+                cvt.samples_per_sec = m_audio_info.samples_per_sec;
+                cvt.speakers = m_audio_info.speakers;
+                m_output_bus_captured = audio_output_connect(audio, 0, &cvt, &callbacks::capture_output_bus, this);
+            }
+        }
     }
     else
     {
@@ -838,18 +850,7 @@ void WAVSource::update(obs_data_t *settings)
     update_audio_info(&m_audio_info);
     m_capture_channels = std::min(get_audio_channels(m_audio_info.speakers), 2u);
     if(m_capture_channels == 0)
-    {
-        auto channels = (unsigned int)m_audio_info.speakers;
-        if(channels > 0)
-        {
-            m_capture_channels = std::min((uint32_t)channels, 2u);
-            LogWarn << "Attempting to support unknown channel config: " << channels;
-        }
-        else
-        {
-            LogWarn << "Could not determine audio channel count";
-        }
-    }
+        LogWarn << "Unknown channel config: " << (unsigned int)m_audio_info.speakers;
 
     // meter mode
     if(m_meter_mode)
@@ -1498,7 +1499,7 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
-    if(m_audio_source == nullptr)
+    if((m_audio_source == nullptr) || (m_capture_channels == 0))
         return;
 
     if(m_normalize_volume)
@@ -1528,6 +1529,8 @@ void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_
     if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
+    if(m_capture_channels == 0)
+        return;
 
     if(m_normalize_volume)
         update_input_rms(audio);
