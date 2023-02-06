@@ -15,18 +15,10 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "waveform_config.hpp"
 #include "filter.hpp"
+#include "simd_helpers.hpp"
 #include <immintrin.h>
-
-static WAV_FORCE_INLINE float horizontal_sum(__m128 vec)
-{
-    auto low = vec;
-    auto high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
-    low = _mm_add_ps(high, low); // (h[0] + l[0]) (h[1] + l[1])
-    high = _mm_movehdup_ps(low); // high[0] = low[1]
-    return _mm_cvtss_f32(_mm_add_ss(high, low));
-}
+#include <cassert>
 
 float weighted_avg_fma3(const std::vector<float>& samples, const Kernel<float>& kernel, intmax_t index)
 {
@@ -75,6 +67,52 @@ std::vector<float>& apply_filter_fma3(const std::vector<float>& samples, const K
     {
         for(auto i = 0u; i < sz; ++i)
             output[i] = weighted_avg(samples, kernel, i);
+    }
+    return output;
+}
+
+std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output)
+{
+    assert(kernel.radius == 4);
+    constexpr auto step = sizeof(__m256) / sizeof(float);
+    const auto avx_stop = (intmax_t)((sz > 4) ? sz - 4 : 0);
+    const auto xsz = x.size();
+    if(output.size() < xsz)
+        output.resize(xsz);
+    for(size_t i = 0, j = 0; i < xsz; ++i, j += step)
+    {
+        auto index = (intmax_t)x[i];
+        if((index >= 3) && (index < avx_stop))
+            output[i] = horizontal_sum(_mm256_mul_ps(_mm256_loadu_ps(&samples[index - 3]), _mm256_load_ps(&kernel.weights[j])));
+        else
+            output[i] = lanczos_convolve(samples, sz, kernel, index, j);
+    }
+    return output;
+}
+
+// bar graph version
+std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, const std::vector<int>& band_widths, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output)
+{
+    assert(kernel.radius == 4);
+    constexpr auto step = sizeof(__m256) / sizeof(float);
+    const auto avx_stop = (intmax_t)((sz > 4) ? sz - 4 : 0);
+    const auto bands = (intmax_t)band_widths.size();
+    if((intmax_t)output.size() < bands)
+        output.resize(bands);
+    for(intmax_t i = 0, k = 0, l = 0; i < bands; ++i)
+    {
+        auto vecsum = _mm256_setzero_ps();
+        auto fsum = 0.0f;
+        auto count = (intmax_t)band_widths[i];
+        for(intmax_t j = 0; j < count; ++j, ++k, l += step)
+        {
+            auto index = (intmax_t)x[k];
+            if((index >= 3) && (index < avx_stop))
+                vecsum = _mm256_fmadd_ps(_mm256_loadu_ps(&samples[index - 3]), _mm256_load_ps(&kernel.weights[l]), vecsum);
+            else
+                fsum += lanczos_convolve(samples, sz, kernel, index, l);
+        }
+        output[i] = (fsum + horizontal_sum(vecsum)) / count;
     }
     return output;
 }

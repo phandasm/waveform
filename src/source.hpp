@@ -96,19 +96,19 @@ protected:
     // audio capture
     obs_audio_info m_audio_info{};
     circlebuf m_capturebufs[2]{};
-    uint32_t m_capture_channels = 0;    // audio input channels
-    uint32_t m_output_channels = 0;     // fft output channels (*not* display channels)
-    bool m_output_bus_captured = false; // do we have an active audio output callback? (via audio_output_connect())
+    uint32_t m_capture_channels = 0;        // audio input channels
+    uint32_t m_output_channels = 0;         // fft output channels (*not* display channels)
+    bool m_output_bus_captured = false;     // do we have an active audio output callback? (via audio_output_connect())
 
     // 32-byte aligned buffers for FFT/AVX processing
     AVXBufR m_fft_input;
     AVXBufC m_fft_output;
     fftwf_plan m_fft_plan{};
     AVXBufR m_window_coefficients;
-    AVXBufR m_tsmooth_buf[2];   // last frames magnitudes
-    AVXBufR m_decibels[2];      // dBFS, or audio sample buffer in meter mode
-    size_t m_fft_size = 0;      // number of fft elements, or audio samples in meter mode (not bytes, multiple of 16)
-                                // in meter mode m_fft_size is the size of the circular buffer in samples
+    AVXBufR m_tsmooth_buf[2];               // last frames magnitudes
+    AVXBufR m_decibels[2];                  // dBFS, or audio sample buffer in meter mode
+    size_t m_fft_size = 0;                  // number of fft elements, or audio samples in meter mode (not bytes, multiple of 16)
+                                            // in meter mode m_fft_size is the size of the circular buffer in samples
 
     // meter mode
     size_t m_meter_pos[2] = { 0, 0 };       // circular buffer position (per channel)
@@ -180,14 +180,18 @@ protected:
 
     // interpolation
     std::vector<float> m_interp_indices;
-    std::vector<float> m_interp_bufs[3]; // third buffer used as intermediate for gauss filter
+    std::vector<float> m_interp_bufs[3];    // third buffer used as intermediate for gauss filter
+    std::vector<int> m_band_widths;         // size of the band each bar represents
 
     // roll-off
     AVXBufR m_rolloff_modifiers;
 
-    // filter
+    // gaussian filter
     Kernel<float> m_kernel;
     float m_filter_radius = 0.0f;
+
+    // lanczos filter
+    Kernel<float> m_lanczos_kernel;
 
     // slope
     AVXBufR m_slope_modifiers;
@@ -201,8 +205,8 @@ protected:
     vec3 m_step_verts[6]{};         // vertices for one step of a bar (to be translated to final pos)
 
     // render vars
-    gs_effect_t *m_shader = NULL;
-    gs_vertbuffer_t *m_vbuf = NULL;
+    gs_effect_t *m_shader = nullptr;
+    gs_vertbuffer_t *m_vbuf = nullptr;
 
     // volume normalization
     float m_input_rms = 0.0f;
@@ -289,7 +293,7 @@ protected:
 
 public:
     using WAVSource::WAVSource;
-    ~WAVSourceGeneric() override {}
+    ~WAVSourceGeneric() override = default;
 };
 
 class WAVSourceAVX : public WAVSourceGeneric
@@ -302,7 +306,7 @@ protected:
 
 public:
     using WAVSourceGeneric::WAVSourceGeneric;
-    ~WAVSourceAVX() override {}
+    ~WAVSourceAVX() override = default;
 };
 
 class WAVSourceAVX2 : public WAVSourceAVX
@@ -312,5 +316,5 @@ protected:
 
 public:
     using WAVSourceAVX::WAVSourceAVX;
-    ~WAVSourceAVX2() override {}
+    ~WAVSourceAVX2() override = default;
 };

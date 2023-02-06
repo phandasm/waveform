@@ -144,6 +144,7 @@ set(PLUGIN_SOURCES
     "src/filter.hpp"
     "src/settings.hpp"
     "src/log.hpp"
+    "src/simd_helpers.hpp"
 )
 
 if(NOT DISABLE_X86_SIMD)

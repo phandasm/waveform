@@ -26,6 +26,7 @@
 #include <limits>
 #include <cassert>
 #include <util/platform.h>
+#include <utility>
 
 #ifndef DISABLE_X86_SIMD
 
@@ -681,6 +682,9 @@ void WAVSource::free_bufs()
     m_input_rms_buf.reset();
     m_rolloff_modifiers.reset();
 
+    m_kernel = {};
+    m_lanczos_kernel = {};
+
     if(m_fft_plan != nullptr)
     {
         fftwf_destroy_plan(m_fft_plan);
@@ -707,6 +711,38 @@ void WAVSource::init_interp(unsigned int sz)
     {
         for(auto i = 0u; i < sz; ++i)
             m_interp_indices[i] = std::clamp(lerp(lowbin, highbin, (m_mirror_freq_axis ? i * 2.0f : (float)i) / (float)(sz - 1)), lowbin, highbin);
+    }
+
+    // bar bands
+    if((m_display_mode == DisplayMode::BAR) || (m_display_mode == DisplayMode::STEPPED_BAR))
+    {
+        m_band_widths.resize(m_num_bars);
+        for(auto i = 0; i < m_num_bars; ++i)
+            m_band_widths[i] = std::max((int)(m_interp_indices[i + 1] - m_interp_indices[i]), 1);
+    }
+
+    // lanczos filter
+    if(m_interp_mode == InterpMode::LANCZOS)
+    {
+        if(m_display_mode != DisplayMode::CURVE)
+        {
+            // at this point m_interp_indices only contains the start of each band
+            // so we'll fill in the intermediate points here
+            std::vector<float> samples;
+            samples.reserve((size_t)std::ceil(highbin - lowbin));
+            for(auto i = 0; i < m_num_bars; ++i)
+            {
+                auto count = m_band_widths[i];
+                for(auto j = 0; j < count; ++j)
+                    samples.push_back(m_interp_indices[i] + j);
+            }
+            m_interp_indices = std::move(samples);
+        }
+#ifndef DISABLE_X86_SIMD
+        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, HAVE_AVX ? 4 : 3); // 3 is good enough, 4 for simd alignment
+#else
+        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, 3);
+#endif
     }
 }
 
@@ -1143,8 +1179,16 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         if(m_interp_mode == InterpMode::LANCZOS)
-            for(auto i = 0u; i < m_width; ++i)
-                m_interp_bufs[channel][i] = lanczos_interp(m_interp_indices[i], 3.0f, m_fft_size / 2, m_decibels[channel].get());
+        {
+#ifndef DISABLE_X86_SIMD
+            if(HAVE_AVX)
+                apply_lanczos_filter_fma3(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+            else
+                apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+#else
+            apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+#endif
+        }
         else
             for(auto i = 0u; i < m_width; ++i)
                 m_interp_bufs[channel][i] = m_decibels[channel][(int)m_interp_indices[i]];
@@ -1288,35 +1332,23 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         {
             if(m_interp_mode == InterpMode::LANCZOS)
             {
-                for(auto i = 0; i < m_num_bars; ++i)
-                {
-                    auto pos = m_interp_indices[i];
-                    float sum = 0.0f;
-                    int count = 0;
-                    float stop = m_interp_indices[i + 1];
-                    do
-                    {
-                        sum += lanczos_interp(pos, 3.0f, m_fft_size / 2, m_decibels[channel].get());
-                        ++count;
-                        pos += 1.0f;
-                    } while(pos < stop);
-                    m_interp_bufs[channel][i] = sum / (float)count;
-                }
+#ifndef DISABLE_X86_SIMD
+                if(HAVE_AVX)
+                    apply_lanczos_filter_fma3(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                else
+                    apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+#else
+                apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+#endif
             }
             else
             {
                 for(auto i = 0; i < m_num_bars; ++i)
                 {
-                    auto pos = (int)m_interp_indices[i];
                     float sum = 0.0f;
-                    int count = 0;
-                    int stop = (int)m_interp_indices[i + 1];
-                    do
-                    {
-                        sum += m_decibels[channel][pos];
-                        ++count;
-                        ++pos;
-                    } while(pos < stop);
+                    auto count = (size_t)m_band_widths[i];
+                    for(size_t j = 0; j < count; ++j)
+                        sum += m_decibels[channel][(size_t)m_interp_indices[i] + j];
                     m_interp_bufs[channel][i] = sum / (float)count;
                 }
             }
