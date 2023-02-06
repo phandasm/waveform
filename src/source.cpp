@@ -160,6 +160,7 @@ namespace callbacks {
         obs_data_set_default_bool(settings, P_RMS_MODE, true);
         obs_data_set_default_bool(settings, P_HIDE_SILENT, false);
         obs_data_set_default_bool(settings, P_NORMALIZE_VOLUME, false);
+        obs_data_set_default_int(settings, P_VOLUME_TARGET, -3);
     }
 
     static obs_properties_t *get_properties([[maybe_unused]] void *data)
@@ -179,7 +180,14 @@ namespace callbacks {
 
         // volume normalization
         auto vol = obs_properties_add_bool(props, P_NORMALIZE_VOLUME, T(P_NORMALIZE_VOLUME));
+        auto target = obs_properties_add_int_slider(props, P_VOLUME_TARGET, T(P_VOLUME_TARGET), -60, 0, 1);
+        obs_property_int_set_suffix(target, " dBFS");
         obs_property_set_long_description(vol, T(P_VOLUME_NORM_DESC));
+        obs_property_set_modified_callback(vol, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
+            auto enable = obs_data_get_bool(settings, P_NORMALIZE_VOLUME) && obs_property_visible(obs_properties_get(props, P_NORMALIZE_VOLUME));
+            set_prop_visible(props, P_VOLUME_TARGET, enable);
+            return true;
+            });
 
         // display type
         auto displaylist = obs_properties_add_list(props, P_DISPLAY_MODE, T(P_DISPLAY_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
@@ -234,6 +242,7 @@ namespace callbacks {
             set_prop_visible(props, P_RMS_MODE, !notmeter);
             set_prop_visible(props, P_METER_BUF, !notmeter);
             set_prop_visible(props, P_NORMALIZE_VOLUME, notmeter);
+            set_prop_visible(props, P_VOLUME_TARGET, notmeter && obs_data_get_bool(settings, P_NORMALIZE_VOLUME));
             return true;
             });
 
@@ -462,6 +471,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_meter_ms = (int)obs_data_get_int(settings, P_METER_BUF);
     m_hide_on_silent = obs_data_get_bool(settings, P_HIDE_SILENT);
     m_normalize_volume = obs_data_get_bool(settings, P_NORMALIZE_VOLUME);
+    m_volume_target = (float)obs_data_get_int(settings, P_VOLUME_TARGET);
 
     m_color_base = { (uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f };
     m_color_crest = { (uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f };

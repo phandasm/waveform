@@ -164,7 +164,7 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
 
     if(m_normalize_volume && !m_last_silent)
     {
-        const auto volume_compensation = std::min(-3.0f - dbfs(m_input_rms), 30.0f);
+        const auto volume_compensation = std::min(m_volume_target - dbfs(m_input_rms), 30.0f);
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
             for(size_t i = 1; i < outsz; ++i)
                 m_decibels[channel][i] += volume_compensation;
