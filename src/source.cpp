@@ -1535,10 +1535,10 @@ void WAVSource::register_source()
     LogInfo << "Registered v" VERSION_STRING " x64";
 #elif defined(__i386__) || defined(_M_IX86)
     LogInfo << "Registered v" VERSION_STRING " x86";
-#elif defined(__arm__) || defined(_M_ARM)
-    LogInfo << "Registered v" VERSION_STRING " ARM";
 #elif defined(__aarch64__) || defined(_M_ARM64)
     LogInfo << "Registered v" VERSION_STRING " ARM64";
+#elif defined(__arm__) || defined(_M_ARM)
+    LogInfo << "Registered v" VERSION_STRING " ARM";
 #else
     LogInfo << "Registered v" VERSION_STRING " Unknown Arch";
 #endif

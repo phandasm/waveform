@@ -75,7 +75,7 @@ std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, c
 {
     assert(kernel.radius == 4);
     constexpr auto step = sizeof(__m256) / sizeof(float);
-    const auto avx_stop = (intmax_t)((sz > 4) ? sz - 4 : 0);
+    const auto avx_stop = (intmax_t)sz - 4;
     const auto xsz = x.size();
     if(output.size() < xsz)
         output.resize(xsz);
@@ -95,7 +95,7 @@ std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, c
 {
     assert(kernel.radius == 4);
     constexpr auto step = sizeof(__m256) / sizeof(float);
-    const auto avx_stop = (intmax_t)((sz > 4) ? sz - 4 : 0);
+    const auto avx_stop = (intmax_t)sz - 4;
     const auto bands = (intmax_t)band_widths.size();
     if((intmax_t)output.size() < bands)
         output.resize(bands);
