@@ -33,6 +33,7 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_HIDE_SILENT       "hide_on_silent"
 
 #define P_NORMALIZE_VOLUME  "normalize_volume"
+#define P_VOLUME_TARGET     "volume_target"
 
 #define P_RENDER_MODE       "render_mode"
 #define P_LINE              "line"
@@ -65,6 +66,9 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_CHANNEL_MODE      "channel_mode"
 #define P_MONO              "mono"
 #define P_STEREO            "stereo"
+#define P_SINGLE            "single"
+
+#define P_CHANNEL           "channel"
 
 #define P_CHANNEL_SPACING   "channel_spacing"
 

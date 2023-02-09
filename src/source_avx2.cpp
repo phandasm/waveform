@@ -121,7 +121,7 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
 
         // normalize FFT output and convert to dBFS
         const auto shuffle_mask = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
-        const auto mag_coefficient = _mm256_div_ps(_mm256_set1_ps(2.0f), _mm256_set1_ps((float)m_fft_size));
+        const auto mag_coefficient = _mm256_set1_ps(2.0f / (float)m_fft_size);
         const auto g = _mm256_set1_ps(m_gravity);
         const auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g); // 1 - gravity
         const bool slope = m_slope > 0.0f;
@@ -149,12 +149,13 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
             // time domain smoothing
             if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
             {
+                auto oldval = _mm256_load_ps(&m_tsmooth_buf[channel][i]);
                 // take new values immediately if larger
                 if(m_fast_peaks)
-                    _mm256_store_ps(&m_tsmooth_buf[channel][i], _mm256_max_ps(mag, _mm256_load_ps(&m_tsmooth_buf[channel][i])));
+                    oldval = _mm256_max_ps(mag, oldval);
 
                 // (gravity * oldval) + ((1 - gravity) * newval)
-                mag = _mm256_fmadd_ps(g, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _mm256_mul_ps(g2, mag));
+                mag = _mm256_fmadd_ps(g, oldval, _mm256_mul_ps(g2, mag));
                 _mm256_store_ps(&m_tsmooth_buf[channel][i], mag);
             }
 
@@ -190,7 +191,7 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
     // volume normalization
     if(m_normalize_volume && !m_last_silent)
     {
-        const auto volume_compensation = _mm256_set1_ps(std::min(-3.0f - dbfs(m_input_rms), 30.0f));
+        const auto volume_compensation = _mm256_set1_ps(std::min(m_volume_target - dbfs(m_input_rms), 30.0f));
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
             for(size_t i = 0; i < outsz; i += step)
                 _mm256_store_ps(&m_decibels[channel][i], _mm256_add_ps(volume_compensation, _mm256_load_ps(&m_decibels[channel][i])));

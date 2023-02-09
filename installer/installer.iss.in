@@ -27,6 +27,7 @@ Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 Uninstallable=WizardIsTaskSelected('create_uninstaller')
+DisableDirPage=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

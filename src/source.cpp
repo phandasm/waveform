@@ -24,7 +24,9 @@
 #include <string>
 #include <algorithm>
 #include <limits>
+#include <cassert>
 #include <util/platform.h>
+#include <utility>
 
 #ifndef DISABLE_X86_SIMD
 
@@ -127,6 +129,7 @@ namespace callbacks {
         obs_data_set_default_double(settings, P_RADIAL_ARC, 360.0);
         obs_data_set_default_bool(settings, P_CAPS, false);
         obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
+        obs_data_set_default_int(settings, P_CHANNEL, 0);
         obs_data_set_default_int(settings, P_CHANNEL_SPACING, 0);
         obs_data_set_default_int(settings, P_FFT_SIZE, 4096);
         obs_data_set_default_bool(settings, P_AUTO_FFT_SIZE, false);
@@ -157,6 +160,7 @@ namespace callbacks {
         obs_data_set_default_bool(settings, P_RMS_MODE, true);
         obs_data_set_default_bool(settings, P_HIDE_SILENT, false);
         obs_data_set_default_bool(settings, P_NORMALIZE_VOLUME, false);
+        obs_data_set_default_int(settings, P_VOLUME_TARGET, -3);
     }
 
     static obs_properties_t *get_properties([[maybe_unused]] void *data)
@@ -176,7 +180,14 @@ namespace callbacks {
 
         // volume normalization
         auto vol = obs_properties_add_bool(props, P_NORMALIZE_VOLUME, T(P_NORMALIZE_VOLUME));
+        auto target = obs_properties_add_int_slider(props, P_VOLUME_TARGET, T(P_VOLUME_TARGET), -60, 0, 1);
+        obs_property_int_set_suffix(target, " dBFS");
         obs_property_set_long_description(vol, T(P_VOLUME_NORM_DESC));
+        obs_property_set_modified_callback(vol, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
+            auto enable = obs_data_get_bool(settings, P_NORMALIZE_VOLUME) && obs_property_visible(obs_properties_get(props, P_NORMALIZE_VOLUME));
+            set_prop_visible(props, P_VOLUME_TARGET, enable);
+            return true;
+            });
 
         // display type
         auto displaylist = obs_properties_add_list(props, P_DISPLAY_MODE, T(P_DISPLAY_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
@@ -216,6 +227,7 @@ namespace callbacks {
             set_prop_visible(props, P_FILTER_RADIUS, notmeter && !p_equ(obs_data_get_string(settings, P_FILTER_MODE), P_NONE));
             set_prop_visible(props, P_INTERP_MODE, notmeter);
             set_prop_visible(props, P_CHANNEL_MODE, notmeter);
+            set_prop_visible(props, P_CHANNEL, notmeter && p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_SINGLE));
             set_prop_visible(props, P_CHANNEL_SPACING, notmeter && p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO));
             set_prop_visible(props, P_WINDOW, notmeter);
             set_prop_visible(props, P_RADIAL, notmeter);
@@ -230,6 +242,7 @@ namespace callbacks {
             set_prop_visible(props, P_RMS_MODE, !notmeter);
             set_prop_visible(props, P_METER_BUF, !notmeter);
             set_prop_visible(props, P_NORMALIZE_VOLUME, notmeter);
+            set_prop_visible(props, P_VOLUME_TARGET, notmeter && obs_data_get_bool(settings, P_NORMALIZE_VOLUME));
             return true;
             });
 
@@ -274,13 +287,19 @@ namespace callbacks {
         auto chanlst = obs_properties_add_list(props, P_CHANNEL_MODE, T(P_CHANNEL_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         obs_property_list_add_string(chanlst, T(P_MONO), P_MONO);
         obs_property_list_add_string(chanlst, T(P_STEREO), P_STEREO);
+        obs_property_list_add_string(chanlst, T(P_SINGLE), P_SINGLE);
         obs_property_set_long_description(chanlst, T(P_CHAN_DESC));
+
+        obs_properties_add_int(props, P_CHANNEL, T(P_CHANNEL), 0, MAX_AUDIO_CHANNELS - 1, 1);
 
         // channel spacing
         obs_properties_add_int(props, P_CHANNEL_SPACING, T(P_CHANNEL_SPACING), 0, 2160, 1);
         obs_property_set_modified_callback(chanlst, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
-            auto enable = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO) && obs_property_visible(obs_properties_get(props, P_CHANNEL_MODE));
-            set_prop_visible(props, P_CHANNEL_SPACING, enable);
+            auto vis = obs_property_visible(obs_properties_get(props, P_CHANNEL_MODE));
+            auto enable_spacing = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO) && vis;
+            auto enable_channel = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_SINGLE) && vis;
+            set_prop_visible(props, P_CHANNEL_SPACING, enable_spacing);
+            set_prop_visible(props, P_CHANNEL, enable_channel);
             return true;
             });
 
@@ -418,7 +437,9 @@ void WAVSource::get_settings(obs_data_t *settings)
     auto deadzone = (float)obs_data_get_double(settings, P_DEADZONE) / 100.0f;
     m_radial_arc = (float)obs_data_get_double(settings, P_RADIAL_ARC) / 360.0f;
     m_rounded_caps = obs_data_get_bool(settings, P_CAPS);
-    m_stereo = p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO);
+    auto channel_mode = obs_data_get_string(settings, P_CHANNEL_MODE);
+    m_stereo = p_equ(channel_mode, P_STEREO);
+    m_channel_base = (int)obs_data_get_int(settings, P_CHANNEL);
     m_channel_spacing = (int)obs_data_get_int(settings, P_CHANNEL_SPACING);
     m_fft_size = (size_t)obs_data_get_int(settings, P_FFT_SIZE);
     m_auto_fft_size = obs_data_get_bool(settings, P_AUTO_FFT_SIZE);
@@ -450,6 +471,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_meter_ms = (int)obs_data_get_int(settings, P_METER_BUF);
     m_hide_on_silent = obs_data_get_bool(settings, P_HIDE_SILENT);
     m_normalize_volume = obs_data_get_bool(settings, P_NORMALIZE_VOLUME);
+    m_volume_target = (float)obs_data_get_int(settings, P_VOLUME_TARGET);
 
     m_color_base = { (uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f };
     m_color_crest = { (uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f };
@@ -542,6 +564,13 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_deadzone = std::min(std::floor((float)m_height * deadzone), max_deadzone);
         m_height -= (int)m_deadzone;
     }
+
+    if(!m_meter_mode && p_equ(channel_mode, P_SINGLE))
+        m_channel_mode = ChannelMode::SINGLE;
+    else if(p_equ(channel_mode, P_STEREO))
+        m_channel_mode = ChannelMode::STEREO;
+    else
+        m_channel_mode = ChannelMode::MONO;
 }
 
 void WAVSource::recapture_audio()
@@ -551,13 +580,27 @@ void WAVSource::recapture_audio()
 
     // add new capture
     auto src_name = m_audio_source_name.c_str();
-    if(p_equ(src_name, P_OUTPUT_BUS))
+    if(p_equ(src_name, P_NONE))
+        return;
+    else if(p_equ(src_name, P_OUTPUT_BUS))
     {
-        audio_convert_info cvt{};
-        cvt.format = audio_format::AUDIO_FORMAT_FLOAT_PLANAR;
-        cvt.samples_per_sec = m_audio_info.samples_per_sec;
-        cvt.speakers = (m_audio_info.speakers != speaker_layout::SPEAKERS_UNKNOWN) ? m_audio_info.speakers : speaker_layout::SPEAKERS_STEREO;
-        m_output_bus_captured = audio_output_connect(obs_get_audio(), 0, &cvt, &callbacks::capture_output_bus, this);
+        if(m_audio_info.speakers != speaker_layout::SPEAKERS_UNKNOWN)
+        {
+            auto audio = obs_get_audio();
+            auto info = audio_output_get_info(audio);
+            if((info->format == audio_format::AUDIO_FORMAT_FLOAT_PLANAR) && (info->samples_per_sec == m_audio_info.samples_per_sec) && (info->speakers == m_audio_info.speakers))
+            {
+                m_output_bus_captured = audio_output_connect(audio, 0, nullptr, &callbacks::capture_output_bus, this);
+            }
+            else
+            {
+                audio_convert_info cvt{};
+                cvt.format = audio_format::AUDIO_FORMAT_FLOAT_PLANAR;
+                cvt.samples_per_sec = m_audio_info.samples_per_sec;
+                cvt.speakers = m_audio_info.speakers;
+                m_output_bus_captured = audio_output_connect(audio, 0, &cvt, &callbacks::capture_output_bus, this);
+            }
+        }
     }
     else
     {
@@ -568,7 +611,7 @@ void WAVSource::recapture_audio()
             m_audio_source = obs_source_get_weak_source(asrc);
             obs_source_release(asrc);
         }
-        else if(!p_equ(src_name, "none"))
+        else
         {
             if(m_retries++ == 0)
                 LogWarn << "Failed to get audio source: \"" << src_name << "\"";
@@ -649,6 +692,9 @@ void WAVSource::free_bufs()
     m_input_rms_buf.reset();
     m_rolloff_modifiers.reset();
 
+    m_kernel = {};
+    m_lanczos_kernel = {};
+
     if(m_fft_plan != nullptr)
     {
         fftwf_destroy_plan(m_fft_plan);
@@ -676,6 +722,38 @@ void WAVSource::init_interp(unsigned int sz)
         for(auto i = 0u; i < sz; ++i)
             m_interp_indices[i] = std::clamp(lerp(lowbin, highbin, (m_mirror_freq_axis ? i * 2.0f : (float)i) / (float)(sz - 1)), lowbin, highbin);
     }
+
+    // bar bands
+    if((m_display_mode == DisplayMode::BAR) || (m_display_mode == DisplayMode::STEPPED_BAR))
+    {
+        m_band_widths.resize(m_num_bars);
+        for(auto i = 0; i < m_num_bars; ++i)
+            m_band_widths[i] = std::max((int)(m_interp_indices[i + 1] - m_interp_indices[i]), 1);
+    }
+
+    // lanczos filter
+    if(m_interp_mode == InterpMode::LANCZOS)
+    {
+        if(m_display_mode != DisplayMode::CURVE)
+        {
+            // at this point m_interp_indices only contains the start of each band
+            // so we'll fill in the intermediate points here
+            std::vector<float> samples;
+            samples.reserve((size_t)std::ceil(highbin - lowbin));
+            for(auto i = 0; i < m_num_bars; ++i)
+            {
+                auto count = m_band_widths[i];
+                for(auto j = 0; j < count; ++j)
+                    samples.push_back(m_interp_indices[i] + j);
+            }
+            m_interp_indices = std::move(samples);
+        }
+#ifndef DISABLE_X86_SIMD
+        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, HAVE_AVX ? 4 : 3); // 3 is good enough, 4 for simd alignment
+#else
+        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, 3);
+#endif
+    }
 }
 
 void WAVSource::init_rolloff()
@@ -702,8 +780,6 @@ void WAVSource::init_rolloff()
 
 void WAVSource::init_steps()
 {
-    m_step_verts.resize(6);
-
     const auto x1 = 0.0f;
     const auto x2 = (float)m_bar_width;
     const auto y1 = 0.0f;
@@ -836,20 +912,22 @@ void WAVSource::update(obs_data_t *settings)
 
     // get current audio settings
     update_audio_info(&m_audio_info);
-    m_capture_channels = std::min(get_audio_channels(m_audio_info.speakers), 2u);
+    const auto max_channels = get_audio_channels(m_audio_info.speakers);
+    m_capture_channels = std::min(max_channels, 2u);
     if(m_capture_channels == 0)
+        LogWarn << "Unknown channel config: " << (unsigned int)m_audio_info.speakers;
+    if(m_channel_mode == ChannelMode::SINGLE)
     {
-        auto channels = (unsigned int)m_audio_info.speakers;
-        if(channels > 0)
+        if((m_channel_base < 0) || (m_channel_base >= (int)max_channels) || (m_channel_base >= MAX_AUDIO_CHANNELS))
         {
-            m_capture_channels = std::min((uint32_t)channels, 2u);
-            LogWarn << "Attempting to support unknown channel config: " << channels;
+            m_capture_channels = 0;
+            m_channel_base = 0;
         }
         else
-        {
-            LogWarn << "Could not determine audio channel count";
-        }
+            m_capture_channels = std::min(m_capture_channels, 1u);
     }
+    else
+        m_channel_base = 0;
 
     // meter mode
     if(m_meter_mode)
@@ -1111,8 +1189,16 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         if(m_interp_mode == InterpMode::LANCZOS)
-            for(auto i = 0u; i < m_width; ++i)
-                m_interp_bufs[channel][i] = lanczos_interp(m_interp_indices[i], 3.0f, m_fft_size / 2, m_decibels[channel].get());
+        {
+#ifndef DISABLE_X86_SIMD
+            if(HAVE_AVX)
+                apply_lanczos_filter_fma3(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+            else
+                apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+#else
+            apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+#endif
+        }
         else
             for(auto i = 0u; i < m_width; ++i)
                 m_interp_bufs[channel][i] = m_decibels[channel][(int)m_interp_indices[i]];
@@ -1141,7 +1227,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         {
             const auto half = (m_width / 2u);
             for(auto i = half + 1; i < m_width; ++i)
-                m_interp_bufs[channel][i] = m_interp_bufs[channel][half - std::min(i - half, half)]; // sanity check, i - half should always be <= half
+                m_interp_bufs[channel][i] = m_interp_bufs[channel][half - (i - half)];
         }
     }
     auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
@@ -1256,35 +1342,23 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         {
             if(m_interp_mode == InterpMode::LANCZOS)
             {
-                for(auto i = 0; i < m_num_bars; ++i)
-                {
-                    auto pos = m_interp_indices[i];
-                    float sum = 0.0f;
-                    int count = 0;
-                    float stop = m_interp_indices[i + 1];
-                    do
-                    {
-                        sum += lanczos_interp(pos, 3.0f, m_fft_size / 2, m_decibels[channel].get());
-                        ++count;
-                        pos += 1.0f;
-                    } while(pos < stop);
-                    m_interp_bufs[channel][i] = sum / (float)count;
-                }
+#ifndef DISABLE_X86_SIMD
+                if(HAVE_AVX)
+                    apply_lanczos_filter_fma3(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                else
+                    apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+#else
+                apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+#endif
             }
             else
             {
                 for(auto i = 0; i < m_num_bars; ++i)
                 {
-                    auto pos = (int)m_interp_indices[i];
                     float sum = 0.0f;
-                    int count = 0;
-                    int stop = (int)m_interp_indices[i + 1];
-                    do
-                    {
-                        sum += m_decibels[channel][pos];
-                        ++count;
-                        ++pos;
-                    } while(pos < stop);
+                    auto count = (size_t)m_band_widths[i];
+                    for(size_t j = 0; j < count; ++j)
+                        sum += m_decibels[channel][(size_t)m_interp_indices[i] + j];
                     m_interp_bufs[channel][i] = sum / (float)count;
                 }
             }
@@ -1321,7 +1395,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         {
             const auto half = (m_num_bars / 2u);
             for(auto i = half + 1; i < (unsigned int)m_num_bars; ++i)
-                m_interp_bufs[channel][i] = m_interp_bufs[channel][half - std::min(i - half, half)]; // sanity check, i - half should always be <= half
+                m_interp_bufs[channel][i] = m_interp_bufs[channel][half - (i - half)];
         }
     }
     auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
@@ -1461,10 +1535,10 @@ void WAVSource::register_source()
     LogInfo << "Registered v" VERSION_STRING " x64";
 #elif defined(__i386__) || defined(_M_IX86)
     LogInfo << "Registered v" VERSION_STRING " x86";
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    LogInfo << "Registered v" VERSION_STRING " ARM64";
 #elif defined(__arm__) || defined(_M_ARM)
     LogInfo << "Registered v" VERSION_STRING " ARM";
-#elif defined(__aarch64__)
-    LogInfo << "Registered v" VERSION_STRING " ARM64";
 #else
     LogInfo << "Registered v" VERSION_STRING " Unknown Arch";
 #endif
@@ -1493,11 +1567,15 @@ void WAVSource::register_source()
 
 void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio_data *audio, bool muted)
 {
+    if(audio == nullptr)
+        return;
     if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
-    if(m_audio_source == nullptr)
+    if((m_audio_source == nullptr) || (m_capture_channels == 0))
         return;
+    assert((m_channel_base >= 0) && (m_channel_base < (int)get_audio_channels(m_audio_info.speakers)));
+    assert((m_channel_base == 0) || (m_capture_channels == 1));
 
     if(m_normalize_volume)
         update_input_rms(audio);
@@ -1505,25 +1583,33 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     m_capture_ts = os_gettime_ns();
 
     auto sz = size_t(audio->frames * sizeof(float));
-    for(auto i = 0u; i < m_capture_channels; ++i)
+    for(auto i = m_channel_base; i < (m_channel_base + (int)m_capture_channels); ++i)
     {
+        auto j = i - m_channel_base;
+        assert((j == 0) || (j == 1));
         if(muted || (audio->data[i] == nullptr))
-            circlebuf_push_back_zero(&m_capturebufs[i], sz);
+            circlebuf_push_back_zero(&m_capturebufs[j], sz);
         else
-            circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
+            circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
 
-        auto total = m_capturebufs[i].size;
+        auto total = m_capturebufs[j].size;
         auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
         if(total > max)
-            circlebuf_pop_front(&m_capturebufs[i], nullptr, total - max);
+            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max);
     }
 }
 
 void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_data *audio)
 {
+    if(audio == nullptr)
+        return;
     if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
+    if(m_capture_channels == 0)
+        return;
+    assert((m_channel_base >= 0) && (m_channel_base < (int)get_audio_channels(m_audio_info.speakers)));
+    assert((m_channel_base == 0) || (m_capture_channels == 1));
 
     if(m_normalize_volume)
         update_input_rms(audio);
@@ -1531,16 +1617,18 @@ void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_
     m_capture_ts = os_gettime_ns();
 
     auto sz = size_t(audio->frames * sizeof(float));
-    for(auto i = 0u; i < m_capture_channels; ++i)
+    for(auto i = m_channel_base; i < (m_channel_base + (int)m_capture_channels); ++i)
     {
+        auto j = i - m_channel_base;
+        assert((j == 0) || (j == 1));
         if(audio->data[i] == nullptr)
-            circlebuf_push_back_zero(&m_capturebufs[i], sz);
+            circlebuf_push_back_zero(&m_capturebufs[j], sz);
         else
-            circlebuf_push_back(&m_capturebufs[i], audio->data[i], sz);
+            circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
 
-        auto total = m_capturebufs[i].size;
+        auto total = m_capturebufs[j].size;
         auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
         if(total > max)
-            circlebuf_pop_front(&m_capturebufs[i], nullptr, total - max);
+            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max);
     }
 }

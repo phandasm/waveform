@@ -15,32 +15,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "waveform_config.hpp"
 #include "source.hpp"
+#include "simd_helpers.hpp"
 #include <immintrin.h>
 #include <algorithm>
 #include <cstring>
 #include <util/platform.h>
-
-static FORCE_INLINE float horizontal_sum(__m256 vec)
-{
-    auto high = _mm256_extractf128_ps(vec, 1); // split into two 128-bit vecs
-    auto low = _mm_add_ps(high, _mm256_castps256_ps128(vec)); // (h[0] + l[0]) (h[1] + l[1]) (h[2] + l[2]) (h[3] + l[3])
-    high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
-    low = _mm_add_ps(high, low); // (h[0] + l[0]) (h[1] + l[1])
-    high = _mm_movehdup_ps(low); // high[0] = low[1]
-    return _mm_cvtss_f32(_mm_add_ss(high, low));
-}
-
-static FORCE_INLINE float horizontal_max(__m256 vec)
-{
-    auto high = _mm256_extractf128_ps(vec, 1); // split into two 128-bit vecs
-    auto low = _mm_max_ps(high, _mm256_castps256_ps128(vec)); // max(h[0], l[0]) max(h[1], l[1]) max(h[2], l[2]) max(h[3], l[3])
-    high = _mm_permute_ps(low, _MM_SHUFFLE(3, 2, 3, 2)); // high[0] = low[2], high[1] = low[3]
-    low = _mm_max_ps(high, low); // max(h[0], l[0]) max(h[1], l[1])
-    high = _mm_movehdup_ps(low); // high[0] = low[1]
-    return _mm_cvtss_f32(_mm_max_ss(high, low));
-}
 
 // adaptation of WAVSourceAVX2 to support CPUs without AVX2
 // see comments of WAVSourceAVX2
@@ -137,7 +117,7 @@ void WAVSourceAVX::tick_spectrum(float seconds)
 
         constexpr auto shuffle_mask_r = 0 | (2 << 2) | (0 << 4) | (2 << 6);
         constexpr auto shuffle_mask_i = 1 | (3 << 2) | (1 << 4) | (3 << 6);
-        const auto mag_coefficient = _mm256_div_ps(_mm256_set1_ps(2.0f), _mm256_set1_ps((float)m_fft_size));
+        const auto mag_coefficient = _mm256_set1_ps(2.0f / (float)m_fft_size);
         const auto g = _mm256_set1_ps(m_gravity);
         const auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g);
         const bool slope = m_slope > 0.0f;
@@ -164,10 +144,11 @@ void WAVSourceAVX::tick_spectrum(float seconds)
 
             if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
             {
+                auto oldval = _mm256_load_ps(&m_tsmooth_buf[channel][i]);
                 if(m_fast_peaks)
-                    _mm256_store_ps(&m_tsmooth_buf[channel][i], _mm256_max_ps(mag, _mm256_load_ps(&m_tsmooth_buf[channel][i])));
+                    oldval = _mm256_max_ps(mag, oldval);
 
-                mag = _mm256_fmadd_ps(g, _mm256_load_ps(&m_tsmooth_buf[channel][i]), _mm256_mul_ps(g2, mag));
+                mag = _mm256_fmadd_ps(g, oldval, _mm256_mul_ps(g2, mag));
                 _mm256_store_ps(&m_tsmooth_buf[channel][i], mag);
             }
 
@@ -200,7 +181,7 @@ void WAVSourceAVX::tick_spectrum(float seconds)
 
     if(m_normalize_volume && !m_last_silent)
     {
-        const auto volume_compensation = _mm256_set1_ps(std::min(-3.0f - dbfs(m_input_rms), 30.0f));
+        const auto volume_compensation = _mm256_set1_ps(std::min(m_volume_target - dbfs(m_input_rms), 30.0f));
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
             for(size_t i = 0; i < outsz; i += step)
                 _mm256_store_ps(&m_decibels[channel][i], _mm256_add_ps(volume_compensation, _mm256_load_ps(&m_decibels[channel][i])));
@@ -328,10 +309,14 @@ void WAVSourceAVX::tick_meter(float seconds)
 
 void WAVSourceAVX::update_input_rms(const audio_data *audio)
 {
+    if((audio == nullptr) || (m_capture_channels == 0))
+        return;
     const auto sz = audio->frames;
     auto data = (float**)&audio->data;
     if(m_capture_channels > 1)
     {
+        if((data[0] == nullptr) || (data[1] == nullptr))
+            return;
         for(auto i = 0u; i < sz; ++i)
         {
             auto val = std::max(std::abs(data[0][i]), std::abs(data[1][i]));
@@ -342,6 +327,8 @@ void WAVSourceAVX::update_input_rms(const audio_data *audio)
     }
     else
     {
+        if(data[0] == nullptr)
+            return;
         for(auto i = 0u; i < sz; ++i)
         {
             auto val = data[0][i];
