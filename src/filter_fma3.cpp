@@ -85,7 +85,14 @@ std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, c
         if((index >= 3) && (index < avx_stop))
             output[i] = horizontal_sum(_mm256_mul_ps(_mm256_loadu_ps(&samples[index - 3]), _mm256_load_ps(&kernel.weights[j])));
         else
-            output[i] = lanczos_convolve(samples, sz, kernel, index, j);
+        {
+            const auto start = index - 3;
+            const auto stop = std::min(index + 5, (intmax_t)sz);
+            auto sum = _mm_setzero_ps();
+            for(auto k = std::max(start, (intmax_t)0); k < stop; ++k)
+                sum = _mm_fmadd_ss(_mm_load_ss(&samples[k]), _mm_load_ss(&kernel.weights[j + (k - start)]), sum);
+            output[i] = _mm_cvtss_f32(sum);
+        }
     }
     return output;
 }
@@ -102,7 +109,6 @@ std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, c
     for(intmax_t i = 0, k = 0, l = 0; i < bands; ++i)
     {
         auto vecsum = _mm256_setzero_ps();
-        auto fsum = 0.0f;
         auto count = (intmax_t)band_widths[i];
         for(intmax_t j = 0; j < count; ++j, ++k, l += step)
         {
@@ -110,9 +116,18 @@ std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, c
             if((index >= 3) && (index < avx_stop))
                 vecsum = _mm256_fmadd_ps(_mm256_loadu_ps(&samples[index - 3]), _mm256_load_ps(&kernel.weights[l]), vecsum);
             else
-                fsum += lanczos_convolve(samples, sz, kernel, index, l);
+            {
+                const auto start = index - 3;
+                const auto stop = std::min(index + 5, (intmax_t)sz);
+
+                // this could be done better with asm, but this'll just have to do
+                auto sum = _mm_setzero_ps();
+                for(auto m = std::max(start, (intmax_t)0); m < stop; ++m)
+                    sum = _mm_fmadd_ss(_mm_load_ss(&samples[m]), _mm_load_ss(&kernel.weights[l + (m - start)]), sum);
+                vecsum = _mm256_insertf128_ps(vecsum, _mm_add_ss(_mm256_castps256_ps128(vecsum), sum), 0);
+            }
         }
-        output[i] = (fsum + horizontal_sum(vecsum)) / count;
+        output[i] = horizontal_sum(vecsum) / count;
     }
     return output;
 }
