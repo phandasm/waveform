@@ -1,20 +1,18 @@
 # Notice to Intel Mac users
 OBS requirement has been bumped to 28, please uninstall older versions of waveform first.
 
-## Beta 3 changes
+## Changes in 1.6.0
+- Add option to mirror frequency axis
+- Add option to adjust arc angle in radial mode
+- Add option for minimum bar height
+- Add option to adjust normalized volume target
+- Add "Single" channel mode to allow selection of specific audio channel
+- Fix some potential crashes
 - Fix graph frozen after playback of media file finishes
 - Fix "Hide graph when audio is silent" option for level meters
-
-## Beta 2 changes
-- Fix possible crash when using volume normalization or rolloff
-- Adjustments to mirror frequency axis option
-- Update Chinese localization (#32 thanks to GodGun968)
-
-## Beta 1 changes
-- Add option to mirror frequency axis
-- Add option to adjust arc in radial mode
-- Add option for minimum bar height
+- Update Chinese localization (#32, #38 thanks to GodGun968)
 - Improve rendering of curve graph in some cases
+- Performance improvements
 
 ## Installation
 ### Windows
@@ -44,7 +42,7 @@ Note: Should work for most distros, but do not mix with the .deb package above.
 <summary>Click for instructions</summary>
 
 #### Intel Macs
-- **Uninstall waveform versions prior to 1.6.0-beta3**
+- **Uninstall waveform versions prior to 1.6.0**
 - Download Waveform\_v#.#.#\_MacOS\_x86\_64.pkg and run it.  
 
 #### ARM64/Apple Silicon Macs

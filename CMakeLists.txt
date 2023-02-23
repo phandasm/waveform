@@ -8,7 +8,7 @@ include(CheckSymbolExists)
 
 project(waveform)
 
-set(WAVEFORM_VERSION "1.6.0-beta3")
+set(WAVEFORM_VERSION "1.6.0")
 
 # set default install prefix to OBS plugin path on linux and MacOS
 # otherwise set it to the windows installer source folder

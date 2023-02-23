@@ -1082,7 +1082,7 @@ void WAVSource::update(obs_data_t *settings)
     const auto maxmod = (float)(num_mods - 1);
     m_slope_modifiers.reset(membuf_alloc<float>(num_mods));
     for(size_t i = 0; i < num_mods; ++i)
-        m_slope_modifiers[i] = log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
+        m_slope_modifiers[i] = std::log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
 
     // rounded caps
     m_cap_verts.clear();
