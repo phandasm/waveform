@@ -1,6 +1,10 @@
 # Notice to Intel Mac users
 OBS requirement has been bumped to 28, please uninstall older versions of waveform first.
 
+## Changes in 1.6.1
+- Fix MacOS x64 installer
+- Update Chinese localization (#43 thanks to GodGun968)
+
 ## Changes in 1.6.0
 - Add option to mirror frequency axis
 - Add option to adjust arc angle in radial mode
