@@ -31,6 +31,7 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_OUTPUT_BUS        "output_bus"
 
 #define P_HIDE_SILENT       "hide_on_silent"
+#define P_IGNORE_MUTE       "ignore_mute"
 
 #define P_NORMALIZE_VOLUME  "normalize_volume"
 #define P_VOLUME_TARGET     "volume_target"
@@ -132,3 +133,4 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_VOLUME_NORM_DESC  "volume_normalization_desc"
 #define P_MIRROR_DESC       "mirror_desc"
 #define P_RADIAL_ARC_DESC   "radial_arc_desc"
+#define P_IGNORE_MUTE_DESC  "ignore_mute_desc"

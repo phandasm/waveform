@@ -159,6 +159,7 @@ namespace callbacks {
         obs_data_set_default_int(settings, P_METER_BUF, 150);
         obs_data_set_default_bool(settings, P_RMS_MODE, true);
         obs_data_set_default_bool(settings, P_HIDE_SILENT, false);
+        obs_data_set_default_bool(settings, P_IGNORE_MUTE, false);
         obs_data_set_default_bool(settings, P_NORMALIZE_VOLUME, false);
         obs_data_set_default_int(settings, P_VOLUME_TARGET, -3);
     }
@@ -171,12 +172,22 @@ namespace callbacks {
         auto srclist = obs_properties_add_list(props, P_AUDIO_SRC, T(P_AUDIO_SRC), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         obs_property_list_add_string(srclist, T(P_NONE), P_NONE);
         obs_property_list_add_string(srclist, T(P_OUTPUT_BUS), P_OUTPUT_BUS);
+        obs_property_set_modified_callback(srclist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
+            auto src = obs_data_get_string(settings, P_AUDIO_SRC);
+            auto enable = (src == nullptr) || !p_equ(src, P_OUTPUT_BUS);
+            set_prop_visible(props, P_IGNORE_MUTE, enable);
+            return true;
+            });
 
         for(const auto& str : enumerate_audio_sources())
             obs_property_list_add_string(srclist, str.c_str(), str.c_str());
 
         // hide on silent audio
         obs_properties_add_bool(props, P_HIDE_SILENT, T(P_HIDE_SILENT));
+
+        // ignore mute
+        auto ignore_mute = obs_properties_add_bool(props, P_IGNORE_MUTE, T(P_IGNORE_MUTE));
+        obs_property_set_long_description(ignore_mute, T(P_IGNORE_MUTE_DESC));
 
         // volume normalization
         auto vol = obs_properties_add_bool(props, P_NORMALIZE_VOLUME, T(P_NORMALIZE_VOLUME));
@@ -470,6 +481,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_meter_rms = obs_data_get_bool(settings, P_RMS_MODE);
     m_meter_ms = (int)obs_data_get_int(settings, P_METER_BUF);
     m_hide_on_silent = obs_data_get_bool(settings, P_HIDE_SILENT);
+    m_ignore_mute = obs_data_get_bool(settings, P_IGNORE_MUTE);
     m_normalize_volume = obs_data_get_bool(settings, P_NORMALIZE_VOLUME);
     m_volume_target = (float)obs_data_get_int(settings, P_VOLUME_TARGET);
 
@@ -1587,7 +1599,7 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     {
         auto j = i - m_channel_base;
         assert((j == 0) || (j == 1));
-        if(muted || (audio->data[i] == nullptr))
+        if((muted && !m_ignore_mute) || (audio->data[i] == nullptr))
             circlebuf_push_back_zero(&m_capturebufs[j], sz);
         else
             circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);

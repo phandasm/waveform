@@ -178,6 +178,7 @@ protected:
     float m_volume_target = -3.0f; // volume normalization target
     int m_min_bar_height = 0;
     int m_channel_base = 0; // channel to use in single channel mode
+    bool m_ignore_mute = false;
 
     // interpolation
     std::vector<float> m_interp_indices;
