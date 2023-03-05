@@ -1047,7 +1047,14 @@ void WAVSource::update(obs_data_t *settings)
                 m_window_coefficients[i] = 0.5f * (1 - std::cos((pi2 * i) / N));
             break;
         }
+
+        auto sum = 0.0f;
+        for(size_t i = 0; i < m_fft_size; ++i)
+            sum += m_window_coefficients[i];
+        m_window_sum = sum;
     }
+    else
+        m_window_sum = (float)m_fft_size;
 
     m_last_silent = false;
     m_show = true;

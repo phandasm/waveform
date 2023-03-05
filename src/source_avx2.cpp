@@ -121,7 +121,7 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
 
         // normalize FFT output and convert to dBFS
         const auto shuffle_mask = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
-        const auto mag_coefficient = _mm256_set1_ps(2.0f / (float)m_fft_size);
+        const auto mag_coefficient = _mm256_set1_ps(2.0f / m_window_sum);
         const auto g = _mm256_set1_ps(m_gravity);
         const auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g); // 1 - gravity
         const bool slope = m_slope > 0.0f;
@@ -138,9 +138,9 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
             auto ivec = _mm256_permute2f128_ps(chunk1, chunk2, 1 | (3 << 4)); // no choice here (without using more instructions)
 
             // calculate normalized magnitude
-            // 2 * magnitude / N
+            // 2 * magnitude / window
             auto mag = _mm256_sqrt_ps(_mm256_fmadd_ps(ivec, ivec, _mm256_mul_ps(rvec, rvec))); // magnitude sqrt(r^2 + i^2)
-            mag = _mm256_mul_ps(mag, mag_coefficient); // 2 * magnitude / N with precomputed quotient
+            mag = _mm256_mul_ps(mag, mag_coefficient); // 2 * magnitude / window with precomputed quotient
 
             // boost high frequencies
             if(slope)
@@ -170,7 +170,7 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
         memcpy(m_decibels[1].get(), m_decibels[0].get(), outsz * sizeof(float));
 
     // dBFS conversion
-    // 20 * log(2 * magnitude / N)
+    // 20 * log(2 * magnitude / window)
     if(m_stereo)
     {
         for(auto channel = 0; channel < 2; ++channel)

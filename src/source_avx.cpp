@@ -117,7 +117,7 @@ void WAVSourceAVX::tick_spectrum(float seconds)
 
         constexpr auto shuffle_mask_r = 0 | (2 << 2) | (0 << 4) | (2 << 6);
         constexpr auto shuffle_mask_i = 1 | (3 << 2) | (1 << 4) | (3 << 6);
-        const auto mag_coefficient = _mm256_set1_ps(2.0f / (float)m_fft_size);
+        const auto mag_coefficient = _mm256_set1_ps(2.0f / m_window_sum);
         const auto g = _mm256_set1_ps(m_gravity);
         const auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g);
         const bool slope = m_slope > 0.0f;

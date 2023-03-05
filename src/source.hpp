@@ -216,6 +216,9 @@ protected:
     size_t m_input_rms_size = 0;
     size_t m_input_rms_pos = 0;
 
+    // FFT window
+    float m_window_sum = 1.0f;
+
     void create_vbuf();
 
     void get_settings(obs_data_t *settings);
@@ -298,6 +301,8 @@ public:
     ~WAVSourceGeneric() override = default;
 };
 
+#ifndef DISABLE_X86_SIMD
+
 class WAVSourceAVX : public WAVSourceGeneric
 {
 protected:
@@ -320,3 +325,5 @@ public:
     using WAVSourceAVX::WAVSourceAVX;
     ~WAVSourceAVX2() override = default;
 };
+
+#endif // !DISABLE_X86_SIMD

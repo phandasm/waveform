@@ -111,7 +111,7 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
         else
             continue;
 
-        const auto mag_coefficient = 2.0f / (float)m_fft_size;
+        const auto mag_coefficient = 2.0f / m_window_sum;
         const auto g = m_gravity;
         const auto g2 = 1.0f - g;
         const bool slope = m_slope > 0.0f;
