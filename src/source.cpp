@@ -161,7 +161,7 @@ namespace callbacks {
         obs_data_set_default_bool(settings, P_HIDE_SILENT, false);
         obs_data_set_default_bool(settings, P_IGNORE_MUTE, false);
         obs_data_set_default_bool(settings, P_NORMALIZE_VOLUME, false);
-        obs_data_set_default_int(settings, P_VOLUME_TARGET, -3);
+        obs_data_set_default_int(settings, P_VOLUME_TARGET, -8);
     }
 
     static obs_properties_t *get_properties([[maybe_unused]] void *data)
