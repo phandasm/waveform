@@ -17,19 +17,18 @@
 
 #pragma once
 #include "waveform_config.hpp"
-#include "membuf.hpp"
+#include "aligned_buffer.hpp"
 #include "math_funcs.hpp"
 #include <cmath>
 #include <cstdint>
 #include <vector>
 #include <type_traits>
-#include <memory>
 
 template<typename T>
 struct Kernel
 {
     static_assert(std::is_floating_point_v<T>, "Kernel must be a floating point type.");
-    std::unique_ptr<T[], MembufDeleter> weights;
+    AlignedBuffer<T> weights;
     int radius = 0;
     int size = 0;
     int sse_size = 0;
@@ -44,7 +43,7 @@ Kernel<T> make_gauss_kernel(T sigma)
     sigma = std::max(std::abs(sigma), (T)0.01);
     auto w = (int)std::ceil((T)3 * sigma);
     auto size = (2 * w) - 1;
-    ret.weights.reset(membuf_alloc<T>(size));
+    ret.weights.reset(size);
     ret.radius = w;
     ret.size = size;
     ret.sse_size = size & -(16 / (int)sizeof(T));
@@ -73,7 +72,7 @@ Kernel<T> make_lanczos_kernel(const std::vector<T>& samples, const intmax_t radi
     if((size <= 0) || (radius <= 0))
         return ret;
     const auto ksize = size * (radius * 2);
-    ret.weights.reset(membuf_alloc<T>(ksize));
+    ret.weights.reset(ksize);
     ret.radius = (int)radius;
     ret.size = (int)ksize; // size fields currently unused, would probably be more useful if they measured a single node rather than the whole buffer
     ret.sse_size = ksize & -(16 / (int)sizeof(T));

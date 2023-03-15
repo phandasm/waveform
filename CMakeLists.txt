@@ -139,7 +139,7 @@ set(PLUGIN_SOURCES
     "src/source.hpp"
     "src/source.cpp"
     "src/source_generic.cpp"
-    "src/membuf.hpp"
+    "src/aligned_buffer.hpp"
     "src/math_funcs.hpp"
     "src/filter.hpp"
     "src/settings.hpp"
@@ -152,7 +152,6 @@ if(NOT DISABLE_X86_SIMD)
         "src/source_avx2.cpp"
         "src/source_avx.cpp"
         "src/filter_fma3.cpp"
-        "src/aligned_mem.hpp"
     )
 
     # arch flags

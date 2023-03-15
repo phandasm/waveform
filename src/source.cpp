@@ -777,7 +777,7 @@ void WAVSource::init_rolloff()
     const auto freq_low = (float)m_cutoff_low * ratio;
     const auto freq_high = (float)m_cutoff_high / ratio;
 
-    m_rolloff_modifiers.reset(membuf_alloc<float>(m_fft_size / 2));
+    m_rolloff_modifiers.reset(m_fft_size / 2);
     m_rolloff_modifiers[0] = 0.0f;
     for(size_t i = 1u; i < sz; ++i)
     {
@@ -970,7 +970,7 @@ void WAVSource::update(obs_data_t *settings)
         m_input_rms = 0.0f;
         m_input_rms_size = size_t(m_audio_info.samples_per_sec) & -16;
         m_input_rms_pos = 0;
-        m_input_rms_buf.reset(membuf_alloc<float>(m_input_rms_size));
+        m_input_rms_buf.reset(m_input_rms_size);
         memset(m_input_rms_buf.get(), 0, m_input_rms_size * sizeof(float));
     }
 
@@ -993,13 +993,13 @@ void WAVSource::update(obs_data_t *settings)
     for(auto i = 0u; i < m_output_channels; ++i)
     {
         auto count = m_meter_mode ? m_fft_size : m_fft_size / 2;
-        m_decibels[i].reset(membuf_alloc<float>(count));
+        m_decibels[i].reset(count);
         if(m_meter_mode)
             memset(m_decibels[i].get(), 0, count * sizeof(float));
         else
         {
             if(m_tsmoothing != TSmoothingMode::NONE)
-                m_tsmooth_buf[i].reset(membuf_alloc<float>(count));
+                m_tsmooth_buf[i].reset(count);
             for(auto j = 0u; j < count; ++j)
             {
                 m_decibels[i][j] = DB_MIN;
@@ -1010,8 +1010,8 @@ void WAVSource::update(obs_data_t *settings)
     }
     if(!m_meter_mode)
     {
-        m_fft_input.reset(membuf_alloc<float>(m_fft_size));
-        m_fft_output.reset(membuf_alloc<fftwf_complex>(m_fft_size));
+        m_fft_input.reset(m_fft_size);
+        m_fft_output.reset(m_fft_size);
         m_fft_plan = fftwf_plan_dft_r2c_1d((int)m_fft_size, m_fft_input.get(), m_fft_output.get(), FFTW_ESTIMATE);
     }
 
@@ -1019,7 +1019,7 @@ void WAVSource::update(obs_data_t *settings)
     if(m_window_func != FFTWindow::NONE)
     {
         // precompute window coefficients
-        m_window_coefficients.reset(membuf_alloc<float>(m_fft_size));
+        m_window_coefficients.reset(m_fft_size);
         const auto N = m_fft_size - 1;
         constexpr auto pi2 = 2 * (float)M_PI;
         constexpr auto pi4 = 4 * (float)M_PI;
@@ -1099,7 +1099,7 @@ void WAVSource::update(obs_data_t *settings)
     // slope
     const auto num_mods = m_fft_size / 2;
     const auto maxmod = (float)(num_mods - 1);
-    m_slope_modifiers.reset(membuf_alloc<float>(num_mods));
+    m_slope_modifiers.reset(num_mods);
     for(size_t i = 0; i < num_mods; ++i)
         m_slope_modifiers[i] = std::log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
 

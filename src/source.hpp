@@ -21,13 +21,12 @@
 #include <util/circlebuf.h>
 #include <graphics/vec3.h>
 #include <fftw3.h>
-#include <memory>
 #include "module.hpp"
-#include "membuf.hpp"
+#include "aligned_buffer.hpp"
 #include "filter.hpp"
 
-using AVXBufR = std::unique_ptr<float[], MembufDeleter>;
-using AVXBufC = std::unique_ptr<fftwf_complex[], MembufDeleter>;
+using AVXBufR = AlignedBuffer<float>;
+using AVXBufC = AlignedBuffer<fftwf_complex>;
 
 enum class FFTWindow
 {
