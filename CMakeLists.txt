@@ -48,13 +48,13 @@ if(NOT TARGET OBS::libobs)
     find_package(LibObs REQUIRED)
 
     # emulate modern target
-    add_library(OBS::libobs INTERFACE IMPORTED GLOBAL)
+    add_library(OBS::libobs INTERFACE IMPORTED)
     target_link_libraries(OBS::libobs INTERFACE ${LIBOBS_LIBRARIES})
     target_include_directories(OBS::libobs INTERFACE ${LIBOBS_INCLUDE_DIRS})
 endif()
 
 if(MSVC)
-    add_definitions(/MP) # parallel builds
+    add_compile_options(/MP) # parallel builds
 
     option(EXTRA_OPTIMIZATIONS "Enable additional compiler optimizations" OFF)
     if(EXTRA_OPTIMIZATIONS)
