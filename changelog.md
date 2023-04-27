@@ -33,7 +33,7 @@ or
 - Download Waveform\_v#.#.#\_Ubuntu\_x86\_64.deb and install it using your distro's package manager (Debian/Ubuntu only).  
 
 #### Flatpak
-- `flatpak install flathub com.obsproject.Studio.Plugins.waveform`  
+- `flatpak install flathub com.obsproject.Studio.Plugin.waveform`  
 
 #### Source Build
 - Step-by-step instructions in the [readme](https://github.com/phandasm/waveform/blob/master/README.md#linux-ubuntu-20043-lts).  
