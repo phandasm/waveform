@@ -134,8 +134,8 @@ protected:
     int m_retries = 0;
     float m_next_retry = 0.0f;
 
-    // timestamp of last audio callback in nanoseconds
-    uint64_t m_capture_ts = 0;
+    uint64_t m_capture_ts = 0; // timestamp of last audio callback in nanoseconds
+    uint64_t m_audio_ts = 0; // timestamp of the end of available audio in nanoseconds
 
     // settings
     RenderMode m_render_mode = RenderMode::SOLID;
@@ -234,15 +234,23 @@ protected:
     void render_curve(gs_effect_t *effect);
     void render_bars(gs_effect_t *effect);
 
-    virtual void update_input_rms(const audio_data *audio) = 0; // compute RMS of input audio and adjust graph viewport accordingly
+    virtual void update_input_rms(const audio_data *audio) = 0; // update RMS window with given audio data
 
     virtual void tick_spectrum(float) = 0;  // process audio data in frequency spectrum mode
     virtual void tick_meter(float) = 0;     // process audio data in meter mode
 
+    int64_t get_audio_sync(uint64_t ts)     // get delta between end of available audio and given time in nanoseconds
+    {
+        auto delta = std::max(m_audio_ts, ts) - std::min(m_audio_ts, ts);
+        delta = std::min(delta, MAX_TS_DELTA);
+        return (m_audio_ts < ts) ? -(int64_t)delta : (int64_t)delta;
+    }
+
     // constants
     static const float DB_MIN;
     static constexpr auto RETRY_DELAY = 2.0f;
-    static constexpr uint64_t CAPTURE_TIMEOUT = 100000000ull; // time in nanoseconds before audio capture is considered "lost"
+    static constexpr uint64_t CAPTURE_TIMEOUT = 1000000ull * 500u;  // time in nanoseconds before audio capture is considered "lost" (500 ms)
+    static constexpr uint64_t MAX_TS_DELTA = 1000000000ull * 16u;   // 16 seconds in ns
 
     inline float dbfs(float mag)
     {

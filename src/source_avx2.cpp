@@ -24,6 +24,8 @@
 void WAVSourceAVX2::tick_spectrum(float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
+    auto cur_ts = os_gettime_ns();
+
     if(!check_audio_capture(seconds))
         return;
 
@@ -34,7 +36,7 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
     const auto outsz = m_fft_size / 2; // discard bins at nyquist and above
     constexpr auto step = sizeof(__m256) / sizeof(float);
 
-    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+    const auto dtcapture = cur_ts - m_capture_ts;
 
     // reset and stop processing when source is not being displayed
     // or we haven't received audio data for more than the timeout value
@@ -52,14 +54,15 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
         return;
     }
 
-    const auto dtsize = size_t(seconds * m_audio_info.samples_per_sec) * sizeof(float);
+    const int64_t dtaudio = get_audio_sync(cur_ts);
+    const size_t dtsize = std::max((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0, bufsz);
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
         // get captured audio
-        if(m_capturebufs[channel].size >= bufsz)
+        if(m_capturebufs[channel].size >= dtsize)
         {
-            circlebuf_pop_front(&m_capturebufs[channel], nullptr, std::min(dtsize, m_capturebufs[channel].size - bufsz));
+            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
             circlebuf_peek_front(&m_capturebufs[channel], m_fft_input.get(), bufsz);
         }
         else

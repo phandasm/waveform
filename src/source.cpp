@@ -647,8 +647,8 @@ void WAVSource::release_audio_capture()
 
     if(m_output_bus_captured)
     {
-        audio_output_disconnect(obs_get_audio(), 0, &callbacks::capture_output_bus, this);
         m_output_bus_captured = false;
+        audio_output_disconnect(obs_get_audio(), 0, &callbacks::capture_output_bus, this);
     }
 
     // reset circular buffers
@@ -658,6 +658,9 @@ void WAVSource::release_audio_capture()
         i.start_pos = 0;
         i.size = 0;
     }
+
+    m_capture_ts = 0;
+    m_audio_ts = 0;
 }
 
 bool WAVSource::check_audio_capture(float seconds)
@@ -665,6 +668,17 @@ bool WAVSource::check_audio_capture(float seconds)
     if(m_output_bus_captured)
         return true;
 
+    // check if the source still exists
+    if(m_audio_source != nullptr)
+    {
+        auto src = obs_weak_source_get_source(m_audio_source);
+        if(src == nullptr)
+            release_audio_capture();
+        else
+            obs_source_release(src);
+    }
+
+    // if we've lost our source, periodically try to recapture it
     if(m_audio_source == nullptr)
     {
         m_next_retry -= seconds;
@@ -672,20 +686,11 @@ bool WAVSource::check_audio_capture(float seconds)
         {
             m_next_retry = RETRY_DELAY;
             recapture_audio();
-            if(m_audio_source != nullptr)
+            if((m_audio_source != nullptr) || m_output_bus_captured)
                 return true;
         }
         return false;
     }
-
-    // check if the source still exists
-    auto src = obs_weak_source_get_source(m_audio_source);
-    if(src == nullptr)
-    {
-        release_audio_capture();
-        return false;
-    }
-    obs_source_release(src);
     return true;
 }
 
@@ -1133,6 +1138,8 @@ void WAVSource::update(obs_data_t *settings)
     // vertex buffer must be rebuilt if the settings have changed
     // this must be done after m_num_bars has been initialized
     create_vbuf();
+
+    m_show = obs_source_showing(m_source);
 }
 
 void WAVSource::tick(float seconds)
@@ -1591,15 +1598,22 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
-    if((m_audio_source == nullptr) || (m_capture_channels == 0))
+    if(((m_audio_source == nullptr) && !m_output_bus_captured) || (m_capture_channels == 0))
         return;
     assert((m_channel_base >= 0) && (m_channel_base < (int)get_audio_channels(m_audio_info.speakers)));
     assert((m_channel_base == 0) || (m_capture_channels == 1));
+    static_assert((MAX_TS_DELTA / 1000000000ull) > 0);
+
+    m_capture_ts = os_gettime_ns();
+    auto audio_len = audio_frames_to_ns(m_audio_info.samples_per_sec, audio->frames);
+    auto delta = std::max(audio->timestamp, m_capture_ts) - std::min(audio->timestamp, m_capture_ts);
+    if(delta > MAX_TS_DELTA) // attempt to handle extreme / bogus timestamps (e.g. VLC)
+        m_audio_ts = m_capture_ts;
+    else
+        m_audio_ts = audio->timestamp + audio_len;
 
     if(m_normalize_volume)
         update_input_rms(audio);
-
-    m_capture_ts = os_gettime_ns();
 
     auto sz = size_t(audio->frames * sizeof(float));
     for(auto i = m_channel_base; i < (m_channel_base + (int)m_capture_channels); ++i)
@@ -1612,7 +1626,7 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
             circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
 
         auto total = m_capturebufs[j].size;
-        auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
+        auto max = m_meter_mode ? 8192 : (MAX_TS_DELTA / 1000000000ull) * m_audio_info.samples_per_sec * sizeof(float);
         if(total > max)
             circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max);
     }
@@ -1620,34 +1634,5 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
 
 void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_data *audio)
 {
-    if(audio == nullptr)
-        return;
-    if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
-        return;
-    std::lock_guard lock(m_mtx, std::adopt_lock);
-    if(m_capture_channels == 0)
-        return;
-    assert((m_channel_base >= 0) && (m_channel_base < (int)get_audio_channels(m_audio_info.speakers)));
-    assert((m_channel_base == 0) || (m_capture_channels == 1));
-
-    if(m_normalize_volume)
-        update_input_rms(audio);
-
-    m_capture_ts = os_gettime_ns();
-
-    auto sz = size_t(audio->frames * sizeof(float));
-    for(auto i = m_channel_base; i < (m_channel_base + (int)m_capture_channels); ++i)
-    {
-        auto j = i - m_channel_base;
-        assert((j == 0) || (j == 1));
-        if(audio->data[i] == nullptr)
-            circlebuf_push_back_zero(&m_capturebufs[j], sz);
-        else
-            circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
-
-        auto total = m_capturebufs[j].size;
-        auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
-        if(total > max)
-            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max);
-    }
+    capture_audio(nullptr, audio, false);
 }
