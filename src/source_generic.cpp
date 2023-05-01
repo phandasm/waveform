@@ -55,7 +55,7 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
     }
 
     const int64_t dtaudio = get_audio_sync(cur_ts);
-    const size_t dtsize = std::max((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0, bufsz);
+    const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
@@ -188,6 +188,8 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
 
 void WAVSourceGeneric::tick_meter(float seconds)
 {
+    auto cur_ts = os_gettime_ns();
+
     if(!check_audio_capture(seconds))
         return;
 
@@ -212,12 +214,14 @@ void WAVSourceGeneric::tick_meter(float seconds)
     }
 
     const auto outsz = m_fft_size;
+    const int64_t dtaudio = get_audio_sync(cur_ts);
+    const size_t dtsize = (dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0;
 
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        while(m_capturebufs[channel].size > 0)
+        while(m_capturebufs[channel].size > dtsize)
         {
-            auto consume = m_capturebufs[channel].size;
+            auto consume = m_capturebufs[channel].size - dtsize;
             auto max = (m_fft_size - m_meter_pos[channel]) * sizeof(float);
             if(consume >= max)
             {

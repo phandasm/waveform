@@ -1602,7 +1602,6 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
         return;
     assert((m_channel_base >= 0) && (m_channel_base < (int)get_audio_channels(m_audio_info.speakers)));
     assert((m_channel_base == 0) || (m_capture_channels == 1));
-    static_assert((MAX_TS_DELTA / 1000000000ull) > 0);
 
     m_capture_ts = os_gettime_ns();
     auto audio_len = audio_frames_to_ns(m_audio_info.samples_per_sec, audio->frames);
@@ -1611,6 +1610,9 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
         m_audio_ts = m_capture_ts;
     else
         m_audio_ts = audio->timestamp + audio_len;
+    const auto bufsz = m_fft_size * sizeof(float);
+    const int64_t dtaudio = get_audio_sync(m_capture_ts);
+    const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
 
     if(m_normalize_volume)
         update_input_rms(audio);
@@ -1626,9 +1628,8 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
             circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
 
         auto total = m_capturebufs[j].size;
-        auto max = m_meter_mode ? 8192 : (MAX_TS_DELTA / 1000000000ull) * m_audio_info.samples_per_sec * sizeof(float);
-        if(total > max)
-            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max);
+        if(total > dtsize)
+            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - dtsize);
     }
 }
 

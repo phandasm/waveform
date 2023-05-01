@@ -55,7 +55,7 @@ void WAVSourceAVX2::tick_spectrum(float seconds)
     }
 
     const int64_t dtaudio = get_audio_sync(cur_ts);
-    const size_t dtsize = std::max((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0, bufsz);
+    const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
