@@ -1145,6 +1145,8 @@ void WAVSource::update(obs_data_t *settings)
 void WAVSource::tick(float seconds)
 {
     std::lock_guard lock(m_mtx);
+    if(m_normalize_volume)
+        update_input_rms();
     if(m_meter_mode)
         tick_meter(seconds);
     else
@@ -1614,8 +1616,37 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     const int64_t dtaudio = get_audio_sync(m_capture_ts);
     const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
 
+    // RMS
     if(m_normalize_volume)
-        update_input_rms(audio);
+    {
+        // FIXME: handle buffering for audio synchronization
+        const auto sz = audio->frames;
+        auto data = (float**)&audio->data;
+        if(m_capture_channels > 1)
+        {
+            if((data[m_channel_base] == nullptr) || (data[m_channel_base + 1] == nullptr))
+                return;
+            for(auto i = 0u; i < sz; ++i)
+            {
+                auto val = std::max(std::abs(data[m_channel_base][i]), std::abs(data[m_channel_base + 1][i]));
+                m_input_rms_buf[m_input_rms_pos++] = val * val;
+                if(m_input_rms_pos >= m_input_rms_size)
+                    m_input_rms_pos = 0;
+            }
+        }
+        else
+        {
+            if(data[m_channel_base] == nullptr)
+                return;
+            for(auto i = 0u; i < sz; ++i)
+            {
+                auto val = data[m_channel_base][i];
+                m_input_rms_buf[m_input_rms_pos++] = val * val;
+                if(m_input_rms_pos >= m_input_rms_size)
+                    m_input_rms_pos = 0;
+            }
+        }
+    }
 
     auto sz = size_t(audio->frames * sizeof(float));
     for(auto i = m_channel_base; i < (m_channel_base + (int)m_capture_channels); ++i)

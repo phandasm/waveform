@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cstring>
 #include <util/platform.h>
+#include <cassert>
 
 // adaptation of WAVSourceAVX2 to support CPUs without AVX2
 // see comments of WAVSourceAVX2
@@ -315,36 +316,9 @@ void WAVSourceAVX::tick_meter(float seconds)
     m_last_silent = (silent_channels >= m_capture_channels);
 }
 
-void WAVSourceAVX::update_input_rms(const audio_data *audio)
+void WAVSourceAVX::update_input_rms()
 {
-    if((audio == nullptr) || (m_capture_channels == 0))
-        return;
-    const auto sz = audio->frames;
-    auto data = (float**)&audio->data;
-    if(m_capture_channels > 1)
-    {
-        if((data[0] == nullptr) || (data[1] == nullptr))
-            return;
-        for(auto i = 0u; i < sz; ++i)
-        {
-            auto val = std::max(std::abs(data[0][i]), std::abs(data[1][i]));
-            m_input_rms_buf[m_input_rms_pos++] = val * val;
-            if(m_input_rms_pos >= m_input_rms_size)
-                m_input_rms_pos = 0;
-        }
-    }
-    else
-    {
-        if(data[0] == nullptr)
-            return;
-        for(auto i = 0u; i < sz; ++i)
-        {
-            auto val = data[0][i];
-            m_input_rms_buf[m_input_rms_pos++] = val * val;
-            if(m_input_rms_pos >= m_input_rms_size)
-                m_input_rms_pos = 0;
-        }
-    }
+    assert(m_normalize_volume);
 
     constexpr auto step = (sizeof(__m256) / sizeof(float)) * 2; // buffer size is 64-byte multiple
     constexpr auto halfstep = step / 2;

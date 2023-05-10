@@ -234,7 +234,7 @@ protected:
     void render_curve(gs_effect_t *effect);
     void render_bars(gs_effect_t *effect);
 
-    virtual void update_input_rms(const audio_data *audio) = 0; // update RMS window with given audio data
+    virtual void update_input_rms() = 0;    // update RMS window
 
     virtual void tick_spectrum(float) = 0;  // process audio data in frequency spectrum mode
     virtual void tick_meter(float) = 0;     // process audio data in meter mode
@@ -301,7 +301,7 @@ protected:
     void tick_spectrum(float seconds) override;
     void tick_meter(float seconds) override;
 
-    void update_input_rms(const audio_data *audio) override;
+    void update_input_rms() override;
 
 public:
     using WAVSource::WAVSource;
@@ -316,7 +316,7 @@ protected:
     void tick_spectrum(float seconds) override;
     void tick_meter(float seconds) override;
 
-    void update_input_rms(const audio_data *audio) override;
+    void update_input_rms() override;
 
 public:
     using WAVSourceGeneric::WAVSourceGeneric;
