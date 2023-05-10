@@ -20,27 +20,19 @@
 #include <immintrin.h>
 #include <algorithm>
 #include <cstring>
-#include <util/platform.h>
 #include <cassert>
 
 // adaptation of WAVSourceAVX2 to support CPUs without AVX2
 // see comments of WAVSourceAVX2
-void WAVSourceAVX::tick_spectrum(float seconds)
+void WAVSourceAVX::tick_spectrum([[maybe_unused]] float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
-    auto cur_ts = os_gettime_ns();
-
-    if(!check_audio_capture(seconds))
-        return;
-
-    if(m_capture_channels == 0)
-        return;
 
     const auto bufsz = m_fft_size * sizeof(float);
     const auto outsz = m_fft_size / 2;
     constexpr auto step = sizeof(__m256) / sizeof(float);
 
-    const auto dtcapture = cur_ts - m_capture_ts;
+    const auto dtcapture = m_tick_ts - m_capture_ts;
 
     if(!m_show || (dtcapture > CAPTURE_TIMEOUT))
     {
@@ -56,7 +48,7 @@ void WAVSourceAVX::tick_spectrum(float seconds)
         return;
     }
 
-    const int64_t dtaudio = get_audio_sync(cur_ts);
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
     const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
@@ -205,18 +197,10 @@ void WAVSourceAVX::tick_spectrum(float seconds)
     }
 }
 
-void WAVSourceAVX::tick_meter(float seconds)
+void WAVSourceAVX::tick_meter([[maybe_unused]] float seconds)
 {
-    auto cur_ts = os_gettime_ns();
-
-    if(!check_audio_capture(seconds))
-        return;
-
-    if(m_capture_channels == 0)
-        return;
-
     // handle audio dropouts
-    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+    const auto dtcapture = m_tick_ts - m_capture_ts;
     if(dtcapture > CAPTURE_TIMEOUT)
     {
         if(m_last_silent)
@@ -235,7 +219,7 @@ void WAVSourceAVX::tick_meter(float seconds)
         return;
     }
 
-    const int64_t dtaudio = get_audio_sync(cur_ts);
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
     const size_t dtsize = (dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0;
 
     // repurpose m_decibels as circular buffer for sample data

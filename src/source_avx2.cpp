@@ -21,7 +21,7 @@
 #include <cstring>
 #include <util/platform.h>
 
-void WAVSourceAVX2::tick_spectrum(float seconds)
+void WAVSourceAVX2::tick_spectrum([[maybe_unused]] float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
     auto cur_ts = os_gettime_ns();

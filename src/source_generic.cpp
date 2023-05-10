@@ -19,27 +19,19 @@
 #include <algorithm>
 #include <cstring>
 #include <cmath>
-#include <util/platform.h>
 #include <cassert>
 
 // portable non-SIMD implementation
 // see comments of WAVSourceAVX2 and WAVSourceAVX
-void WAVSourceGeneric::tick_spectrum(float seconds)
+void WAVSourceGeneric::tick_spectrum([[maybe_unused]] float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
-    auto cur_ts = os_gettime_ns();
-
-    if(!check_audio_capture(seconds))
-        return;
-
-    if(m_capture_channels == 0)
-        return;
 
     const auto bufsz = m_fft_size * sizeof(float);
     const auto outsz = m_fft_size / 2;
     constexpr auto step = 1;
 
-    const auto dtcapture = cur_ts - m_capture_ts;
+    const auto dtcapture = m_tick_ts - m_capture_ts;
 
     if(!m_show || (dtcapture > CAPTURE_TIMEOUT))
     {
@@ -55,7 +47,7 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
         return;
     }
 
-    const int64_t dtaudio = get_audio_sync(cur_ts);
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
     const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
@@ -187,17 +179,9 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
     }
 }
 
-void WAVSourceGeneric::tick_meter(float seconds)
+void WAVSourceGeneric::tick_meter([[maybe_unused]] float seconds)
 {
-    auto cur_ts = os_gettime_ns();
-
-    if(!check_audio_capture(seconds))
-        return;
-
-    if(m_capture_channels == 0)
-        return;
-
-    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+    const auto dtcapture = m_tick_ts - m_capture_ts;
     if(dtcapture > CAPTURE_TIMEOUT)
     {
         if(m_last_silent)
@@ -215,7 +199,7 @@ void WAVSourceGeneric::tick_meter(float seconds)
     }
 
     const auto outsz = m_fft_size;
-    const int64_t dtaudio = get_audio_sync(cur_ts);
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
     const size_t dtsize = (dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0;
 
     for(auto channel = 0u; channel < m_capture_channels; ++channel)

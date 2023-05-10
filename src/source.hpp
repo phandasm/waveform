@@ -134,8 +134,9 @@ protected:
     int m_retries = 0;
     float m_next_retry = 0.0f;
 
-    uint64_t m_capture_ts = 0; // timestamp of last audio callback in nanoseconds
-    uint64_t m_audio_ts = 0; // timestamp of the end of available audio in nanoseconds
+    uint64_t m_capture_ts = 0;  // timestamp of last audio callback in nanoseconds
+    uint64_t m_audio_ts = 0;    // timestamp of the end of available audio in nanoseconds
+    uint64_t m_tick_ts = 0;     // timestamp of last 'tick' in nanoseconds
 
     // settings
     RenderMode m_render_mode = RenderMode::SOLID;

@@ -1145,8 +1145,17 @@ void WAVSource::update(obs_data_t *settings)
 void WAVSource::tick(float seconds)
 {
     std::lock_guard lock(m_mtx);
+
+    m_tick_ts = os_gettime_ns();
+
     if(m_normalize_volume)
         update_input_rms();
+
+    if(!check_audio_capture(seconds))
+        return;
+    if(m_capture_channels == 0)
+        return;
+
     if(m_meter_mode)
         tick_meter(seconds);
     else
