@@ -14,7 +14,8 @@ Waveform's only external dependency is libobs.
 You'll need to build obs-studio separately and point [CMake](https://cmake.org/) to it when building Waveform.  
 From the CLI interface, the latter can be accomplished via `-DCMAKE_PREFIX_PATH="path/to/obs-studio/build"`.
 
-## Linux (Ubuntu 20.04.3 LTS)
+## Linux
+### Ubuntu 20.04
 ```bash
 # install build tools
 sudo apt-get install build-essential git cmake
@@ -30,6 +31,21 @@ mkdir waveform/build
 cd waveform/build
 
 # build
+cmake ..
+make
+make install
+```
+
+### Fedora
+**Prerequisite:** OBS packages from RPM Fusion (see [OBS Wiki](https://obsproject.com/wiki/unofficial-linux-builds#fedora)).  
+
+```bash
+sudo dnf install @development-tools cmake obs-studio-devel fftw-devel
+
+git clone --recurse-submodules https://github.com/phandasm/waveform.git
+mkdir waveform/build
+cd waveform/build
+
 cmake ..
 make
 make install
