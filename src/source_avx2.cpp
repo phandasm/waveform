@@ -24,19 +24,12 @@
 void WAVSourceAVX2::tick_spectrum([[maybe_unused]] float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
-    auto cur_ts = os_gettime_ns();
-
-    if(!check_audio_capture(seconds))
-        return;
-
-    if(m_capture_channels == 0)
-        return;
 
     const auto bufsz = m_fft_size * sizeof(float);
     const auto outsz = m_fft_size / 2; // discard bins at nyquist and above
     constexpr auto step = sizeof(__m256) / sizeof(float);
 
-    const auto dtcapture = cur_ts - m_capture_ts;
+    const auto dtcapture = m_tick_ts - m_capture_ts;
 
     // reset and stop processing when source is not being displayed
     // or we haven't received audio data for more than the timeout value
@@ -54,7 +47,7 @@ void WAVSourceAVX2::tick_spectrum([[maybe_unused]] float seconds)
         return;
     }
 
-    const int64_t dtaudio = get_audio_sync(cur_ts);
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
     const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
@@ -194,7 +187,7 @@ void WAVSourceAVX2::tick_spectrum([[maybe_unused]] float seconds)
     // volume normalization
     if(m_normalize_volume && !m_last_silent)
     {
-        const auto volume_compensation = _mm256_set1_ps(std::min(m_volume_target - dbfs(m_input_rms), 30.0f));
+        const auto volume_compensation = _mm256_set1_ps(std::min(m_volume_target - dbfs(m_input_rms), m_max_gain));
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
             for(size_t i = 0; i < outsz; i += step)
                 _mm256_store_ps(&m_decibels[channel][i], _mm256_add_ps(volume_compensation, _mm256_load_ps(&m_decibels[channel][i])));

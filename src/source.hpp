@@ -175,7 +175,8 @@ protected:
     float m_rolloff_q = 0.0f;
     float m_rolloff_rate = 0.0f;
     bool m_normalize_volume = false;
-    float m_volume_target = -3.0f; // volume normalization target
+    float m_volume_target = -3.0f;  // volume normalization target
+    float m_max_gain = 30.0f;       // maximum volume normalization gain
     int m_min_bar_height = 0;
     int m_channel_base = 0; // channel to use in single channel mode
     bool m_ignore_mute = false;

@@ -177,7 +177,7 @@ void WAVSourceAVX::tick_spectrum([[maybe_unused]] float seconds)
 
     if(m_normalize_volume && !m_last_silent)
     {
-        const auto volume_compensation = _mm256_set1_ps(std::min(m_volume_target - dbfs(m_input_rms), 30.0f));
+        const auto volume_compensation = _mm256_set1_ps(std::min(m_volume_target - dbfs(m_input_rms), m_max_gain));
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
             for(size_t i = 0; i < outsz; i += step)
                 _mm256_store_ps(&m_decibels[channel][i], _mm256_add_ps(volume_compensation, _mm256_load_ps(&m_decibels[channel][i])));

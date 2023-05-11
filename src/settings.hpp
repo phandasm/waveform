@@ -35,6 +35,7 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 
 #define P_NORMALIZE_VOLUME  "normalize_volume"
 #define P_VOLUME_TARGET     "volume_target"
+#define P_MAX_GAIN          "max_gain"
 
 #define P_RENDER_MODE       "render_mode"
 #define P_LINE              "line"
