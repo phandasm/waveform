@@ -169,6 +169,7 @@ protected:
     bool m_invert = false;
     float m_deadzone = 0.0f; // radial display deadzone
     float m_radial_arc = 1.0f;
+    float m_radial_rotation = 0.0f;
     bool m_rounded_caps = false;
     bool m_hide_on_silent = false;
     int m_channel_spacing = 0;

@@ -53,6 +53,7 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_INVERT            "invert_direction"
 #define P_DEADZONE          "deadzone"
 #define P_RADIAL_ARC        "radial_arc"
+#define P_RADIAL_ROTATION   "radial_rotation"
 
 #define P_CAPS              "rounded_caps"
 

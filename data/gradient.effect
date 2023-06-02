@@ -11,6 +11,7 @@ uniform float graph_deadzone = 0.0;
 uniform bool graph_invert = false;
 uniform float2 radial_center = {0.0, 0.0};
 uniform float radial_arc = 1.0;
+uniform float radial_rotation = 0.0;
 
 struct VertInOut {
 	float4 pos : POSITION;
@@ -39,7 +40,7 @@ VertGrad VSGradient(VertInOut vert_in)
 VertGrad VSRadial(VertInOut vert_in)
 {
 	VertGrad vert_out;
-	float angle = saturate(vert_in.pos.x / graph_width) * radial_arc * 6.283185307179586f;
+	float angle = (saturate(vert_in.pos.x / graph_width) * radial_arc * 6.283185307179586f) + radial_rotation;
 	vert_out.pos = float4(vert_in.pos.xyz, 1.0);
 	if(graph_invert)
 	{

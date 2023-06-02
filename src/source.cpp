@@ -128,6 +128,7 @@ namespace callbacks {
         obs_data_set_default_bool(settings, P_INVERT, false);
         obs_data_set_default_double(settings, P_DEADZONE, 20.0);
         obs_data_set_default_double(settings, P_RADIAL_ARC, 360.0);
+        obs_data_set_default_double(settings, P_RADIAL_ROTATION, 0.0);
         obs_data_set_default_bool(settings, P_CAPS, false);
         obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
         obs_data_set_default_int(settings, P_CHANNEL, 0);
@@ -249,6 +250,7 @@ namespace callbacks {
             set_prop_visible(props, P_RADIAL, notmeter);
             set_prop_visible(props, P_DEADZONE, notmeter && obs_data_get_bool(settings, P_RADIAL));
             set_prop_visible(props, P_RADIAL_ARC, notmeter && obs_data_get_bool(settings, P_RADIAL));
+            set_prop_visible(props, P_RADIAL_ROTATION, notmeter && obs_data_get_bool(settings, P_RADIAL));
             set_prop_visible(props, P_INVERT, notmeter && obs_data_get_bool(settings, P_RADIAL));
             set_prop_visible(props, P_LOG_SCALE, notmeter);
             set_prop_visible(props, P_MIRROR_FREQ_AXIS, notmeter);
@@ -278,14 +280,17 @@ namespace callbacks {
         obs_properties_add_bool(props, P_INVERT, T(P_INVERT));
         auto deadzone = obs_properties_add_float_slider(props, P_DEADZONE, T(P_DEADZONE), 0.0, 100.0, 0.1);
         auto arc = obs_properties_add_float_slider(props, P_RADIAL_ARC, T(P_RADIAL_ARC), 0.0, 360.0, 0.1);
+        auto rot = obs_properties_add_float_slider(props, P_RADIAL_ROTATION, T(P_RADIAL_ROTATION), 0.0, 360.0, 0.1);
         obs_property_float_set_suffix(deadzone, "%");
         obs_property_set_long_description(deadzone, T(P_DEADZONE_DESC));
         obs_property_float_set_suffix(arc, "°");
+        obs_property_float_set_suffix(rot, "°");
         obs_property_set_long_description(arc, T(P_RADIAL_ARC_DESC));
         obs_property_set_modified_callback(rad, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto enable = obs_data_get_bool(settings, P_RADIAL) && obs_property_visible(obs_properties_get(props, P_RADIAL));
             set_prop_visible(props, P_DEADZONE, enable);
             set_prop_visible(props, P_RADIAL_ARC, enable);
+            set_prop_visible(props, P_RADIAL_ROTATION, enable);
             set_prop_visible(props, P_INVERT, enable);
             return true;
             });
@@ -452,6 +457,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_invert = obs_data_get_bool(settings, P_INVERT);
     auto deadzone = (float)obs_data_get_double(settings, P_DEADZONE) / 100.0f;
     m_radial_arc = (float)obs_data_get_double(settings, P_RADIAL_ARC) / 360.0f;
+    m_radial_rotation = ((float)obs_data_get_double(settings, P_RADIAL_ROTATION) / 360.0f) * (std::numbers::pi_v<float> * 2);
     m_rounded_caps = obs_data_get_bool(settings, P_CAPS);
     auto channel_mode = obs_data_get_string(settings, P_CHANNEL_MODE);
     m_stereo = p_equ(channel_mode, P_STEREO);
@@ -1220,6 +1226,8 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         gs_effect_set_float(graph_deadzone, m_deadzone);
         auto radial_arc = gs_effect_get_param_by_name(m_shader, "radial_arc");
         gs_effect_set_float(radial_arc, m_radial_arc);
+        auto radial_rotation = gs_effect_get_param_by_name(m_shader, "radial_rotation");
+        gs_effect_set_float(radial_rotation, m_radial_rotation);
         auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
         gs_effect_set_bool(graph_invert, m_invert);
         auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
@@ -1365,6 +1373,8 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         gs_effect_set_float(graph_deadzone, m_deadzone);
         auto radial_arc = gs_effect_get_param_by_name(m_shader, "radial_arc");
         gs_effect_set_float(radial_arc, m_radial_arc);
+        auto radial_rotation = gs_effect_get_param_by_name(m_shader, "radial_rotation");
+        gs_effect_set_float(radial_rotation, m_radial_rotation);
         auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
         gs_effect_set_bool(graph_invert, m_invert);
         auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
