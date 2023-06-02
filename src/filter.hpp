@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <vector>
 #include <type_traits>
+#include <numbers>
 
 template<typename T>
 struct Kernel
@@ -48,7 +49,7 @@ Kernel<T> make_gauss_kernel(T sigma)
     ret.size = size;
     ret.sse_size = size & -(16 / (int)sizeof(T));
     ret.avx_size = size & -(32 / (int)sizeof(T));
-    constexpr auto pi2 = (T)M_PI * (T)2;
+    constexpr auto pi2 = std::numbers::pi_v<T> * (T)2;
     const auto sigsqr = sigma * sigma;
     const auto expdenom = (T)2 * sigsqr;
     const auto coeff = ((T)1 / (std::sqrt(pi2) * sigma));

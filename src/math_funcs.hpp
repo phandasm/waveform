@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <type_traits>
 #include <cstdint>
+#include <numbers>
 
 template<typename T>
 std::enable_if_t<std::is_floating_point_v<T>, T> log_interp(T a, T b, T t)
@@ -38,7 +39,7 @@ std::enable_if_t<std::is_floating_point_v<T>, T> sinc(T x)
 {
     if(x == 0.0)
         return 1.0;
-    const auto tmp = (T)M_PI * x;
+    const auto tmp = std::numbers::pi_v<T> * x;
     return std::sin(tmp) / tmp;
 }
 

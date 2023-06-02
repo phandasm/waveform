@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <limits>
 #include <cassert>
+#include <numbers>
 #include <util/platform.h>
 #include <utility>
 
@@ -927,6 +928,7 @@ void WAVSource::create_vbuf() {
 void WAVSource::update(obs_data_t *settings)
 {
     std::lock_guard lock(m_mtx);
+    constexpr auto pi = std::numbers::pi_v<float>;
 
     release_audio_capture();
     free_bufs();
@@ -1031,9 +1033,9 @@ void WAVSource::update(obs_data_t *settings)
         // precompute window coefficients
         m_window_coefficients.reset(m_fft_size);
         const auto N = m_fft_size - 1;
-        constexpr auto pi2 = 2 * (float)M_PI;
-        constexpr auto pi4 = 4 * (float)M_PI;
-        constexpr auto pi6 = 6 * (float)M_PI;
+        constexpr auto pi2 = 2 * pi;
+        constexpr auto pi4 = 4 * pi;
+        constexpr auto pi6 = 6 * pi;
         switch(m_window_func)
         {
         case FFTWindow::HAMMING:
@@ -1119,10 +1121,10 @@ void WAVSource::update(obs_data_t *settings)
     {
         // caps are full circles to avoid distortion issues in radial mode
         m_cap_radius = (float)m_bar_width / 2.0f;
-        m_cap_tris = std::max((int)((2 * (float)M_PI * m_cap_radius) / 3.0f), 4);
+        m_cap_tris = std::max((int)((2 * pi * m_cap_radius) / 3.0f), 4);
         if(m_cap_tris & 1) // force even number of triangles
             m_cap_tris += 1;
-        auto angle = (2 * (float)M_PI) / (float)m_cap_tris;
+        auto angle = (2 * pi) / (float)m_cap_tris;
         auto verts = m_cap_tris + 1;
         m_cap_verts.resize(verts);
         for(auto j = 0; j < verts; ++j)

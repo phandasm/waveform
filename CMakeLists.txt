@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -193,7 +193,6 @@ target_link_libraries(waveform PRIVATE OBS::libobs ${FFTW_LIBRARIES})
 if(NOT DISABLE_X86_SIMD)
     target_link_libraries(waveform PRIVATE cpu_features)
 endif()
-target_compile_definitions(waveform PRIVATE _USE_MATH_DEFINES)
 if(MSVC)
     target_compile_options(waveform PRIVATE "/W4") # warning level
     target_link_options(waveform PRIVATE "$<$<CONFIG:Release>:/OPT:REF>") # reduce size of release binaries
