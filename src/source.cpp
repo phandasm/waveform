@@ -213,6 +213,7 @@ namespace callbacks {
         obs_property_list_add_string(displaylist, T(P_STEP_BARS), P_STEP_BARS);
         obs_property_list_add_string(displaylist, T(P_LEVEL_METER), P_LEVEL_METER);
         obs_property_list_add_string(displaylist, T(P_STEPPED_METER), P_STEPPED_METER);
+        obs_property_list_add_string(displaylist, T(P_WAVEFORM), P_WAVEFORM);
         obs_properties_add_int(props, P_BAR_WIDTH, T(P_BAR_WIDTH), 1, 256, 1);
         obs_properties_add_int(props, P_BAR_GAP, T(P_BAR_GAP), 0, 256, 1);
         obs_properties_add_int(props, P_STEP_WIDTH, T(P_STEP_WIDTH), 1, 256, 1);
@@ -225,40 +226,44 @@ namespace callbacks {
             auto bar = p_equ(disp, P_BARS) || meter;
             auto step = p_equ(disp, P_STEP_BARS) || step_meter;
             auto curve = p_equ(disp, P_CURVE);
+            auto waveform = p_equ(disp, P_WAVEFORM);
             set_prop_visible(props, P_BAR_WIDTH, bar || step);
             set_prop_visible(props, P_BAR_GAP, bar || step);
             set_prop_visible(props, P_STEP_WIDTH, step);
             set_prop_visible(props, P_STEP_GAP, step);
             set_prop_visible(props, P_MIN_BAR_HEIGHT, bar || step);
             set_prop_visible(props, P_CAPS, bar);
-            obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, !curve);
+            obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, !curve && !waveform);
 
             // meter mode
             bool notmeter = !(meter || step_meter);
-            set_prop_visible(props, P_SLOPE, notmeter);
-            set_prop_visible(props, P_ROLLOFF_Q, notmeter);
-            set_prop_visible(props, P_ROLLOFF_RATE, notmeter);
-            set_prop_visible(props, P_CUTOFF_LOW, notmeter);
-            set_prop_visible(props, P_CUTOFF_HIGH, notmeter);
+            set_prop_visible(props, P_SLOPE, notmeter && !waveform);
+            set_prop_visible(props, P_ROLLOFF_Q, notmeter && !waveform);
+            set_prop_visible(props, P_ROLLOFF_RATE, notmeter && !waveform);
+            set_prop_visible(props, P_CUTOFF_LOW, notmeter && !waveform);
+            set_prop_visible(props, P_CUTOFF_HIGH, notmeter && !waveform);
             set_prop_visible(props, P_FILTER_MODE, notmeter);
             set_prop_visible(props, P_FILTER_RADIUS, notmeter && !p_equ(obs_data_get_string(settings, P_FILTER_MODE), P_NONE));
             set_prop_visible(props, P_INTERP_MODE, notmeter);
             set_prop_visible(props, P_CHANNEL_MODE, notmeter);
             set_prop_visible(props, P_CHANNEL, notmeter && p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_SINGLE));
             set_prop_visible(props, P_CHANNEL_SPACING, notmeter && p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO));
-            set_prop_visible(props, P_WINDOW, notmeter);
+            set_prop_visible(props, P_WINDOW, notmeter && !waveform);
+            set_prop_visible(props, P_TSMOOTHING, !waveform);
+            set_prop_visible(props, P_GRAVITY, !waveform && !p_equ(obs_data_get_string(settings, P_TSMOOTHING), P_NONE));
+            set_prop_visible(props, P_FAST_PEAKS, !waveform && !p_equ(obs_data_get_string(settings, P_TSMOOTHING), P_NONE));
             set_prop_visible(props, P_RADIAL, notmeter);
             set_prop_visible(props, P_DEADZONE, notmeter && obs_data_get_bool(settings, P_RADIAL));
             set_prop_visible(props, P_RADIAL_ARC, notmeter && obs_data_get_bool(settings, P_RADIAL));
             set_prop_visible(props, P_RADIAL_ROTATION, notmeter && obs_data_get_bool(settings, P_RADIAL));
             set_prop_visible(props, P_INVERT, notmeter && obs_data_get_bool(settings, P_RADIAL));
-            set_prop_visible(props, P_LOG_SCALE, notmeter);
-            set_prop_visible(props, P_MIRROR_FREQ_AXIS, notmeter);
+            set_prop_visible(props, P_LOG_SCALE, notmeter && !waveform);
+            set_prop_visible(props, P_MIRROR_FREQ_AXIS, notmeter && !waveform);
             set_prop_visible(props, P_WIDTH, notmeter);
-            set_prop_visible(props, P_AUTO_FFT_SIZE, notmeter);
-            set_prop_visible(props, P_FFT_SIZE, notmeter);
+            set_prop_visible(props, P_AUTO_FFT_SIZE, notmeter && !waveform);
+            set_prop_visible(props, P_FFT_SIZE, notmeter && !waveform);
             set_prop_visible(props, P_RMS_MODE, !notmeter);
-            set_prop_visible(props, P_METER_BUF, !notmeter);
+            set_prop_visible(props, P_METER_BUF, !notmeter || waveform);
             set_prop_visible(props, P_NORMALIZE_VOLUME, notmeter);
             set_prop_visible(props, P_VOLUME_TARGET, notmeter && obs_data_get_bool(settings, P_NORMALIZE_VOLUME));
             return true;
@@ -354,7 +359,7 @@ namespace callbacks {
         obs_property_set_long_description(grav, T(P_GRAVITY_DESC));
         obs_property_set_long_description(peaks, T(P_FAST_PEAKS_DESC));
         obs_property_set_modified_callback(tsmoothlist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
-            auto enable = !p_equ(obs_data_get_string(settings, P_TSMOOTHING), P_NONE);
+            auto enable = !p_equ(obs_data_get_string(settings, P_TSMOOTHING), P_NONE) && obs_property_visible(obs_properties_get(props, P_TSMOOTHING));
             set_prop_visible(props, P_GRAVITY, enable);
             set_prop_visible(props, P_FAST_PEAKS, enable);
             return true;
@@ -566,6 +571,8 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_display_mode = DisplayMode::METER;
     else if(p_equ(display, P_STEPPED_METER))
         m_display_mode = DisplayMode::STEPPED_METER;
+    else if(p_equ(display, P_WAVEFORM))
+        m_display_mode = DisplayMode::WAVEFORM;
     else
         m_display_mode = DisplayMode::CURVE;
 
@@ -737,8 +744,17 @@ void WAVSource::init_interp(unsigned int sz)
 {
     const auto maxbin = (m_fft_size / 2) - 1;
     const auto sr = (float)m_audio_info.samples_per_sec;
-    const auto lowbin = std::clamp((float)m_cutoff_low * m_fft_size / sr, 1.0f, (float)maxbin);
-    const auto highbin = std::clamp((float)m_cutoff_high * m_fft_size / sr, 1.0f, (float)maxbin);
+    float lowbin, highbin;
+    if(m_display_mode == DisplayMode::WAVEFORM)
+    {
+        lowbin = 0.0f;
+        highbin = (float)(m_fft_size - 1);
+    }
+    else
+    {
+        lowbin = std::clamp((float)m_cutoff_low * m_fft_size / sr, 1.0f, (float)maxbin);
+        highbin = std::clamp((float)m_cutoff_high * m_fft_size / sr, 1.0f, (float)maxbin);
+    }
 
     m_interp_indices.resize(sz);
     if(m_log_scale)
@@ -763,7 +779,7 @@ void WAVSource::init_interp(unsigned int sz)
     // lanczos filter
     if(m_interp_mode == InterpMode::LANCZOS)
     {
-        if(m_display_mode != DisplayMode::CURVE)
+        if((m_display_mode != DisplayMode::CURVE) && (m_display_mode != DisplayMode::WAVEFORM))
         {
             // at this point m_interp_indices only contains the start of each band
             // so we'll fill in the intermediate points here
@@ -877,8 +893,9 @@ unsigned int WAVSource::height()
 
 void WAVSource::create_vbuf() {
     size_t num_verts = 0;
+    bool curve = (m_display_mode == DisplayMode::CURVE) || (m_display_mode == DisplayMode::WAVEFORM);
 
-    if(m_display_mode == DisplayMode::CURVE)
+    if(curve)
         num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width * 2));
     else
     {
@@ -912,7 +929,7 @@ void WAVSource::create_vbuf() {
     vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
     m_vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
 
-    if(m_display_mode == DisplayMode::CURVE) {
+    if(curve) {
         if(m_render_mode == RenderMode::LINE)
         {
             for(auto i = 0u; i < m_width; ++i)
@@ -982,6 +999,18 @@ void WAVSource::update(obs_data_t *settings)
         for(auto& i : m_meter_val)
             i = DB_MIN;
     }
+    else if(m_display_mode == DisplayMode::WAVEFORM)
+    {
+        // turn off stuff we don't need in this mode
+        m_window_func = FFTWindow::NONE;
+        m_auto_fft_size = false;
+        m_slope = 0.0f;
+        m_mirror_freq_axis = false;
+        m_log_scale = false;
+
+        // repurpose m_fft_size for buffer size
+        m_fft_size = size_t(m_audio_info.samples_per_sec * (m_meter_ms / 1000.0)) & -16;
+    }
 
     if(m_normalize_volume)
     {
@@ -1007,26 +1036,20 @@ void WAVSource::update(obs_data_t *settings)
     }
 
     // alloc fftw buffers
+    auto spectrum_mode = !m_meter_mode && (m_display_mode != DisplayMode::WAVEFORM);
     m_output_channels = ((m_capture_channels > 1) || m_stereo) ? 2u : 1u;
     for(auto i = 0u; i < m_output_channels; ++i)
     {
-        auto count = m_meter_mode ? m_fft_size : m_fft_size / 2;
+        auto count = spectrum_mode ? m_fft_size / 2 : m_fft_size;
         m_decibels[i].reset(count);
-        if(m_meter_mode)
-            memset(m_decibels[i].get(), 0, count * sizeof(float));
-        else
+        if(spectrum_mode && (m_tsmoothing != TSmoothingMode::NONE))
         {
-            if(m_tsmoothing != TSmoothingMode::NONE)
-                m_tsmooth_buf[i].reset(count);
-            for(auto j = 0u; j < count; ++j)
-            {
-                m_decibels[i][j] = DB_MIN;
-                if(m_tsmoothing != TSmoothingMode::NONE)
-                    m_tsmooth_buf[i][j] = 0;
-            }
+            m_tsmooth_buf[i].reset(count);
+            std::fill(m_tsmooth_buf[i].get(), m_tsmooth_buf[i].get() + count, 0.0f);
         }
+        std::fill(m_decibels[i].get(), m_decibels[i].get() + count, DB_MIN);
     }
-    if(!m_meter_mode)
+    if(spectrum_mode)
     {
         m_fft_input.reset(m_fft_size);
         m_fft_output.reset(m_fft_size);
@@ -1075,7 +1098,7 @@ void WAVSource::update(obs_data_t *settings)
         m_window_sum = (float)m_fft_size;
 
     m_last_silent = false;
-    m_show = true;
+    m_show = obs_source_showing(m_source);
     m_retries = 0;
     m_next_retry = 0.0f;
 
@@ -1083,7 +1106,7 @@ void WAVSource::update(obs_data_t *settings)
     m_capture_ts = os_gettime_ns();
 
     // precomupte interpolated indices
-    if(m_display_mode == DisplayMode::CURVE)
+    if((m_display_mode == DisplayMode::CURVE) || (m_display_mode == DisplayMode::WAVEFORM))
     {
         init_interp(m_width);
         for(auto& i : m_interp_bufs)
@@ -1115,11 +1138,14 @@ void WAVSource::update(obs_data_t *settings)
         m_kernel = make_gauss_kernel(m_filter_radius);
 
     // slope
-    const auto num_mods = m_fft_size / 2;
-    const auto maxmod = (float)(num_mods - 1);
-    m_slope_modifiers.reset(num_mods);
-    for(size_t i = 0; i < num_mods; ++i)
-        m_slope_modifiers[i] = std::log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
+    if(m_slope > 0.0f)
+    {
+        const auto num_mods = m_fft_size / 2;
+        const auto maxmod = (float)(num_mods - 1);
+        m_slope_modifiers.reset(num_mods);
+        for(size_t i = 0; i < num_mods; ++i)
+            m_slope_modifiers[i] = std::log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
+    }
 
     // rounded caps
     m_cap_verts.clear();
@@ -1151,8 +1177,6 @@ void WAVSource::update(obs_data_t *settings)
     // vertex buffer must be rebuilt if the settings have changed
     // this must be done after m_num_bars has been initialized
     create_vbuf();
-
-    m_show = obs_source_showing(m_source);
 }
 
 void WAVSource::tick(float seconds)
@@ -1171,6 +1195,8 @@ void WAVSource::tick(float seconds)
 
     if(m_meter_mode)
         tick_meter(seconds);
+    else if(m_display_mode == DisplayMode::WAVEFORM)
+        tick_waveform(seconds);
     else
         tick_spectrum(seconds);
 }
@@ -1181,7 +1207,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
     if(m_last_silent && m_hide_on_silent)
         return;
 
-    if(m_display_mode == DisplayMode::CURVE)
+    if((m_display_mode == DisplayMode::CURVE) || (m_display_mode == DisplayMode::WAVEFORM))
         render_curve(effect);
     else
         render_bars(effect);
@@ -1242,13 +1268,14 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     {
         if(m_interp_mode == InterpMode::LANCZOS)
         {
+            const auto sz = (m_display_mode == DisplayMode::WAVEFORM) ? m_fft_size : m_fft_size / 2u;
 #ifndef DISABLE_X86_SIMD
             if(HAVE_AVX)
-                apply_lanczos_filter_fma3(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                apply_lanczos_filter_fma3(m_decibels[channel].get(), sz, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
             else
-                apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                apply_lanczos_filter(m_decibels[channel].get(), sz, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
 #else
-            apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+            apply_lanczos_filter(m_decibels[channel].get(), sz, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
 #endif
         }
         else

@@ -106,6 +106,7 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_STEP_BARS         "stepped_bars"
 #define P_LEVEL_METER       "level_meter"
 #define P_STEPPED_METER     "stepped_level_meter"
+#define P_WAVEFORM          "waveform"
 
 #define P_RMS_MODE          "rms_mode"
 #define P_METER_BUF         "meter_buf"

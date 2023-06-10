@@ -158,7 +158,7 @@ void WAVSourceGeneric::tick_spectrum([[maybe_unused]] float seconds)
             m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 
-    if(m_normalize_volume && !m_last_silent)
+    if(m_normalize_volume)
     {
         const auto volume_compensation = std::min(m_volume_target - dbfs(m_input_rms), m_max_gain);
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
@@ -266,6 +266,94 @@ void WAVSourceGeneric::tick_meter([[maybe_unused]] float seconds)
             ++silent_channels;
 
     m_last_silent = (silent_channels >= m_capture_channels);
+}
+
+void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
+{
+    // TODO: optimization
+    const auto bufsz = m_fft_size * sizeof(float);
+    const auto outsz = m_fft_size;
+    constexpr auto step = 1;
+
+    const auto dtcapture = m_tick_ts - m_capture_ts;
+
+    if(!m_show || (dtcapture > CAPTURE_TIMEOUT))
+    {
+        if(m_last_silent)
+            return;
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 0; i < outsz; ++i)
+                m_decibels[channel][i] = DB_MIN;
+        m_last_silent = true;
+        return;
+    }
+
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
+    const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
+    auto silent_channels = 0u;
+    for(auto channel = 0u; channel < m_capture_channels; ++channel)
+    {
+        if(m_capturebufs[channel].size >= dtsize)
+        {
+            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
+            circlebuf_peek_front(&m_capturebufs[channel], m_decibels[channel].get(), bufsz);
+        }
+        else
+            return;
+
+        bool silent = true;
+        for(auto i = 0u; i < m_fft_size; i += step)
+        {
+            if(m_decibels[channel][i] != 0.0f)
+            {
+                silent = false;
+                m_last_silent = false;
+                break;
+            }
+        }
+
+        if(silent)
+        {
+            if(++silent_channels >= m_capture_channels)
+                m_last_silent = true;
+        }
+    }
+
+    if(m_last_silent)
+    {
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 0; i < outsz; ++i)
+                m_decibels[channel][i] = DB_MIN;
+        return;
+    }
+
+    if(m_output_channels > m_capture_channels)
+        memcpy(m_decibels[1].get(), m_decibels[0].get(), outsz * sizeof(float));
+
+    if(m_stereo)
+    {
+        for(auto channel = 0; channel < 2; ++channel)
+            for(size_t i = 0; i < outsz; ++i)
+                m_decibels[channel][i] = dbfs(std::abs(m_decibels[channel][i]));
+    }
+    else if(m_capture_channels > 1)
+    {
+        for(size_t i = 0; i < outsz; ++i)
+            m_decibels[0][i] = dbfs((std::abs(m_decibels[0][i]) + std::abs(m_decibels[1][i])) * 0.5f);
+    }
+    else
+    {
+        for(size_t i = 0; i < outsz; ++i)
+            m_decibels[0][i] = dbfs(std::abs(m_decibels[0][i]));
+    }
+
+    if(m_normalize_volume)
+    {
+        const auto volume_compensation = std::min(m_volume_target - dbfs(m_input_rms), m_max_gain);
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 1; i < outsz; ++i)
+                m_decibels[channel][i] += volume_compensation;
+    }
 }
 
 void WAVSourceGeneric::update_input_rms()

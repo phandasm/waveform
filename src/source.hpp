@@ -69,7 +69,8 @@ enum class DisplayMode
     BAR,
     STEPPED_BAR,
     METER,
-    STEPPED_METER
+    STEPPED_METER,
+    WAVEFORM
 };
 
 enum class ChannelMode
@@ -106,8 +107,8 @@ protected:
     AVXBufR m_window_coefficients;
     AVXBufR m_tsmooth_buf[2];               // last frames magnitudes
     AVXBufR m_decibels[2];                  // dBFS, or audio sample buffer in meter mode
-    size_t m_fft_size = 0;                  // number of fft elements, or audio samples in meter mode (not bytes, multiple of 16)
-                                            // in meter mode m_fft_size is the size of the circular buffer in samples
+    size_t m_fft_size = 0;                  // number of fft elements, or audio samples in meter/waveform mode (not bytes, multiple of 16)
+                                            // in meter/waveform mode m_fft_size is the size of the circular buffer in samples
 
     // meter mode
     size_t m_meter_pos[2] = { 0, 0 };       // circular buffer position (per channel)
@@ -241,6 +242,7 @@ protected:
 
     virtual void tick_spectrum(float) = 0;  // process audio data in frequency spectrum mode
     virtual void tick_meter(float) = 0;     // process audio data in meter mode
+    virtual void tick_waveform(float) = 0;  // process audio data in waveform mode
 
     int64_t get_audio_sync(uint64_t ts)     // get delta between end of available audio and given time in nanoseconds
     {
@@ -303,6 +305,7 @@ class WAVSourceGeneric : public WAVSource
 protected:
     void tick_spectrum(float seconds) override;
     void tick_meter(float seconds) override;
+    void tick_waveform(float seconds) override;
 
     void update_input_rms() override;
 
