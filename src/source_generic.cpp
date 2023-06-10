@@ -290,16 +290,16 @@ void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
 
     const int64_t dtaudio = get_audio_sync(m_tick_ts);
     const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
+    for(auto i = 0u; i < m_capture_channels; ++i)
+        if(m_capturebufs[i].size < dtsize) // check if we have enough audio in advance
+            return;
+
+
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        if(m_capturebufs[channel].size >= dtsize)
-        {
-            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
-            circlebuf_peek_front(&m_capturebufs[channel], m_decibels[channel].get(), bufsz);
-        }
-        else
-            return;
+        circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
+        circlebuf_peek_front(&m_capturebufs[channel], m_decibels[channel].get(), bufsz);
 
         bool silent = true;
         for(auto i = 0u; i < m_fft_size; i += step)
