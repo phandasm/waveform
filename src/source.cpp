@@ -234,6 +234,7 @@ namespace callbacks {
             set_prop_visible(props, P_MIN_BAR_HEIGHT, bar || step);
             set_prop_visible(props, P_CAPS, bar);
             obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, !curve && !waveform);
+            obs_property_list_item_disable(obs_properties_get(props, P_PULSE_MODE), 1, !curve && !bar && !step);
 
             // meter mode
             bool notmeter = !(meter || step_meter);
@@ -402,13 +403,19 @@ namespace callbacks {
         obs_property_list_add_string(renderlist, T(P_LINE), P_LINE);
         obs_property_list_add_string(renderlist, T(P_SOLID), P_SOLID);
         obs_property_list_add_string(renderlist, T(P_GRADIENT), P_GRADIENT);
+        obs_property_list_add_string(renderlist, T(P_PULSE), P_PULSE);
+        auto pulselist = obs_properties_add_list(props, P_PULSE_MODE, T(P_PULSE_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+        obs_property_list_add_string(pulselist, T(P_PEAK_MAG), P_PEAK_MAG);
+        obs_property_list_add_string(pulselist, T(P_PEAK_FREQ), P_PEAK_FREQ);
         obs_properties_add_color_alpha(props, P_COLOR_BASE, T(P_COLOR_BASE));
         obs_properties_add_color_alpha(props, P_COLOR_CREST, T(P_COLOR_CREST));
         obs_properties_add_float_slider(props, P_GRAD_RATIO, T(P_GRAD_RATIO), 0.0, 4.0, 0.01);
         obs_property_set_modified_callback(renderlist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
-            auto enable = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_GRADIENT);
-            obs_property_set_enabled(obs_properties_get(props, P_COLOR_CREST), enable);
-            set_prop_visible(props, P_GRAD_RATIO, enable);
+            auto grad = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_GRADIENT);
+            auto pulse = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_PULSE);
+            obs_property_set_enabled(obs_properties_get(props, P_COLOR_CREST), grad || pulse);
+            set_prop_visible(props, P_GRAD_RATIO, grad || pulse);
+            set_prop_visible(props, P_PULSE_MODE, pulse);
             return true;
             });
 
@@ -485,6 +492,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_rolloff_q = (float)obs_data_get_double(settings, P_ROLLOFF_Q);
     m_rolloff_rate = (float)obs_data_get_double(settings, P_ROLLOFF_RATE);
     auto rendermode = obs_data_get_string(settings, P_RENDER_MODE);
+    auto pulsemode = obs_data_get_string(settings, P_PULSE_MODE);
     auto color_base = obs_data_get_int(settings, P_COLOR_BASE);
     auto color_crest = obs_data_get_int(settings, P_COLOR_CREST);
     m_grad_ratio = (float)obs_data_get_double(settings, P_GRAD_RATIO);
@@ -558,10 +566,17 @@ void WAVSource::get_settings(obs_data_t *settings)
 
     if(p_equ(rendermode, P_LINE))
         m_render_mode = RenderMode::LINE;
-    else if(p_equ(rendermode, P_SOLID))
-        m_render_mode = RenderMode::SOLID;
-    else
+    else if(p_equ(rendermode, P_GRADIENT))
         m_render_mode = RenderMode::GRADIENT;
+    else if(p_equ(rendermode, P_PULSE))
+        m_render_mode = RenderMode::PULSE;
+    else
+        m_render_mode = RenderMode::SOLID;
+
+    if(p_equ(pulsemode, P_PEAK_FREQ))
+        m_pulse_mode = PulseMode::FREQUENCY;
+    else
+        m_pulse_mode = PulseMode::MAGNITUDE;
 
     if(p_equ(display, P_BARS))
         m_display_mode = DisplayMode::BAR;
@@ -983,6 +998,7 @@ void WAVSource::update(obs_data_t *settings)
         m_window_func = FFTWindow::NONE;
         m_interp_mode = InterpMode::POINT;
         m_filter_mode = FilterMode::NONE;
+        m_pulse_mode = PulseMode::MAGNITUDE;
         m_auto_fft_size = false;
         m_slope = 0.0f;
         m_stereo = false;
@@ -1003,6 +1019,7 @@ void WAVSource::update(obs_data_t *settings)
     {
         // turn off stuff we don't need in this mode
         m_window_func = FFTWindow::NONE;
+        m_pulse_mode = PulseMode::MAGNITUDE;
         m_auto_fft_size = false;
         m_slope = 0.0f;
         m_mirror_freq_axis = false;
@@ -1219,12 +1236,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     //if(m_last_silent)
     //    return;
 
-    const char *techname;
-    if(m_radial)
-        techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
-    else
-        techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
-    auto tech = gs_effect_get_technique(m_shader, techname);
+    auto tech = get_shader_tech();
     
     const auto center = (float)m_height / 2;
     //const auto right = (float)m_width;
@@ -1233,37 +1245,9 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     const auto cpos = m_stereo ? center : bottom;
     const auto channel_offset = m_channel_spacing * 0.5f;
 
-    auto grad_center = gs_effect_get_param_by_name(m_shader, "grad_center");
-    gs_effect_set_float(grad_center, cpos);
-    auto grad_offset = gs_effect_get_param_by_name(m_shader, "grad_offset");
-    gs_effect_set_float(grad_offset, channel_offset);
-    auto color_base = gs_effect_get_param_by_name(m_shader, "color_base");
-    gs_effect_set_vec4(color_base, &m_color_base);
-    auto color_crest = gs_effect_get_param_by_name(m_shader, "color_crest");
-    gs_effect_set_vec4(color_crest, &m_color_crest);
-
-    if(m_radial)
-    {
-        auto graph_width = gs_effect_get_param_by_name(m_shader, "graph_width");
-        gs_effect_set_float(graph_width, float(m_width - 1));
-        auto graph_height = gs_effect_get_param_by_name(m_shader, "graph_height");
-        gs_effect_set_float(graph_height, (float)m_height);
-        auto graph_deadzone = gs_effect_get_param_by_name(m_shader, "graph_deadzone");
-        gs_effect_set_float(graph_deadzone, m_deadzone);
-        auto radial_arc = gs_effect_get_param_by_name(m_shader, "radial_arc");
-        gs_effect_set_float(radial_arc, m_radial_arc);
-        auto radial_rotation = gs_effect_get_param_by_name(m_shader, "radial_rotation");
-        gs_effect_set_float(radial_rotation, m_radial_rotation);
-        auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
-        gs_effect_set_bool(graph_invert, m_invert);
-        auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
-        vec2 rc;
-        vec2_set(&rc, (float)m_height + m_deadzone, (float)m_height + m_deadzone);
-        gs_effect_set_vec2(radial_center, &rc);
-    }
-
     // interpolation
     auto miny = cpos;
+    auto minpos = 0u;
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         if(m_interp_mode == InterpMode::LANCZOS)
@@ -1298,7 +1282,10 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         {
             auto val = lerp(0.0f, cpos - channel_offset, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
             if(val < miny)
+            {
                 miny = val;
+                minpos = i;
+            }
             m_interp_bufs[channel][i] = val;
         }
 
@@ -1309,8 +1296,8 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
                 m_interp_bufs[channel][i] = m_interp_bufs[channel][half - (i - half)];
         }
     }
-    auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
-    gs_effect_set_float(grad_height, (cpos - miny - channel_offset) * m_grad_ratio);
+
+    set_shader_vars(cpos, miny, (float)minpos, channel_offset, 0.0f, cpos - channel_offset);
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
@@ -1362,12 +1349,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     //if(m_last_silent)
     //    return;
 
-    const char *techname;
-    if(m_radial)
-        techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
-    else
-        techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
-    auto tech = gs_effect_get_technique(m_shader, techname);
+    auto tech = get_shader_tech();
 
     const auto bar_stride = m_bar_width + m_bar_gap;
     const auto step_stride = m_step_width + m_step_gap;
@@ -1376,42 +1358,21 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     const auto dbrange = m_ceiling - m_floor;
     const auto cpos = m_stereo ? center : bottom;
     const auto channel_offset = m_channel_spacing * 0.5f;
+    auto border_top = (m_rounded_caps) ? m_cap_radius : 0.0f;
+    auto border_bottom = (m_rounded_caps && (!m_stereo || (m_channel_spacing > 0))) ? cpos - m_cap_radius : cpos;
+    if(m_channel_spacing > 0)
+        border_bottom -= channel_offset;
+    if(m_min_bar_height > 0)
+        border_bottom -= m_min_bar_height;
+    border_bottom = std::clamp(border_bottom, border_top, cpos);
 
     auto max_steps = (size_t)((cpos - channel_offset) / step_stride);
     if(((int)cpos - (int)(max_steps * step_stride) - (int)channel_offset) > m_step_width)
         ++max_steps;
 
-    auto grad_center = gs_effect_get_param_by_name(m_shader, "grad_center");
-    gs_effect_set_float(grad_center, cpos);
-    auto grad_offset = gs_effect_get_param_by_name(m_shader, "grad_offset");
-    gs_effect_set_float(grad_offset, channel_offset);
-    auto color_base = gs_effect_get_param_by_name(m_shader, "color_base");
-    gs_effect_set_vec4(color_base, &m_color_base);
-    auto color_crest = gs_effect_get_param_by_name(m_shader, "color_crest");
-    gs_effect_set_vec4(color_crest, &m_color_crest);
-
-    if(m_radial)
-    {
-        auto graph_width = gs_effect_get_param_by_name(m_shader, "graph_width");
-        gs_effect_set_float(graph_width, float(m_width - 1));
-        auto graph_height = gs_effect_get_param_by_name(m_shader, "graph_height");
-        gs_effect_set_float(graph_height, (float)m_height);
-        auto graph_deadzone = gs_effect_get_param_by_name(m_shader, "graph_deadzone");
-        gs_effect_set_float(graph_deadzone, m_deadzone);
-        auto radial_arc = gs_effect_get_param_by_name(m_shader, "radial_arc");
-        gs_effect_set_float(radial_arc, m_radial_arc);
-        auto radial_rotation = gs_effect_get_param_by_name(m_shader, "radial_rotation");
-        gs_effect_set_float(radial_rotation, m_radial_rotation);
-        auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
-        gs_effect_set_bool(graph_invert, m_invert);
-        auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
-        vec2 rc;
-        vec2_set(&rc, (float)m_height + m_deadzone, (float)m_height + m_deadzone);
-        gs_effect_set_vec2(radial_center, &rc);
-    }
-
     // interpolation
     auto miny = cpos;
+    auto minpos = 0u;
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         if(m_meter_mode)
@@ -1457,18 +1418,14 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             }
         }
 
-        auto border_top = (m_rounded_caps) ? m_cap_radius : 0.0f;
-        auto border_bottom = (m_rounded_caps && (!m_stereo || (m_channel_spacing > 0))) ? cpos - m_cap_radius : cpos;
-        if(m_channel_spacing > 0)
-            border_bottom -= channel_offset;
-        if(m_min_bar_height > 0)
-            border_bottom -= m_min_bar_height;
-        border_bottom = std::clamp(border_bottom, border_top, cpos);
         for(auto i = 0; i < m_num_bars; ++i)
         {
             auto val = lerp(border_top, border_bottom, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
             if(val < miny)
+            {
                 miny = val;
+                minpos = i;
+            }
             m_interp_bufs[channel][i] = val;
         }
 
@@ -1479,8 +1436,8 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                 m_interp_bufs[channel][i] = m_interp_bufs[channel][half - (i - half)];
         }
     }
-    auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
-    gs_effect_set_float(grad_height, (cpos - miny - channel_offset) * m_grad_ratio);
+
+    set_shader_vars(cpos, miny, (float)minpos, channel_offset, border_top, border_bottom);
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
@@ -1583,6 +1540,72 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     gs_load_vertexbuffer(nullptr);
     gs_technique_end_pass(tech);
     gs_technique_end(tech);
+}
+
+gs_technique_t *WAVSource::get_shader_tech()
+{
+    const char *techname;
+    if(m_radial)
+        techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
+    else
+        techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
+    return gs_effect_get_technique(m_shader, techname);
+}
+
+void WAVSource::set_shader_vars(float cpos, float miny, float minpos, float channel_offset, float border_top, float border_bottom)
+{
+    if(m_render_mode == RenderMode::PULSE)
+    {
+        bool bars = (m_display_mode == DisplayMode::BAR) || (m_display_mode == DisplayMode::STEPPED_BAR) || m_meter_mode;
+        vec4 color;
+        auto range = border_bottom - border_top;
+        auto t = (m_pulse_mode == PulseMode::MAGNITUDE) ? saturate((border_bottom - miny) / (range * m_grad_ratio)) : saturate(minpos / ((bars ? (float)(m_num_bars - 1) : (float)(m_width - 1)) * m_grad_ratio));
+        auto x = lerp(m_color_base.x, m_color_crest.x, t);
+        auto y = lerp(m_color_base.y, m_color_crest.y, t);
+        auto z = lerp(m_color_base.z, m_color_crest.z, t);
+        auto w = lerp(m_color_base.w, m_color_crest.w, t);
+        vec4_set(&color, x, y, z, w);
+
+        auto color_base = gs_effect_get_param_by_name(m_shader, "color_base");
+        gs_effect_set_vec4(color_base, &color);
+    }
+    else
+    {
+        auto color_base = gs_effect_get_param_by_name(m_shader, "color_base");
+        gs_effect_set_vec4(color_base, &m_color_base);
+
+        if(m_render_mode == RenderMode::GRADIENT)
+        {
+            auto color_crest = gs_effect_get_param_by_name(m_shader, "color_crest");
+            gs_effect_set_vec4(color_crest, &m_color_crest);
+            auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
+            gs_effect_set_float(grad_height, (cpos - miny - channel_offset) * m_grad_ratio);
+            auto grad_center = gs_effect_get_param_by_name(m_shader, "grad_center");
+            gs_effect_set_float(grad_center, cpos);
+            auto grad_offset = gs_effect_get_param_by_name(m_shader, "grad_offset");
+            gs_effect_set_float(grad_offset, channel_offset);
+        }
+    }
+
+    if(m_radial)
+    {
+        auto graph_width = gs_effect_get_param_by_name(m_shader, "graph_width");
+        gs_effect_set_float(graph_width, float(m_width - 1));
+        auto graph_height = gs_effect_get_param_by_name(m_shader, "graph_height");
+        gs_effect_set_float(graph_height, (float)m_height);
+        auto graph_deadzone = gs_effect_get_param_by_name(m_shader, "graph_deadzone");
+        gs_effect_set_float(graph_deadzone, m_deadzone);
+        auto radial_arc = gs_effect_get_param_by_name(m_shader, "radial_arc");
+        gs_effect_set_float(radial_arc, m_radial_arc);
+        auto radial_rotation = gs_effect_get_param_by_name(m_shader, "radial_rotation");
+        gs_effect_set_float(radial_rotation, m_radial_rotation);
+        auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
+        gs_effect_set_bool(graph_invert, m_invert);
+        auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
+        vec2 rc;
+        vec2_set(&rc, (float)m_height + m_deadzone, (float)m_height + m_deadzone);
+        gs_effect_set_vec2(radial_center, &rc);
+    }
 }
 
 void WAVSource::show()

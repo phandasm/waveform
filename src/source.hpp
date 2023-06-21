@@ -20,6 +20,7 @@
 #include <obs-module.h>
 #include <util/circlebuf.h>
 #include <graphics/vec3.h>
+#include <graphics/vec4.h>
 #include <fftw3.h>
 #include "module.hpp"
 #include "aligned_buffer.hpp"
@@ -60,7 +61,14 @@ enum class RenderMode
 {
     LINE,
     SOLID,
-    GRADIENT
+    GRADIENT,
+    PULSE
+};
+
+enum class PulseMode
+{
+    MAGNITUDE,
+    FREQUENCY
 };
 
 enum class DisplayMode
@@ -141,6 +149,7 @@ protected:
 
     // settings
     RenderMode m_render_mode = RenderMode::SOLID;
+    PulseMode m_pulse_mode = PulseMode::MAGNITUDE;
     FFTWindow m_window_func = FFTWindow::HANN;
     InterpMode m_interp_mode = InterpMode::LANCZOS;
     FilterMode m_filter_mode = FilterMode::GAUSS;
@@ -237,6 +246,9 @@ protected:
 
     void render_curve(gs_effect_t *effect);
     void render_bars(gs_effect_t *effect);
+
+    gs_technique_t *get_shader_tech();
+    void set_shader_vars(float cpos, float miny, float minpos, float channel_offset, float border_top, float border_bottom);
 
     virtual void update_input_rms() = 0;    // update RMS window
 
