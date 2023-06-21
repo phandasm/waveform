@@ -1064,7 +1064,7 @@ void WAVSource::update(obs_data_t *settings)
             m_tsmooth_buf[i].reset(count);
             std::fill(m_tsmooth_buf[i].get(), m_tsmooth_buf[i].get() + count, 0.0f);
         }
-        std::fill(m_decibels[i].get(), m_decibels[i].get() + count, DB_MIN);
+        std::fill(m_decibels[i].get(), m_decibels[i].get() + count, m_meter_mode ? 0.0f : DB_MIN);
     }
     if(spectrum_mode)
     {
