@@ -165,8 +165,8 @@ protected:
     float m_gravity = 0.0f;
     float m_grad_ratio = 1.0f;
     bool m_fast_peaks = false;
-    vec4 m_color_base{ {1.0, 1.0, 1.0, 1.0} };
-    vec4 m_color_crest{ {1.0, 1.0, 1.0, 1.0} };
+    vec4 m_color_base{ {{1.0, 1.0, 1.0, 1.0}} };
+    vec4 m_color_crest{ {{1.0, 1.0, 1.0, 1.0}} };
     float m_slope = 0.0f;
     bool m_log_scale = true;
     bool m_mirror_freq_axis = false;

@@ -510,8 +510,8 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_volume_target = (float)obs_data_get_int(settings, P_VOLUME_TARGET);
     m_max_gain = (float)obs_data_get_int(settings, P_MAX_GAIN);
 
-    m_color_base = { {(uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f} };
-    m_color_crest = { {(uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f} };
+    m_color_base = { {{(uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f}} };
+    m_color_crest = { {{(uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f}} };
 
     if(m_fft_size < 128)
         m_fft_size = 128;
