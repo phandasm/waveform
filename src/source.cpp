@@ -234,7 +234,7 @@ namespace callbacks {
             set_prop_visible(props, P_MIN_BAR_HEIGHT, bar || step);
             set_prop_visible(props, P_CAPS, bar);
             obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, !curve && !waveform);
-            obs_property_list_item_disable(obs_properties_get(props, P_PULSE_MODE), 1, !curve && !bar && !step);
+            obs_property_list_item_disable(obs_properties_get(props, P_PULSE_MODE), 1, !curve && !p_equ(disp, P_BARS) && !p_equ(disp, P_STEP_BARS));
 
             // meter mode
             bool notmeter = !(meter || step_meter);
