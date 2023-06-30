@@ -225,6 +225,8 @@ protected:
     // volume normalization
     float m_input_rms = 0.0f;
     AVXBufR m_input_rms_buf;
+    AVXBufR m_rms_temp_buf;     // temp buffer, bit too large for stack
+    circlebuf m_rms_sync_buf{}; // A/V syncronization buffer
     size_t m_input_rms_size = 0;
     size_t m_input_rms_pos = 0;
 
@@ -239,6 +241,8 @@ protected:
     void release_audio_capture();
     bool check_audio_capture(float seconds); // check if capture is valid and retry if not
     void free_bufs();
+
+    bool sync_rms_buffer();
 
     void init_interp(unsigned int sz);
     void init_rolloff();

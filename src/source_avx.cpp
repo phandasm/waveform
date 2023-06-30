@@ -304,6 +304,9 @@ void WAVSourceAVX::update_input_rms()
 {
     assert(m_normalize_volume);
 
+    if(!sync_rms_buffer())
+        return;
+
     constexpr auto step = (sizeof(__m256) / sizeof(float)) * 2; // buffer size is 64-byte multiple
     constexpr auto halfstep = step / 2;
     auto sum1 = _mm256_setzero_ps();

@@ -692,6 +692,9 @@ void WAVSource::release_audio_capture()
         i.start_pos = 0;
         i.size = 0;
     }
+    m_rms_sync_buf.end_pos = 0;
+    m_rms_sync_buf.start_pos = 0;
+    m_rms_sync_buf.size = 0;
 
     m_capture_ts = 0;
     m_audio_ts = 0;
@@ -741,6 +744,7 @@ void WAVSource::free_bufs()
     m_window_coefficients.reset();
     m_slope_modifiers.reset();
     m_input_rms_buf.reset();
+    m_rms_temp_buf.reset();
     m_rolloff_modifiers.reset();
 
     m_kernel = {};
@@ -753,6 +757,33 @@ void WAVSource::free_bufs()
     }
 
     m_fft_size = 0;
+}
+
+bool WAVSource::sync_rms_buffer()
+{
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
+    const size_t dtsize = (dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0;
+
+    if(m_rms_sync_buf.size <= dtsize)
+        return false;
+
+    while(m_rms_sync_buf.size > dtsize)
+    {
+        auto consume = m_rms_sync_buf.size - dtsize;
+        auto max = (m_input_rms_size - m_input_rms_pos) * sizeof(float);
+        if(consume >= max)
+        {
+            circlebuf_pop_front(&m_rms_sync_buf, &m_input_rms_buf[m_input_rms_pos], max);
+            m_input_rms_pos = 0;
+        }
+        else
+        {
+            circlebuf_pop_front(&m_rms_sync_buf, &m_input_rms_buf[m_input_rms_pos], consume);
+            m_input_rms_pos += consume / sizeof(float);
+        }
+    }
+
+    return true;
 }
 
 void WAVSource::init_interp(unsigned int sz)
@@ -858,6 +889,7 @@ WAVSource::WAVSource(obs_source_t *source)
     m_source = source;
     for(auto& i : m_capturebufs)
         circlebuf_init(&i);
+    circlebuf_init(&m_rms_sync_buf);
 
     obs_enter_graphics();
 
@@ -884,6 +916,7 @@ WAVSource::~WAVSource()
 
     for(auto& i : m_capturebufs)
         circlebuf_free(&i);
+    circlebuf_free(&m_rms_sync_buf);
 }
 
 unsigned int WAVSource::width()
@@ -1035,6 +1068,7 @@ void WAVSource::update(obs_data_t *settings)
         m_input_rms_size = size_t(m_audio_info.samples_per_sec) & -16;
         m_input_rms_pos = 0;
         m_input_rms_buf.reset(m_input_rms_size);
+        m_rms_temp_buf.reset(AUDIO_OUTPUT_FRAMES);
         memset(m_input_rms_buf.get(), 0, m_input_rms_size * sizeof(float));
     }
 
@@ -1681,6 +1715,7 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     assert((m_channel_base >= 0) && (m_channel_base < (int)get_audio_channels(m_audio_info.speakers)));
     assert((m_channel_base == 0) || (m_capture_channels == 1));
 
+    // audio sync
     m_capture_ts = os_gettime_ns();
     auto audio_len = audio_frames_to_ns(m_audio_info.samples_per_sec, audio->frames);
     auto delta = std::max(audio->timestamp, m_capture_ts) - std::min(audio->timestamp, m_capture_ts);
@@ -1690,38 +1725,37 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
         m_audio_ts = audio->timestamp + audio_len;
     const auto bufsz = m_fft_size * sizeof(float);
     const int64_t dtaudio = get_audio_sync(m_capture_ts);
-    const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
+    const size_t dtsamples = (dtaudio > 0) ? (size_t)ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio) : 0;
 
     // RMS
     if(m_normalize_volume)
     {
-        // FIXME: handle buffering for audio synchronization
-        const auto sz = audio->frames;
+        auto frames = (size_t)audio->frames;
         auto data = (float**)&audio->data;
-        if(m_capture_channels > 1)
+        while(frames > 0)
         {
-            if((data[m_channel_base] == nullptr) || (data[m_channel_base + 1] == nullptr))
-                return;
-            for(auto i = 0u; i < sz; ++i)
+            auto count = std::min(frames, (size_t)AUDIO_OUTPUT_FRAMES);
+            for(size_t i = 0u; i < count; ++i)
             {
-                auto val = std::max(std::abs(data[m_channel_base][i]), std::abs(data[m_channel_base + 1][i]));
-                m_input_rms_buf[m_input_rms_pos++] = val * val;
-                if(m_input_rms_pos >= m_input_rms_size)
-                    m_input_rms_pos = 0;
+                // sum only the largest sample of all channels from each time point
+                // this prevents excessive boosting when one channel is quiet (and reduces the amount of buffering required)
+                float val = 0.0f;
+                for(auto channel = 0u; channel < m_capture_channels; ++channel)
+                {
+                    auto buf = data[m_channel_base + channel];
+                    if(buf != nullptr)
+                        val = std::max(std::abs(buf[i]), val);
+                }
+                m_rms_temp_buf[i] = val * val;
             }
+            circlebuf_push_back(&m_rms_sync_buf, m_rms_temp_buf.get(), count * sizeof(float));
+            frames -= count;
         }
-        else
-        {
-            if(data[m_channel_base] == nullptr)
-                return;
-            for(auto i = 0u; i < sz; ++i)
-            {
-                auto val = data[m_channel_base][i];
-                m_input_rms_buf[m_input_rms_pos++] = val * val;
-                if(m_input_rms_pos >= m_input_rms_size)
-                    m_input_rms_pos = 0;
-            }
-        }
+
+        const size_t max_rms_size = (dtsamples * sizeof(float)) + (m_input_rms_size * sizeof(float));
+        auto total = m_rms_sync_buf.size;
+        if(total > max_rms_size)
+            circlebuf_pop_front(&m_rms_sync_buf, nullptr, total - max_rms_size);
     }
 
     auto sz = size_t(audio->frames * sizeof(float));
@@ -1734,9 +1768,10 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
         else
             circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
 
+        const size_t max_size = (dtsamples * sizeof(float)) + bufsz;
         auto total = m_capturebufs[j].size;
-        if(total > dtsize)
-            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - dtsize);
+        if(total > max_size)
+            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max_size);
     }
 }
 

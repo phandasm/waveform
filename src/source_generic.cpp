@@ -360,6 +360,9 @@ void WAVSourceGeneric::update_input_rms()
 {
     assert(m_normalize_volume);
 
+    if(!sync_rms_buffer())
+        return;
+
     float sum = 0.0f;
     for(size_t i = 0; i < m_input_rms_size; ++i)
         sum += m_input_rms_buf[i];
