@@ -332,7 +332,7 @@ namespace callbacks {
 
         // fft size
         auto autofftsz = obs_properties_add_bool(props, P_AUTO_FFT_SIZE, T(P_AUTO_FFT_SIZE));
-        auto fftsz = obs_properties_add_int_slider(props, P_FFT_SIZE, T(P_FFT_SIZE), 128, 4096, 64);
+        auto fftsz = obs_properties_add_int_slider(props, P_FFT_SIZE, T(P_FFT_SIZE), 128, 8192, 64);
         obs_property_set_long_description(autofftsz, T(P_AUTO_FFT_DESC));
         obs_property_set_long_description(fftsz, T(P_FFT_DESC));
         obs_property_set_modified_callback(autofftsz, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
