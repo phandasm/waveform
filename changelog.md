@@ -1,22 +1,14 @@
-# Notice to Intel Mac users
-OBS requirement has been bumped to 28, please uninstall older versions of waveform first.
-
-## Changes in 1.6.1
-- Fix MacOS x64 installer
-- Update Chinese localization (#43 thanks to GodGun968)
-
-## Changes in 1.6.0
-- Add option to mirror frequency axis
-- Add option to adjust arc angle in radial mode
-- Add option for minimum bar height
-- Add option to adjust normalized volume target
-- Add "Single" channel mode to allow selection of specific audio channel
-- Fix some potential crashes
-- Fix graph frozen after playback of media file finishes
-- Fix "Hide graph when audio is silent" option for level meters
-- Update Chinese localization (#32, #38 thanks to GodGun968)
-- Improve rendering of curve graph in some cases
-- Performance improvements
+## Changes in 1.7.0-beta1
+- Add the ironically missing-until-now waveform display mode
+- Add 'Pulse' render mode
+- Add option to continue processing audio while source is muted
+- Add option to adjust maximum volume normalization gain
+- Add option to adjust rotation of radial display
+- Add Traditional Chinese localization (#44 thanks to Kai Lee)
+- Add Italian localization (thanks to Peppe73)
+- Attempt to mitigate A/V desync in some setups
+- Fix spectrum accuracy, **spectrum graphs will appear slightly "louder" now.**
+- Increase 'FFT Size' limit
 
 ## Installation
 ### Windows
