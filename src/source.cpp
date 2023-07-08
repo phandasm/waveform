@@ -1086,7 +1086,7 @@ void WAVSource::update(obs_data_t *settings)
             m_fft_size = 128;
     }
 
-    // alloc fftw buffers
+    // initialize buffers
     auto spectrum_mode = !m_meter_mode && (m_display_mode != DisplayMode::WAVEFORM);
     m_output_channels = ((m_capture_channels > 1) || m_stereo) ? 2u : 1u;
     for(auto i = 0u; i < m_output_channels; ++i)
@@ -1155,6 +1155,12 @@ void WAVSource::update(obs_data_t *settings)
 
     recapture_audio();
     m_capture_ts = os_gettime_ns();
+    if(!m_meter_mode)
+    {
+        // fill input buffers with silent audio to avoid startup lag e.g. when changing settings
+        for(auto i = 0u; i < m_capture_channels; ++i)
+            circlebuf_push_back_zero(&m_capturebufs[i], m_fft_size * sizeof(float));
+    }
 
     // precomupte interpolated indices
     if((m_display_mode == DisplayMode::CURVE) || (m_display_mode == DisplayMode::WAVEFORM))
