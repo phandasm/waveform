@@ -839,11 +839,7 @@ void WAVSource::init_interp(unsigned int sz)
             }
             m_interp_indices = std::move(samples);
         }
-#ifndef DISABLE_X86_SIMD
-        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, HAVE_AVX ? 4 : 3); // 3 is good enough, 4 for simd alignment
-#else
-        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, 3);
-#endif
+        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, 4);
     }
 }
 

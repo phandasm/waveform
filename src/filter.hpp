@@ -66,10 +66,10 @@ Kernel<T> make_gauss_kernel(T sigma)
 
 // this creates a rather large lookup table, size * (radius * 2) * sizeof(T) bytes
 template<typename T>
-Kernel<T> make_lanczos_kernel(const std::vector<T>& samples, const intmax_t radius)
+Kernel<T> make_lanczos_kernel(const std::vector<T>& indices, const intmax_t radius)
 {
     Kernel<T> ret;
-    const auto size = (intmax_t)samples.size();
+    const auto size = (intmax_t)indices.size();
     if((size <= 0) || (radius <= 0))
         return ret;
     const auto ksize = size * (radius * 2);
@@ -81,7 +81,7 @@ Kernel<T> make_lanczos_kernel(const std::vector<T>& samples, const intmax_t radi
     const auto fradius = (T)radius;
     for(intmax_t i = 0; i < size; ++i)
     {
-        const auto x = samples[i];
+        const auto x = indices[i];
         const auto ix = (intmax_t)x; // NOTE: technically std::floor(x) but negatives are out of our domain so this is slightly faster
         const auto start = ix - radius + 1;
         const auto stop = ix + radius;
