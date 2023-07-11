@@ -1,5 +1,5 @@
 ## Changes in 1.7.0-beta1
-- Add the ironically missing-until-now waveform display mode
+- Add the ironically missing-until-now waveform display mode (experimental)
 - Add 'Pulse' render mode
 - Add option to continue processing audio while source is muted
 - Add option to adjust maximum volume normalization gain
