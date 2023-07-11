@@ -20,14 +20,14 @@
 #include <obs-module.h>
 #include <util/circlebuf.h>
 #include <graphics/vec3.h>
+#include <graphics/vec4.h>
 #include <fftw3.h>
-#include <memory>
 #include "module.hpp"
-#include "membuf.hpp"
+#include "aligned_buffer.hpp"
 #include "filter.hpp"
 
-using AVXBufR = std::unique_ptr<float[], MembufDeleter>;
-using AVXBufC = std::unique_ptr<fftwf_complex[], MembufDeleter>;
+using AVXBufR = AlignedBuffer<float>;
+using AVXBufC = AlignedBuffer<fftwf_complex>;
 
 enum class FFTWindow
 {
@@ -61,7 +61,14 @@ enum class RenderMode
 {
     LINE,
     SOLID,
-    GRADIENT
+    GRADIENT,
+    PULSE
+};
+
+enum class PulseMode
+{
+    MAGNITUDE,
+    FREQUENCY
 };
 
 enum class DisplayMode
@@ -70,7 +77,8 @@ enum class DisplayMode
     BAR,
     STEPPED_BAR,
     METER,
-    STEPPED_METER
+    STEPPED_METER,
+    WAVEFORM
 };
 
 enum class ChannelMode
@@ -107,8 +115,8 @@ protected:
     AVXBufR m_window_coefficients;
     AVXBufR m_tsmooth_buf[2];               // last frames magnitudes
     AVXBufR m_decibels[2];                  // dBFS, or audio sample buffer in meter mode
-    size_t m_fft_size = 0;                  // number of fft elements, or audio samples in meter mode (not bytes, multiple of 16)
-                                            // in meter mode m_fft_size is the size of the circular buffer in samples
+    size_t m_fft_size = 0;                  // number of fft elements, or audio samples in meter/waveform mode (not bytes, multiple of 16)
+                                            // in meter/waveform mode m_fft_size is the size of the circular buffer in samples
 
     // meter mode
     size_t m_meter_pos[2] = { 0, 0 };       // circular buffer position (per channel)
@@ -135,11 +143,13 @@ protected:
     int m_retries = 0;
     float m_next_retry = 0.0f;
 
-    // timestamp of last audio callback in nanoseconds
-    uint64_t m_capture_ts = 0;
+    uint64_t m_capture_ts = 0;  // timestamp of last audio callback in nanoseconds
+    uint64_t m_audio_ts = 0;    // timestamp of the end of available audio in nanoseconds
+    uint64_t m_tick_ts = 0;     // timestamp of last 'tick' in nanoseconds
 
     // settings
     RenderMode m_render_mode = RenderMode::SOLID;
+    PulseMode m_pulse_mode = PulseMode::MAGNITUDE;
     FFTWindow m_window_func = FFTWindow::HANN;
     InterpMode m_interp_mode = InterpMode::LANCZOS;
     FilterMode m_filter_mode = FilterMode::GAUSS;
@@ -155,8 +165,8 @@ protected:
     float m_gravity = 0.0f;
     float m_grad_ratio = 1.0f;
     bool m_fast_peaks = false;
-    vec4 m_color_base{ 1.0, 1.0, 1.0, 1.0 };
-    vec4 m_color_crest{ 1.0, 1.0, 1.0, 1.0 };
+    vec4 m_color_base{ {{1.0, 1.0, 1.0, 1.0}} };
+    vec4 m_color_crest{ {{1.0, 1.0, 1.0, 1.0}} };
     float m_slope = 0.0f;
     bool m_log_scale = true;
     bool m_mirror_freq_axis = false;
@@ -169,13 +179,15 @@ protected:
     bool m_invert = false;
     float m_deadzone = 0.0f; // radial display deadzone
     float m_radial_arc = 1.0f;
+    float m_radial_rotation = 0.0f;
     bool m_rounded_caps = false;
     bool m_hide_on_silent = false;
     int m_channel_spacing = 0;
     float m_rolloff_q = 0.0f;
     float m_rolloff_rate = 0.0f;
     bool m_normalize_volume = false;
-    float m_volume_target = -3.0f; // volume normalization target
+    float m_volume_target = -3.0f;  // volume normalization target
+    float m_max_gain = 30.0f;       // maximum volume normalization gain
     int m_min_bar_height = 0;
     int m_channel_base = 0; // channel to use in single channel mode
     bool m_ignore_mute = false;
@@ -213,6 +225,8 @@ protected:
     // volume normalization
     float m_input_rms = 0.0f;
     AVXBufR m_input_rms_buf;
+    AVXBufR m_rms_temp_buf;     // temp buffer, bit too large for stack
+    circlebuf m_rms_sync_buf{}; // A/V syncronization buffer
     size_t m_input_rms_size = 0;
     size_t m_input_rms_pos = 0;
 
@@ -228,6 +242,8 @@ protected:
     bool check_audio_capture(float seconds); // check if capture is valid and retry if not
     void free_bufs();
 
+    bool sync_rms_buffer();
+
     void init_interp(unsigned int sz);
     void init_rolloff();
     void init_steps();
@@ -235,15 +251,27 @@ protected:
     void render_curve(gs_effect_t *effect);
     void render_bars(gs_effect_t *effect);
 
-    virtual void update_input_rms(const audio_data *audio) = 0; // compute RMS of input audio and adjust graph viewport accordingly
+    gs_technique_t *get_shader_tech();
+    void set_shader_vars(float cpos, float miny, float minpos, float channel_offset, float border_top, float border_bottom);
+
+    virtual void update_input_rms() = 0;    // update RMS window
 
     virtual void tick_spectrum(float) = 0;  // process audio data in frequency spectrum mode
     virtual void tick_meter(float) = 0;     // process audio data in meter mode
+    virtual void tick_waveform(float) = 0;  // process audio data in waveform mode
+
+    int64_t get_audio_sync(uint64_t ts)     // get delta between end of available audio and given time in nanoseconds
+    {
+        auto delta = std::max(m_audio_ts, ts) - std::min(m_audio_ts, ts);
+        delta = std::min(delta, MAX_TS_DELTA);
+        return (m_audio_ts < ts) ? -(int64_t)delta : (int64_t)delta;
+    }
 
     // constants
     static const float DB_MIN;
     static constexpr auto RETRY_DELAY = 2.0f;
-    static constexpr uint64_t CAPTURE_TIMEOUT = 100000000ull; // time in nanoseconds before audio capture is considered "lost"
+    static constexpr uint64_t CAPTURE_TIMEOUT = 1000000ull * 500u;  // time in nanoseconds before audio capture is considered "lost" (500 ms)
+    static constexpr uint64_t MAX_TS_DELTA = 1000000000ull * 16u;   // 16 seconds in ns
 
     inline float dbfs(float mag)
     {
@@ -293,8 +321,9 @@ class WAVSourceGeneric : public WAVSource
 protected:
     void tick_spectrum(float seconds) override;
     void tick_meter(float seconds) override;
+    void tick_waveform(float seconds) override;
 
-    void update_input_rms(const audio_data *audio) override;
+    void update_input_rms() override;
 
 public:
     using WAVSource::WAVSource;
@@ -309,7 +338,7 @@ protected:
     void tick_spectrum(float seconds) override;
     void tick_meter(float seconds) override;
 
-    void update_input_rms(const audio_data *audio) override;
+    void update_input_rms() override;
 
 public:
     using WAVSourceGeneric::WAVSourceGeneric;

@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <type_traits>
 #include <cstdint>
+#include <numbers>
 
 template<typename T>
 std::enable_if_t<std::is_floating_point_v<T>, T> log_interp(T a, T b, T t)
@@ -30,7 +31,7 @@ std::enable_if_t<std::is_floating_point_v<T>, T> log_interp(T a, T b, T t)
 template<typename T>
 std::enable_if_t<std::is_floating_point_v<T>, T> lerp(T a, T b, T t)
 {
-    return a + t * (b - a);
+    return std::lerp(a, b, t);
 }
 
 template<typename T>
@@ -38,7 +39,7 @@ std::enable_if_t<std::is_floating_point_v<T>, T> sinc(T x)
 {
     if(x == 0.0)
         return 1.0;
-    const auto tmp = (T)M_PI * x;
+    const auto tmp = std::numbers::pi_v<T> * x;
     return std::sin(tmp) / tmp;
 }
 
@@ -61,4 +62,10 @@ std::enable_if_t<std::is_floating_point_v<T>, T> lanczos_interp(T x, T w, const 
     for(auto i = start; i <= stop; ++i)
         val += (T)buf[i] * (T)lanczos(x - i, w);
     return val;
+}
+
+template<typename T>
+std::enable_if_t<std::is_floating_point_v<T>, T> saturate(T x)
+{
+    return std::clamp(x, (T)0, (T)1);
 }

@@ -20,24 +20,19 @@
 #include <immintrin.h>
 #include <algorithm>
 #include <cstring>
-#include <util/platform.h>
+#include <cassert>
 
 // adaptation of WAVSourceAVX2 to support CPUs without AVX2
 // see comments of WAVSourceAVX2
-void WAVSourceAVX::tick_spectrum(float seconds)
+void WAVSourceAVX::tick_spectrum([[maybe_unused]] float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
-    if(!check_audio_capture(seconds))
-        return;
-
-    if(m_capture_channels == 0)
-        return;
 
     const auto bufsz = m_fft_size * sizeof(float);
     const auto outsz = m_fft_size / 2;
     constexpr auto step = sizeof(__m256) / sizeof(float);
 
-    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+    const auto dtcapture = m_tick_ts - m_capture_ts;
 
     if(!m_show || (dtcapture > CAPTURE_TIMEOUT))
     {
@@ -53,13 +48,14 @@ void WAVSourceAVX::tick_spectrum(float seconds)
         return;
     }
 
-    const auto dtsize = size_t(seconds * m_audio_info.samples_per_sec) * sizeof(float);
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
+    const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        if(m_capturebufs[channel].size >= bufsz)
+        if(m_capturebufs[channel].size >= dtsize)
         {
-            circlebuf_pop_front(&m_capturebufs[channel], nullptr, std::min(dtsize, m_capturebufs[channel].size - bufsz));
+            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
             circlebuf_peek_front(&m_capturebufs[channel], m_fft_input.get(), bufsz);
         }
         else
@@ -179,9 +175,9 @@ void WAVSourceAVX::tick_spectrum(float seconds)
             m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 
-    if(m_normalize_volume && !m_last_silent)
+    if(m_normalize_volume)
     {
-        const auto volume_compensation = _mm256_set1_ps(std::min(m_volume_target - dbfs(m_input_rms), 30.0f));
+        const auto volume_compensation = _mm256_set1_ps(std::min(m_volume_target - dbfs(m_input_rms), m_max_gain));
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
             for(size_t i = 0; i < outsz; i += step)
                 _mm256_store_ps(&m_decibels[channel][i], _mm256_add_ps(volume_compensation, _mm256_load_ps(&m_decibels[channel][i])));
@@ -201,16 +197,10 @@ void WAVSourceAVX::tick_spectrum(float seconds)
     }
 }
 
-void WAVSourceAVX::tick_meter(float seconds)
+void WAVSourceAVX::tick_meter([[maybe_unused]] float seconds)
 {
-    if(!check_audio_capture(seconds))
-        return;
-
-    if(m_capture_channels == 0)
-        return;
-
     // handle audio dropouts
-    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+    const auto dtcapture = m_tick_ts - m_capture_ts;
     if(dtcapture > CAPTURE_TIMEOUT)
     {
         if(m_last_silent)
@@ -229,12 +219,15 @@ void WAVSourceAVX::tick_meter(float seconds)
         return;
     }
 
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
+    const size_t dtsize = (dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0;
+
     // repurpose m_decibels as circular buffer for sample data
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        while(m_capturebufs[channel].size > 0)
+        while(m_capturebufs[channel].size > dtsize)
         {
-            auto consume = m_capturebufs[channel].size;
+            auto consume = m_capturebufs[channel].size - dtsize;
             auto max = (m_fft_size - m_meter_pos[channel]) * sizeof(float);
             if(consume >= max)
             {
@@ -307,36 +300,12 @@ void WAVSourceAVX::tick_meter(float seconds)
     m_last_silent = (silent_channels >= m_capture_channels);
 }
 
-void WAVSourceAVX::update_input_rms(const audio_data *audio)
+void WAVSourceAVX::update_input_rms()
 {
-    if((audio == nullptr) || (m_capture_channels == 0))
+    assert(m_normalize_volume);
+
+    if(!sync_rms_buffer())
         return;
-    const auto sz = audio->frames;
-    auto data = (float**)&audio->data;
-    if(m_capture_channels > 1)
-    {
-        if((data[0] == nullptr) || (data[1] == nullptr))
-            return;
-        for(auto i = 0u; i < sz; ++i)
-        {
-            auto val = std::max(std::abs(data[0][i]), std::abs(data[1][i]));
-            m_input_rms_buf[m_input_rms_pos++] = val * val;
-            if(m_input_rms_pos >= m_input_rms_size)
-                m_input_rms_pos = 0;
-        }
-    }
-    else
-    {
-        if(data[0] == nullptr)
-            return;
-        for(auto i = 0u; i < sz; ++i)
-        {
-            auto val = data[0][i];
-            m_input_rms_buf[m_input_rms_pos++] = val * val;
-            if(m_input_rms_pos >= m_input_rms_size)
-                m_input_rms_pos = 0;
-        }
-    }
 
     constexpr auto step = (sizeof(__m256) / sizeof(float)) * 2; // buffer size is 64-byte multiple
     constexpr auto halfstep = step / 2;

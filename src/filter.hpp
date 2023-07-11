@@ -17,19 +17,19 @@
 
 #pragma once
 #include "waveform_config.hpp"
-#include "membuf.hpp"
+#include "aligned_buffer.hpp"
 #include "math_funcs.hpp"
 #include <cmath>
 #include <cstdint>
 #include <vector>
 #include <type_traits>
-#include <memory>
+#include <numbers>
 
 template<typename T>
 struct Kernel
 {
     static_assert(std::is_floating_point_v<T>, "Kernel must be a floating point type.");
-    std::unique_ptr<T[], MembufDeleter> weights;
+    AlignedBuffer<T> weights;
     int radius = 0;
     int size = 0;
     int sse_size = 0;
@@ -44,12 +44,12 @@ Kernel<T> make_gauss_kernel(T sigma)
     sigma = std::max(std::abs(sigma), (T)0.01);
     auto w = (int)std::ceil((T)3 * sigma);
     auto size = (2 * w) - 1;
-    ret.weights.reset(membuf_alloc<T>(size));
+    ret.weights.reset(size);
     ret.radius = w;
     ret.size = size;
     ret.sse_size = size & -(16 / (int)sizeof(T));
     ret.avx_size = size & -(32 / (int)sizeof(T));
-    constexpr auto pi2 = (T)M_PI * (T)2;
+    constexpr auto pi2 = std::numbers::pi_v<T> * (T)2;
     const auto sigsqr = sigma * sigma;
     const auto expdenom = (T)2 * sigsqr;
     const auto coeff = ((T)1 / (std::sqrt(pi2) * sigma));
@@ -66,14 +66,14 @@ Kernel<T> make_gauss_kernel(T sigma)
 
 // this creates a rather large lookup table, size * (radius * 2) * sizeof(T) bytes
 template<typename T>
-Kernel<T> make_lanczos_kernel(const std::vector<T>& samples, const intmax_t radius)
+Kernel<T> make_lanczos_kernel(const std::vector<T>& indices, const intmax_t radius)
 {
     Kernel<T> ret;
-    const auto size = (intmax_t)samples.size();
+    const auto size = (intmax_t)indices.size();
     if((size <= 0) || (radius <= 0))
         return ret;
     const auto ksize = size * (radius * 2);
-    ret.weights.reset(membuf_alloc<T>(ksize));
+    ret.weights.reset(ksize);
     ret.radius = (int)radius;
     ret.size = (int)ksize; // size fields currently unused, would probably be more useful if they measured a single node rather than the whole buffer
     ret.sse_size = ksize & -(16 / (int)sizeof(T));
@@ -81,7 +81,7 @@ Kernel<T> make_lanczos_kernel(const std::vector<T>& samples, const intmax_t radi
     const auto fradius = (T)radius;
     for(intmax_t i = 0; i < size; ++i)
     {
-        const auto x = samples[i];
+        const auto x = indices[i];
         const auto ix = (intmax_t)x; // NOTE: technically std::floor(x) but negatives are out of our domain so this is slightly faster
         const auto start = ix - radius + 1;
         const auto stop = ix + radius;

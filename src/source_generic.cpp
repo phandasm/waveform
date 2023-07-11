@@ -19,24 +19,19 @@
 #include <algorithm>
 #include <cstring>
 #include <cmath>
-#include <util/platform.h>
+#include <cassert>
 
 // portable non-SIMD implementation
 // see comments of WAVSourceAVX2 and WAVSourceAVX
-void WAVSourceGeneric::tick_spectrum(float seconds)
+void WAVSourceGeneric::tick_spectrum([[maybe_unused]] float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
-    if(!check_audio_capture(seconds))
-        return;
-
-    if(m_capture_channels == 0)
-        return;
 
     const auto bufsz = m_fft_size * sizeof(float);
     const auto outsz = m_fft_size / 2;
     constexpr auto step = 1;
 
-    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+    const auto dtcapture = m_tick_ts - m_capture_ts;
 
     if(!m_show || (dtcapture > CAPTURE_TIMEOUT))
     {
@@ -52,13 +47,14 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
         return;
     }
 
-    const auto dtsize = size_t(seconds * m_audio_info.samples_per_sec) * sizeof(float);
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
+    const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        if(m_capturebufs[channel].size >= bufsz)
+        if(m_capturebufs[channel].size >= dtsize)
         {
-            circlebuf_pop_front(&m_capturebufs[channel], nullptr, std::min(dtsize, m_capturebufs[channel].size - bufsz));
+            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
             circlebuf_peek_front(&m_capturebufs[channel], m_fft_input.get(), bufsz);
         }
         else
@@ -162,9 +158,9 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
             m_decibels[0][i] = dbfs(m_decibels[0][i]);
     }
 
-    if(m_normalize_volume && !m_last_silent)
+    if(m_normalize_volume)
     {
-        const auto volume_compensation = std::min(m_volume_target - dbfs(m_input_rms), 30.0f);
+        const auto volume_compensation = std::min(m_volume_target - dbfs(m_input_rms), m_max_gain);
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
             for(size_t i = 1; i < outsz; ++i)
                 m_decibels[channel][i] += volume_compensation;
@@ -183,15 +179,9 @@ void WAVSourceGeneric::tick_spectrum(float seconds)
     }
 }
 
-void WAVSourceGeneric::tick_meter(float seconds)
+void WAVSourceGeneric::tick_meter([[maybe_unused]] float seconds)
 {
-    if(!check_audio_capture(seconds))
-        return;
-
-    if(m_capture_channels == 0)
-        return;
-
-    const auto dtcapture = os_gettime_ns() - m_capture_ts;
+    const auto dtcapture = m_tick_ts - m_capture_ts;
     if(dtcapture > CAPTURE_TIMEOUT)
     {
         if(m_last_silent)
@@ -209,12 +199,14 @@ void WAVSourceGeneric::tick_meter(float seconds)
     }
 
     const auto outsz = m_fft_size;
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
+    const size_t dtsize = (dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0;
 
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        while(m_capturebufs[channel].size > 0)
+        while(m_capturebufs[channel].size > dtsize)
         {
-            auto consume = m_capturebufs[channel].size;
+            auto consume = m_capturebufs[channel].size - dtsize;
             auto max = (m_fft_size - m_meter_pos[channel]) * sizeof(float);
             if(consume >= max)
             {
@@ -230,7 +222,14 @@ void WAVSourceGeneric::tick_meter(float seconds)
     }
 
     if(!m_show)
+    {
+        for(auto& i : m_meter_buf)
+            i = 0.0f;
+        for(auto& i : m_meter_val)
+            i = DB_MIN;
+        m_last_silent = true;
         return;
+    }
 
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
@@ -269,36 +268,100 @@ void WAVSourceGeneric::tick_meter(float seconds)
     m_last_silent = (silent_channels >= m_capture_channels);
 }
 
-void WAVSourceGeneric::update_input_rms(const audio_data *audio)
+void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
 {
-    if((audio == nullptr) || (m_capture_channels == 0))
-        return;
-    const auto sz = audio->frames;
-    auto data = (float**)&audio->data;
-    if(m_capture_channels > 1)
+    // TODO: optimization
+    const auto bufsz = m_fft_size * sizeof(float);
+    const auto outsz = m_fft_size;
+    constexpr auto step = 1;
+
+    const auto dtcapture = m_tick_ts - m_capture_ts;
+
+    if(!m_show || (dtcapture > CAPTURE_TIMEOUT))
     {
-        if((data[0] == nullptr) || (data[1] == nullptr))
+        if(m_last_silent)
             return;
-        for(auto i = 0u; i < sz; ++i)
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 0; i < outsz; ++i)
+                m_decibels[channel][i] = DB_MIN;
+        m_last_silent = true;
+        return;
+    }
+
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
+    const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
+    for(auto i = 0u; i < m_capture_channels; ++i)
+        if(m_capturebufs[i].size < dtsize) // check if we have enough audio in advance
+            return;
+
+
+    auto silent_channels = 0u;
+    for(auto channel = 0u; channel < m_capture_channels; ++channel)
+    {
+        circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
+        circlebuf_peek_front(&m_capturebufs[channel], m_decibels[channel].get(), bufsz);
+
+        bool silent = true;
+        for(auto i = 0u; i < m_fft_size; i += step)
         {
-            auto val = std::max(std::abs(data[0][i]), std::abs(data[1][i]));
-            m_input_rms_buf[m_input_rms_pos++] = val * val;
-            if(m_input_rms_pos >= m_input_rms_size)
-                m_input_rms_pos = 0;
+            if(m_decibels[channel][i] != 0.0f)
+            {
+                silent = false;
+                m_last_silent = false;
+                break;
+            }
         }
+
+        if(silent)
+        {
+            if(++silent_channels >= m_capture_channels)
+                m_last_silent = true;
+        }
+    }
+
+    if(m_last_silent)
+    {
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 0; i < outsz; ++i)
+                m_decibels[channel][i] = DB_MIN;
+        return;
+    }
+
+    if(m_output_channels > m_capture_channels)
+        memcpy(m_decibels[1].get(), m_decibels[0].get(), outsz * sizeof(float));
+
+    if(m_stereo)
+    {
+        for(auto channel = 0; channel < 2; ++channel)
+            for(size_t i = 0; i < outsz; ++i)
+                m_decibels[channel][i] = dbfs(std::abs(m_decibels[channel][i]));
+    }
+    else if(m_capture_channels > 1)
+    {
+        for(size_t i = 0; i < outsz; ++i)
+            m_decibels[0][i] = dbfs((std::abs(m_decibels[0][i]) + std::abs(m_decibels[1][i])) * 0.5f);
     }
     else
     {
-        if(data[0] == nullptr)
-            return;
-        for(auto i = 0u; i < sz; ++i)
-        {
-            auto val = data[0][i];
-            m_input_rms_buf[m_input_rms_pos++] = val * val;
-            if(m_input_rms_pos >= m_input_rms_size)
-                m_input_rms_pos = 0;
-        }
+        for(size_t i = 0; i < outsz; ++i)
+            m_decibels[0][i] = dbfs(std::abs(m_decibels[0][i]));
     }
+
+    if(m_normalize_volume)
+    {
+        const auto volume_compensation = std::min(m_volume_target - dbfs(m_input_rms), m_max_gain);
+        for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
+            for(size_t i = 1; i < outsz; ++i)
+                m_decibels[channel][i] += volume_compensation;
+    }
+}
+
+void WAVSourceGeneric::update_input_rms()
+{
+    assert(m_normalize_volume);
+
+    if(!sync_rms_buffer())
+        return;
 
     float sum = 0.0f;
     for(size_t i = 0; i < m_input_rms_size; ++i)

@@ -25,6 +25,7 @@
 #include <algorithm>
 #include <limits>
 #include <cassert>
+#include <numbers>
 #include <util/platform.h>
 #include <utility>
 
@@ -127,6 +128,7 @@ namespace callbacks {
         obs_data_set_default_bool(settings, P_INVERT, false);
         obs_data_set_default_double(settings, P_DEADZONE, 20.0);
         obs_data_set_default_double(settings, P_RADIAL_ARC, 360.0);
+        obs_data_set_default_double(settings, P_RADIAL_ROTATION, 0.0);
         obs_data_set_default_bool(settings, P_CAPS, false);
         obs_data_set_default_string(settings, P_CHANNEL_MODE, P_MONO);
         obs_data_set_default_int(settings, P_CHANNEL, 0);
@@ -162,6 +164,7 @@ namespace callbacks {
         obs_data_set_default_bool(settings, P_IGNORE_MUTE, false);
         obs_data_set_default_bool(settings, P_NORMALIZE_VOLUME, false);
         obs_data_set_default_int(settings, P_VOLUME_TARGET, -8);
+        obs_data_set_default_int(settings, P_MAX_GAIN, 30);
     }
 
     static obs_properties_t *get_properties([[maybe_unused]] void *data)
@@ -192,11 +195,14 @@ namespace callbacks {
         // volume normalization
         auto vol = obs_properties_add_bool(props, P_NORMALIZE_VOLUME, T(P_NORMALIZE_VOLUME));
         auto target = obs_properties_add_int_slider(props, P_VOLUME_TARGET, T(P_VOLUME_TARGET), -60, 0, 1);
+        auto maxgain = obs_properties_add_int_slider(props, P_MAX_GAIN, T(P_MAX_GAIN), 0, 45, 1);
         obs_property_int_set_suffix(target, " dBFS");
+        obs_property_int_set_suffix(maxgain, " dB");
         obs_property_set_long_description(vol, T(P_VOLUME_NORM_DESC));
         obs_property_set_modified_callback(vol, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto enable = obs_data_get_bool(settings, P_NORMALIZE_VOLUME) && obs_property_visible(obs_properties_get(props, P_NORMALIZE_VOLUME));
             set_prop_visible(props, P_VOLUME_TARGET, enable);
+            set_prop_visible(props, P_MAX_GAIN, enable);
             return true;
             });
 
@@ -207,6 +213,7 @@ namespace callbacks {
         obs_property_list_add_string(displaylist, T(P_STEP_BARS), P_STEP_BARS);
         obs_property_list_add_string(displaylist, T(P_LEVEL_METER), P_LEVEL_METER);
         obs_property_list_add_string(displaylist, T(P_STEPPED_METER), P_STEPPED_METER);
+        obs_property_list_add_string(displaylist, T(P_WAVEFORM), P_WAVEFORM);
         obs_properties_add_int(props, P_BAR_WIDTH, T(P_BAR_WIDTH), 1, 256, 1);
         obs_properties_add_int(props, P_BAR_GAP, T(P_BAR_GAP), 0, 256, 1);
         obs_properties_add_int(props, P_STEP_WIDTH, T(P_STEP_WIDTH), 1, 256, 1);
@@ -219,39 +226,45 @@ namespace callbacks {
             auto bar = p_equ(disp, P_BARS) || meter;
             auto step = p_equ(disp, P_STEP_BARS) || step_meter;
             auto curve = p_equ(disp, P_CURVE);
+            auto waveform = p_equ(disp, P_WAVEFORM);
             set_prop_visible(props, P_BAR_WIDTH, bar || step);
             set_prop_visible(props, P_BAR_GAP, bar || step);
             set_prop_visible(props, P_STEP_WIDTH, step);
             set_prop_visible(props, P_STEP_GAP, step);
             set_prop_visible(props, P_MIN_BAR_HEIGHT, bar || step);
             set_prop_visible(props, P_CAPS, bar);
-            obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, !curve);
+            obs_property_list_item_disable(obs_properties_get(props, P_RENDER_MODE), 0, !curve && !waveform);
+            obs_property_list_item_disable(obs_properties_get(props, P_PULSE_MODE), 1, !curve && !p_equ(disp, P_BARS) && !p_equ(disp, P_STEP_BARS));
 
             // meter mode
             bool notmeter = !(meter || step_meter);
-            set_prop_visible(props, P_SLOPE, notmeter);
-            set_prop_visible(props, P_ROLLOFF_Q, notmeter);
-            set_prop_visible(props, P_ROLLOFF_RATE, notmeter);
-            set_prop_visible(props, P_CUTOFF_LOW, notmeter);
-            set_prop_visible(props, P_CUTOFF_HIGH, notmeter);
+            set_prop_visible(props, P_SLOPE, notmeter && !waveform);
+            set_prop_visible(props, P_ROLLOFF_Q, notmeter && !waveform);
+            set_prop_visible(props, P_ROLLOFF_RATE, notmeter && !waveform);
+            set_prop_visible(props, P_CUTOFF_LOW, notmeter && !waveform);
+            set_prop_visible(props, P_CUTOFF_HIGH, notmeter && !waveform);
             set_prop_visible(props, P_FILTER_MODE, notmeter);
             set_prop_visible(props, P_FILTER_RADIUS, notmeter && !p_equ(obs_data_get_string(settings, P_FILTER_MODE), P_NONE));
             set_prop_visible(props, P_INTERP_MODE, notmeter);
             set_prop_visible(props, P_CHANNEL_MODE, notmeter);
             set_prop_visible(props, P_CHANNEL, notmeter && p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_SINGLE));
             set_prop_visible(props, P_CHANNEL_SPACING, notmeter && p_equ(obs_data_get_string(settings, P_CHANNEL_MODE), P_STEREO));
-            set_prop_visible(props, P_WINDOW, notmeter);
+            set_prop_visible(props, P_WINDOW, notmeter && !waveform);
+            set_prop_visible(props, P_TSMOOTHING, !waveform);
+            set_prop_visible(props, P_GRAVITY, !waveform && !p_equ(obs_data_get_string(settings, P_TSMOOTHING), P_NONE));
+            set_prop_visible(props, P_FAST_PEAKS, !waveform && !p_equ(obs_data_get_string(settings, P_TSMOOTHING), P_NONE));
             set_prop_visible(props, P_RADIAL, notmeter);
             set_prop_visible(props, P_DEADZONE, notmeter && obs_data_get_bool(settings, P_RADIAL));
             set_prop_visible(props, P_RADIAL_ARC, notmeter && obs_data_get_bool(settings, P_RADIAL));
+            set_prop_visible(props, P_RADIAL_ROTATION, notmeter && obs_data_get_bool(settings, P_RADIAL));
             set_prop_visible(props, P_INVERT, notmeter && obs_data_get_bool(settings, P_RADIAL));
-            set_prop_visible(props, P_LOG_SCALE, notmeter);
-            set_prop_visible(props, P_MIRROR_FREQ_AXIS, notmeter);
+            set_prop_visible(props, P_LOG_SCALE, notmeter && !waveform);
+            set_prop_visible(props, P_MIRROR_FREQ_AXIS, notmeter && !waveform);
             set_prop_visible(props, P_WIDTH, notmeter);
-            set_prop_visible(props, P_AUTO_FFT_SIZE, notmeter);
-            set_prop_visible(props, P_FFT_SIZE, notmeter);
+            set_prop_visible(props, P_AUTO_FFT_SIZE, notmeter && !waveform);
+            set_prop_visible(props, P_FFT_SIZE, notmeter && !waveform);
             set_prop_visible(props, P_RMS_MODE, !notmeter);
-            set_prop_visible(props, P_METER_BUF, !notmeter);
+            set_prop_visible(props, P_METER_BUF, !notmeter || waveform);
             set_prop_visible(props, P_NORMALIZE_VOLUME, notmeter);
             set_prop_visible(props, P_VOLUME_TARGET, notmeter && obs_data_get_bool(settings, P_NORMALIZE_VOLUME));
             return true;
@@ -273,14 +286,17 @@ namespace callbacks {
         obs_properties_add_bool(props, P_INVERT, T(P_INVERT));
         auto deadzone = obs_properties_add_float_slider(props, P_DEADZONE, T(P_DEADZONE), 0.0, 100.0, 0.1);
         auto arc = obs_properties_add_float_slider(props, P_RADIAL_ARC, T(P_RADIAL_ARC), 0.0, 360.0, 0.1);
+        auto rot = obs_properties_add_float_slider(props, P_RADIAL_ROTATION, T(P_RADIAL_ROTATION), 0.0, 360.0, 0.1);
         obs_property_float_set_suffix(deadzone, "%");
         obs_property_set_long_description(deadzone, T(P_DEADZONE_DESC));
         obs_property_float_set_suffix(arc, "°");
+        obs_property_float_set_suffix(rot, "°");
         obs_property_set_long_description(arc, T(P_RADIAL_ARC_DESC));
         obs_property_set_modified_callback(rad, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto enable = obs_data_get_bool(settings, P_RADIAL) && obs_property_visible(obs_properties_get(props, P_RADIAL));
             set_prop_visible(props, P_DEADZONE, enable);
             set_prop_visible(props, P_RADIAL_ARC, enable);
+            set_prop_visible(props, P_RADIAL_ROTATION, enable);
             set_prop_visible(props, P_INVERT, enable);
             return true;
             });
@@ -316,7 +332,7 @@ namespace callbacks {
 
         // fft size
         auto autofftsz = obs_properties_add_bool(props, P_AUTO_FFT_SIZE, T(P_AUTO_FFT_SIZE));
-        auto fftsz = obs_properties_add_int_slider(props, P_FFT_SIZE, T(P_FFT_SIZE), 128, 4096, 64);
+        auto fftsz = obs_properties_add_int_slider(props, P_FFT_SIZE, T(P_FFT_SIZE), 128, 8192, 64);
         obs_property_set_long_description(autofftsz, T(P_AUTO_FFT_DESC));
         obs_property_set_long_description(fftsz, T(P_FFT_DESC));
         obs_property_set_modified_callback(autofftsz, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
@@ -344,7 +360,7 @@ namespace callbacks {
         obs_property_set_long_description(grav, T(P_GRAVITY_DESC));
         obs_property_set_long_description(peaks, T(P_FAST_PEAKS_DESC));
         obs_property_set_modified_callback(tsmoothlist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
-            auto enable = !p_equ(obs_data_get_string(settings, P_TSMOOTHING), P_NONE);
+            auto enable = !p_equ(obs_data_get_string(settings, P_TSMOOTHING), P_NONE) && obs_property_visible(obs_properties_get(props, P_TSMOOTHING));
             set_prop_visible(props, P_GRAVITY, enable);
             set_prop_visible(props, P_FAST_PEAKS, enable);
             return true;
@@ -387,13 +403,19 @@ namespace callbacks {
         obs_property_list_add_string(renderlist, T(P_LINE), P_LINE);
         obs_property_list_add_string(renderlist, T(P_SOLID), P_SOLID);
         obs_property_list_add_string(renderlist, T(P_GRADIENT), P_GRADIENT);
+        obs_property_list_add_string(renderlist, T(P_PULSE), P_PULSE);
+        auto pulselist = obs_properties_add_list(props, P_PULSE_MODE, T(P_PULSE_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+        obs_property_list_add_string(pulselist, T(P_PEAK_MAG), P_PEAK_MAG);
+        obs_property_list_add_string(pulselist, T(P_PEAK_FREQ), P_PEAK_FREQ);
         obs_properties_add_color_alpha(props, P_COLOR_BASE, T(P_COLOR_BASE));
         obs_properties_add_color_alpha(props, P_COLOR_CREST, T(P_COLOR_CREST));
         obs_properties_add_float_slider(props, P_GRAD_RATIO, T(P_GRAD_RATIO), 0.0, 4.0, 0.01);
         obs_property_set_modified_callback(renderlist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
-            auto enable = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_GRADIENT);
-            obs_property_set_enabled(obs_properties_get(props, P_COLOR_CREST), enable);
-            set_prop_visible(props, P_GRAD_RATIO, enable);
+            auto grad = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_GRADIENT);
+            auto pulse = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_PULSE);
+            obs_property_set_enabled(obs_properties_get(props, P_COLOR_CREST), grad || pulse);
+            set_prop_visible(props, P_GRAD_RATIO, grad || pulse);
+            set_prop_visible(props, P_PULSE_MODE, pulse);
             return true;
             });
 
@@ -447,6 +469,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_invert = obs_data_get_bool(settings, P_INVERT);
     auto deadzone = (float)obs_data_get_double(settings, P_DEADZONE) / 100.0f;
     m_radial_arc = (float)obs_data_get_double(settings, P_RADIAL_ARC) / 360.0f;
+    m_radial_rotation = ((float)obs_data_get_double(settings, P_RADIAL_ROTATION) / 360.0f) * (std::numbers::pi_v<float> * 2);
     m_rounded_caps = obs_data_get_bool(settings, P_CAPS);
     auto channel_mode = obs_data_get_string(settings, P_CHANNEL_MODE);
     m_stereo = p_equ(channel_mode, P_STEREO);
@@ -469,6 +492,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_rolloff_q = (float)obs_data_get_double(settings, P_ROLLOFF_Q);
     m_rolloff_rate = (float)obs_data_get_double(settings, P_ROLLOFF_RATE);
     auto rendermode = obs_data_get_string(settings, P_RENDER_MODE);
+    auto pulsemode = obs_data_get_string(settings, P_PULSE_MODE);
     auto color_base = obs_data_get_int(settings, P_COLOR_BASE);
     auto color_crest = obs_data_get_int(settings, P_COLOR_CREST);
     m_grad_ratio = (float)obs_data_get_double(settings, P_GRAD_RATIO);
@@ -484,9 +508,10 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_ignore_mute = obs_data_get_bool(settings, P_IGNORE_MUTE);
     m_normalize_volume = obs_data_get_bool(settings, P_NORMALIZE_VOLUME);
     m_volume_target = (float)obs_data_get_int(settings, P_VOLUME_TARGET);
+    m_max_gain = (float)obs_data_get_int(settings, P_MAX_GAIN);
 
-    m_color_base = { (uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f };
-    m_color_crest = { (uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f };
+    m_color_base = { {{(uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f}} };
+    m_color_crest = { {{(uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f}} };
 
     if(m_fft_size < 128)
         m_fft_size = 128;
@@ -541,10 +566,17 @@ void WAVSource::get_settings(obs_data_t *settings)
 
     if(p_equ(rendermode, P_LINE))
         m_render_mode = RenderMode::LINE;
-    else if(p_equ(rendermode, P_SOLID))
-        m_render_mode = RenderMode::SOLID;
-    else
+    else if(p_equ(rendermode, P_GRADIENT))
         m_render_mode = RenderMode::GRADIENT;
+    else if(p_equ(rendermode, P_PULSE))
+        m_render_mode = RenderMode::PULSE;
+    else
+        m_render_mode = RenderMode::SOLID;
+
+    if(p_equ(pulsemode, P_PEAK_FREQ))
+        m_pulse_mode = PulseMode::FREQUENCY;
+    else
+        m_pulse_mode = PulseMode::MAGNITUDE;
 
     if(p_equ(display, P_BARS))
         m_display_mode = DisplayMode::BAR;
@@ -554,6 +586,8 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_display_mode = DisplayMode::METER;
     else if(p_equ(display, P_STEPPED_METER))
         m_display_mode = DisplayMode::STEPPED_METER;
+    else if(p_equ(display, P_WAVEFORM))
+        m_display_mode = DisplayMode::WAVEFORM;
     else
         m_display_mode = DisplayMode::CURVE;
 
@@ -647,8 +681,8 @@ void WAVSource::release_audio_capture()
 
     if(m_output_bus_captured)
     {
-        audio_output_disconnect(obs_get_audio(), 0, &callbacks::capture_output_bus, this);
         m_output_bus_captured = false;
+        audio_output_disconnect(obs_get_audio(), 0, &callbacks::capture_output_bus, this);
     }
 
     // reset circular buffers
@@ -658,6 +692,12 @@ void WAVSource::release_audio_capture()
         i.start_pos = 0;
         i.size = 0;
     }
+    m_rms_sync_buf.end_pos = 0;
+    m_rms_sync_buf.start_pos = 0;
+    m_rms_sync_buf.size = 0;
+
+    m_capture_ts = 0;
+    m_audio_ts = 0;
 }
 
 bool WAVSource::check_audio_capture(float seconds)
@@ -665,6 +705,17 @@ bool WAVSource::check_audio_capture(float seconds)
     if(m_output_bus_captured)
         return true;
 
+    // check if the source still exists
+    if(m_audio_source != nullptr)
+    {
+        auto src = obs_weak_source_get_source(m_audio_source);
+        if(src == nullptr)
+            release_audio_capture();
+        else
+            obs_source_release(src);
+    }
+
+    // if we've lost our source, periodically try to recapture it
     if(m_audio_source == nullptr)
     {
         m_next_retry -= seconds;
@@ -672,20 +723,11 @@ bool WAVSource::check_audio_capture(float seconds)
         {
             m_next_retry = RETRY_DELAY;
             recapture_audio();
-            if(m_audio_source != nullptr)
+            if((m_audio_source != nullptr) || m_output_bus_captured)
                 return true;
         }
         return false;
     }
-
-    // check if the source still exists
-    auto src = obs_weak_source_get_source(m_audio_source);
-    if(src == nullptr)
-    {
-        release_audio_capture();
-        return false;
-    }
-    obs_source_release(src);
     return true;
 }
 
@@ -702,6 +744,7 @@ void WAVSource::free_bufs()
     m_window_coefficients.reset();
     m_slope_modifiers.reset();
     m_input_rms_buf.reset();
+    m_rms_temp_buf.reset();
     m_rolloff_modifiers.reset();
 
     m_kernel = {};
@@ -716,12 +759,48 @@ void WAVSource::free_bufs()
     m_fft_size = 0;
 }
 
+bool WAVSource::sync_rms_buffer()
+{
+    const int64_t dtaudio = get_audio_sync(m_tick_ts);
+    const size_t dtsize = (dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0;
+
+    if(m_rms_sync_buf.size <= dtsize)
+        return false;
+
+    while(m_rms_sync_buf.size > dtsize)
+    {
+        auto consume = m_rms_sync_buf.size - dtsize;
+        auto max = (m_input_rms_size - m_input_rms_pos) * sizeof(float);
+        if(consume >= max)
+        {
+            circlebuf_pop_front(&m_rms_sync_buf, &m_input_rms_buf[m_input_rms_pos], max);
+            m_input_rms_pos = 0;
+        }
+        else
+        {
+            circlebuf_pop_front(&m_rms_sync_buf, &m_input_rms_buf[m_input_rms_pos], consume);
+            m_input_rms_pos += consume / sizeof(float);
+        }
+    }
+
+    return true;
+}
+
 void WAVSource::init_interp(unsigned int sz)
 {
     const auto maxbin = (m_fft_size / 2) - 1;
     const auto sr = (float)m_audio_info.samples_per_sec;
-    const auto lowbin = std::clamp((float)m_cutoff_low * m_fft_size / sr, 1.0f, (float)maxbin);
-    const auto highbin = std::clamp((float)m_cutoff_high * m_fft_size / sr, 1.0f, (float)maxbin);
+    float lowbin, highbin;
+    if(m_display_mode == DisplayMode::WAVEFORM)
+    {
+        lowbin = 0.0f;
+        highbin = (float)(m_fft_size - 1);
+    }
+    else
+    {
+        lowbin = std::clamp((float)m_cutoff_low * m_fft_size / sr, 1.0f, (float)maxbin);
+        highbin = std::clamp((float)m_cutoff_high * m_fft_size / sr, 1.0f, (float)maxbin);
+    }
 
     m_interp_indices.resize(sz);
     if(m_log_scale)
@@ -746,7 +825,7 @@ void WAVSource::init_interp(unsigned int sz)
     // lanczos filter
     if(m_interp_mode == InterpMode::LANCZOS)
     {
-        if(m_display_mode != DisplayMode::CURVE)
+        if((m_display_mode != DisplayMode::CURVE) && (m_display_mode != DisplayMode::WAVEFORM))
         {
             // at this point m_interp_indices only contains the start of each band
             // so we'll fill in the intermediate points here
@@ -760,11 +839,7 @@ void WAVSource::init_interp(unsigned int sz)
             }
             m_interp_indices = std::move(samples);
         }
-#ifndef DISABLE_X86_SIMD
-        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, HAVE_AVX ? 4 : 3); // 3 is good enough, 4 for simd alignment
-#else
-        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, 3);
-#endif
+        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, 4);
     }
 }
 
@@ -777,7 +852,7 @@ void WAVSource::init_rolloff()
     const auto freq_low = (float)m_cutoff_low * ratio;
     const auto freq_high = (float)m_cutoff_high / ratio;
 
-    m_rolloff_modifiers.reset(membuf_alloc<float>(m_fft_size / 2));
+    m_rolloff_modifiers.reset(m_fft_size / 2);
     m_rolloff_modifiers[0] = 0.0f;
     for(size_t i = 1u; i < sz; ++i)
     {
@@ -810,6 +885,7 @@ WAVSource::WAVSource(obs_source_t *source)
     m_source = source;
     for(auto& i : m_capturebufs)
         circlebuf_init(&i);
+    circlebuf_init(&m_rms_sync_buf);
 
     obs_enter_graphics();
 
@@ -836,6 +912,7 @@ WAVSource::~WAVSource()
 
     for(auto& i : m_capturebufs)
         circlebuf_free(&i);
+    circlebuf_free(&m_rms_sync_buf);
 }
 
 unsigned int WAVSource::width()
@@ -860,8 +937,9 @@ unsigned int WAVSource::height()
 
 void WAVSource::create_vbuf() {
     size_t num_verts = 0;
+    bool curve = (m_display_mode == DisplayMode::CURVE) || (m_display_mode == DisplayMode::WAVEFORM);
 
-    if(m_display_mode == DisplayMode::CURVE)
+    if(curve)
         num_verts = (size_t)((m_render_mode == RenderMode::LINE) ? m_width : (m_width * 2));
     else
     {
@@ -895,7 +973,7 @@ void WAVSource::create_vbuf() {
     vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
     m_vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
 
-    if(m_display_mode == DisplayMode::CURVE) {
+    if(curve) {
         if(m_render_mode == RenderMode::LINE)
         {
             for(auto i = 0u; i < m_width; ++i)
@@ -917,6 +995,7 @@ void WAVSource::create_vbuf() {
 void WAVSource::update(obs_data_t *settings)
 {
     std::lock_guard lock(m_mtx);
+    constexpr auto pi = std::numbers::pi_v<float>;
 
     release_audio_capture();
     free_bufs();
@@ -948,6 +1027,7 @@ void WAVSource::update(obs_data_t *settings)
         m_window_func = FFTWindow::NONE;
         m_interp_mode = InterpMode::POINT;
         m_filter_mode = FilterMode::NONE;
+        m_pulse_mode = PulseMode::MAGNITUDE;
         m_auto_fft_size = false;
         m_slope = 0.0f;
         m_stereo = false;
@@ -964,13 +1044,27 @@ void WAVSource::update(obs_data_t *settings)
         for(auto& i : m_meter_val)
             i = DB_MIN;
     }
+    else if(m_display_mode == DisplayMode::WAVEFORM)
+    {
+        // turn off stuff we don't need in this mode
+        m_window_func = FFTWindow::NONE;
+        m_pulse_mode = PulseMode::MAGNITUDE;
+        m_auto_fft_size = false;
+        m_slope = 0.0f;
+        m_mirror_freq_axis = false;
+        m_log_scale = false;
+
+        // repurpose m_fft_size for buffer size
+        m_fft_size = size_t(m_audio_info.samples_per_sec * (m_meter_ms / 1000.0)) & -16;
+    }
 
     if(m_normalize_volume)
     {
         m_input_rms = 0.0f;
         m_input_rms_size = size_t(m_audio_info.samples_per_sec) & -16;
         m_input_rms_pos = 0;
-        m_input_rms_buf.reset(membuf_alloc<float>(m_input_rms_size));
+        m_input_rms_buf.reset(m_input_rms_size);
+        m_rms_temp_buf.reset(AUDIO_OUTPUT_FRAMES);
         memset(m_input_rms_buf.get(), 0, m_input_rms_size * sizeof(float));
     }
 
@@ -988,30 +1082,24 @@ void WAVSource::update(obs_data_t *settings)
             m_fft_size = 128;
     }
 
-    // alloc fftw buffers
+    // initialize buffers
+    auto spectrum_mode = !m_meter_mode && (m_display_mode != DisplayMode::WAVEFORM);
     m_output_channels = ((m_capture_channels > 1) || m_stereo) ? 2u : 1u;
     for(auto i = 0u; i < m_output_channels; ++i)
     {
-        auto count = m_meter_mode ? m_fft_size : m_fft_size / 2;
-        m_decibels[i].reset(membuf_alloc<float>(count));
-        if(m_meter_mode)
-            memset(m_decibels[i].get(), 0, count * sizeof(float));
-        else
+        auto count = spectrum_mode ? m_fft_size / 2 : m_fft_size;
+        m_decibels[i].reset(count);
+        if(spectrum_mode && (m_tsmoothing != TSmoothingMode::NONE))
         {
-            if(m_tsmoothing != TSmoothingMode::NONE)
-                m_tsmooth_buf[i].reset(membuf_alloc<float>(count));
-            for(auto j = 0u; j < count; ++j)
-            {
-                m_decibels[i][j] = DB_MIN;
-                if(m_tsmoothing != TSmoothingMode::NONE)
-                    m_tsmooth_buf[i][j] = 0;
-            }
+            m_tsmooth_buf[i].reset(count);
+            std::fill(m_tsmooth_buf[i].get(), m_tsmooth_buf[i].get() + count, 0.0f);
         }
+        std::fill(m_decibels[i].get(), m_decibels[i].get() + count, m_meter_mode ? 0.0f : DB_MIN);
     }
-    if(!m_meter_mode)
+    if(spectrum_mode)
     {
-        m_fft_input.reset(membuf_alloc<float>(m_fft_size));
-        m_fft_output.reset(membuf_alloc<fftwf_complex>(m_fft_size));
+        m_fft_input.reset(m_fft_size);
+        m_fft_output.reset(m_fft_size);
         m_fft_plan = fftwf_plan_dft_r2c_1d((int)m_fft_size, m_fft_input.get(), m_fft_output.get(), FFTW_ESTIMATE);
     }
 
@@ -1019,11 +1107,11 @@ void WAVSource::update(obs_data_t *settings)
     if(m_window_func != FFTWindow::NONE)
     {
         // precompute window coefficients
-        m_window_coefficients.reset(membuf_alloc<float>(m_fft_size));
+        m_window_coefficients.reset(m_fft_size);
         const auto N = m_fft_size - 1;
-        constexpr auto pi2 = 2 * (float)M_PI;
-        constexpr auto pi4 = 4 * (float)M_PI;
-        constexpr auto pi6 = 6 * (float)M_PI;
+        constexpr auto pi2 = 2 * pi;
+        constexpr auto pi4 = 4 * pi;
+        constexpr auto pi6 = 6 * pi;
         switch(m_window_func)
         {
         case FFTWindow::HAMMING:
@@ -1057,15 +1145,21 @@ void WAVSource::update(obs_data_t *settings)
         m_window_sum = (float)m_fft_size;
 
     m_last_silent = false;
-    m_show = true;
+    m_show = obs_source_showing(m_source);
     m_retries = 0;
     m_next_retry = 0.0f;
 
     recapture_audio();
     m_capture_ts = os_gettime_ns();
+    if(!m_meter_mode)
+    {
+        // fill input buffers with silent audio to avoid startup lag e.g. when changing settings
+        for(auto i = 0u; i < m_capture_channels; ++i)
+            circlebuf_push_back_zero(&m_capturebufs[i], m_fft_size * sizeof(float));
+    }
 
     // precomupte interpolated indices
-    if(m_display_mode == DisplayMode::CURVE)
+    if((m_display_mode == DisplayMode::CURVE) || (m_display_mode == DisplayMode::WAVEFORM))
     {
         init_interp(m_width);
         for(auto& i : m_interp_bufs)
@@ -1097,11 +1191,14 @@ void WAVSource::update(obs_data_t *settings)
         m_kernel = make_gauss_kernel(m_filter_radius);
 
     // slope
-    const auto num_mods = m_fft_size / 2;
-    const auto maxmod = (float)(num_mods - 1);
-    m_slope_modifiers.reset(membuf_alloc<float>(num_mods));
-    for(size_t i = 0; i < num_mods; ++i)
-        m_slope_modifiers[i] = std::log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
+    if(m_slope > 0.0f)
+    {
+        const auto num_mods = m_fft_size / 2;
+        const auto maxmod = (float)(num_mods - 1);
+        m_slope_modifiers.reset(num_mods);
+        for(size_t i = 0; i < num_mods; ++i)
+            m_slope_modifiers[i] = std::log10(log_interp(10.0f, 10000.0f, ((float)i * m_slope) / maxmod));
+    }
 
     // rounded caps
     m_cap_verts.clear();
@@ -1109,10 +1206,10 @@ void WAVSource::update(obs_data_t *settings)
     {
         // caps are full circles to avoid distortion issues in radial mode
         m_cap_radius = (float)m_bar_width / 2.0f;
-        m_cap_tris = std::max((int)((2 * (float)M_PI * m_cap_radius) / 3.0f), 4);
+        m_cap_tris = std::max((int)((2 * pi * m_cap_radius) / 3.0f), 4);
         if(m_cap_tris & 1) // force even number of triangles
             m_cap_tris += 1;
-        auto angle = (2 * (float)M_PI) / (float)m_cap_tris;
+        auto angle = (2 * pi) / (float)m_cap_tris;
         auto verts = m_cap_tris + 1;
         m_cap_verts.resize(verts);
         for(auto j = 0; j < verts; ++j)
@@ -1138,8 +1235,21 @@ void WAVSource::update(obs_data_t *settings)
 void WAVSource::tick(float seconds)
 {
     std::lock_guard lock(m_mtx);
+
+    m_tick_ts = os_gettime_ns();
+
+    if(m_normalize_volume)
+        update_input_rms();
+
+    if(!check_audio_capture(seconds))
+        return;
+    if(m_capture_channels == 0)
+        return;
+
     if(m_meter_mode)
         tick_meter(seconds);
+    else if(m_display_mode == DisplayMode::WAVEFORM)
+        tick_waveform(seconds);
     else
         tick_spectrum(seconds);
 }
@@ -1150,7 +1260,7 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
     if(m_last_silent && m_hide_on_silent)
         return;
 
-    if(m_display_mode == DisplayMode::CURVE)
+    if((m_display_mode == DisplayMode::CURVE) || (m_display_mode == DisplayMode::WAVEFORM))
         render_curve(effect);
     else
         render_bars(effect);
@@ -1162,12 +1272,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     //if(m_last_silent)
     //    return;
 
-    const char *techname;
-    if(m_radial)
-        techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
-    else
-        techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
-    auto tech = gs_effect_get_technique(m_shader, techname);
+    auto tech = get_shader_tech();
     
     const auto center = (float)m_height / 2;
     //const auto right = (float)m_width;
@@ -1176,46 +1281,21 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     const auto cpos = m_stereo ? center : bottom;
     const auto channel_offset = m_channel_spacing * 0.5f;
 
-    auto grad_center = gs_effect_get_param_by_name(m_shader, "grad_center");
-    gs_effect_set_float(grad_center, cpos);
-    auto grad_offset = gs_effect_get_param_by_name(m_shader, "grad_offset");
-    gs_effect_set_float(grad_offset, channel_offset);
-    auto color_base = gs_effect_get_param_by_name(m_shader, "color_base");
-    gs_effect_set_vec4(color_base, &m_color_base);
-    auto color_crest = gs_effect_get_param_by_name(m_shader, "color_crest");
-    gs_effect_set_vec4(color_crest, &m_color_crest);
-
-    if(m_radial)
-    {
-        auto graph_width = gs_effect_get_param_by_name(m_shader, "graph_width");
-        gs_effect_set_float(graph_width, float(m_width - 1));
-        auto graph_height = gs_effect_get_param_by_name(m_shader, "graph_height");
-        gs_effect_set_float(graph_height, (float)m_height);
-        auto graph_deadzone = gs_effect_get_param_by_name(m_shader, "graph_deadzone");
-        gs_effect_set_float(graph_deadzone, m_deadzone);
-        auto radial_arc = gs_effect_get_param_by_name(m_shader, "radial_arc");
-        gs_effect_set_float(radial_arc, m_radial_arc);
-        auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
-        gs_effect_set_bool(graph_invert, m_invert);
-        auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
-        vec2 rc;
-        vec2_set(&rc, (float)m_height + m_deadzone, (float)m_height + m_deadzone);
-        gs_effect_set_vec2(radial_center, &rc);
-    }
-
     // interpolation
     auto miny = cpos;
+    auto minpos = 0u;
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         if(m_interp_mode == InterpMode::LANCZOS)
         {
+            const auto sz = (m_display_mode == DisplayMode::WAVEFORM) ? m_fft_size : m_fft_size / 2u;
 #ifndef DISABLE_X86_SIMD
             if(HAVE_AVX)
-                apply_lanczos_filter_fma3(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                apply_lanczos_filter_fma3(m_decibels[channel].get(), sz, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
             else
-                apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                apply_lanczos_filter(m_decibels[channel].get(), sz, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
 #else
-            apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+            apply_lanczos_filter(m_decibels[channel].get(), sz, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
 #endif
         }
         else
@@ -1238,7 +1318,10 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         {
             auto val = lerp(0.0f, cpos - channel_offset, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
             if(val < miny)
+            {
                 miny = val;
+                minpos = i;
+            }
             m_interp_bufs[channel][i] = val;
         }
 
@@ -1249,8 +1332,8 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
                 m_interp_bufs[channel][i] = m_interp_bufs[channel][half - (i - half)];
         }
     }
-    auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
-    gs_effect_set_float(grad_height, (cpos - miny - channel_offset) * m_grad_ratio);
+
+    set_shader_vars(cpos, miny, (float)minpos, channel_offset, 0.0f, cpos - channel_offset);
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
@@ -1302,12 +1385,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     //if(m_last_silent)
     //    return;
 
-    const char *techname;
-    if(m_radial)
-        techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
-    else
-        techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
-    auto tech = gs_effect_get_technique(m_shader, techname);
+    auto tech = get_shader_tech();
 
     const auto bar_stride = m_bar_width + m_bar_gap;
     const auto step_stride = m_step_width + m_step_gap;
@@ -1316,40 +1394,21 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     const auto dbrange = m_ceiling - m_floor;
     const auto cpos = m_stereo ? center : bottom;
     const auto channel_offset = m_channel_spacing * 0.5f;
+    auto border_top = (m_rounded_caps) ? m_cap_radius : 0.0f;
+    auto border_bottom = (m_rounded_caps && (!m_stereo || (m_channel_spacing > 0))) ? cpos - m_cap_radius : cpos;
+    if(m_channel_spacing > 0)
+        border_bottom -= channel_offset;
+    if(m_min_bar_height > 0)
+        border_bottom -= m_min_bar_height;
+    border_bottom = std::clamp(border_bottom, border_top, cpos);
 
     auto max_steps = (size_t)((cpos - channel_offset) / step_stride);
     if(((int)cpos - (int)(max_steps * step_stride) - (int)channel_offset) > m_step_width)
         ++max_steps;
 
-    auto grad_center = gs_effect_get_param_by_name(m_shader, "grad_center");
-    gs_effect_set_float(grad_center, cpos);
-    auto grad_offset = gs_effect_get_param_by_name(m_shader, "grad_offset");
-    gs_effect_set_float(grad_offset, channel_offset);
-    auto color_base = gs_effect_get_param_by_name(m_shader, "color_base");
-    gs_effect_set_vec4(color_base, &m_color_base);
-    auto color_crest = gs_effect_get_param_by_name(m_shader, "color_crest");
-    gs_effect_set_vec4(color_crest, &m_color_crest);
-
-    if(m_radial)
-    {
-        auto graph_width = gs_effect_get_param_by_name(m_shader, "graph_width");
-        gs_effect_set_float(graph_width, float(m_width - 1));
-        auto graph_height = gs_effect_get_param_by_name(m_shader, "graph_height");
-        gs_effect_set_float(graph_height, (float)m_height);
-        auto graph_deadzone = gs_effect_get_param_by_name(m_shader, "graph_deadzone");
-        gs_effect_set_float(graph_deadzone, m_deadzone);
-        auto radial_arc = gs_effect_get_param_by_name(m_shader, "radial_arc");
-        gs_effect_set_float(radial_arc, m_radial_arc);
-        auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
-        gs_effect_set_bool(graph_invert, m_invert);
-        auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
-        vec2 rc;
-        vec2_set(&rc, (float)m_height + m_deadzone, (float)m_height + m_deadzone);
-        gs_effect_set_vec2(radial_center, &rc);
-    }
-
     // interpolation
     auto miny = cpos;
+    auto minpos = 0u;
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
         if(m_meter_mode)
@@ -1395,18 +1454,14 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
             }
         }
 
-        auto border_top = (m_rounded_caps) ? m_cap_radius : 0.0f;
-        auto border_bottom = (m_rounded_caps && (!m_stereo || (m_channel_spacing > 0))) ? cpos - m_cap_radius : cpos;
-        if(m_channel_spacing > 0)
-            border_bottom -= channel_offset;
-        if(m_min_bar_height > 0)
-            border_bottom -= m_min_bar_height;
-        border_bottom = std::clamp(border_bottom, border_top, cpos);
         for(auto i = 0; i < m_num_bars; ++i)
         {
             auto val = lerp(border_top, border_bottom, std::clamp(m_ceiling - m_interp_bufs[channel][i], 0.0f, (float)dbrange) / dbrange);
             if(val < miny)
+            {
                 miny = val;
+                minpos = i;
+            }
             m_interp_bufs[channel][i] = val;
         }
 
@@ -1417,8 +1472,8 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                 m_interp_bufs[channel][i] = m_interp_bufs[channel][half - (i - half)];
         }
     }
-    auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
-    gs_effect_set_float(grad_height, (cpos - miny - channel_offset) * m_grad_ratio);
+
+    set_shader_vars(cpos, miny, (float)minpos, channel_offset, border_top, border_bottom);
 
     gs_technique_begin(tech);
     gs_technique_begin_pass(tech, 0);
@@ -1523,6 +1578,72 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
     gs_technique_end(tech);
 }
 
+gs_technique_t *WAVSource::get_shader_tech()
+{
+    const char *techname;
+    if(m_radial)
+        techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
+    else
+        techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
+    return gs_effect_get_technique(m_shader, techname);
+}
+
+void WAVSource::set_shader_vars(float cpos, float miny, float minpos, float channel_offset, float border_top, float border_bottom)
+{
+    if(m_render_mode == RenderMode::PULSE)
+    {
+        bool bars = (m_display_mode == DisplayMode::BAR) || (m_display_mode == DisplayMode::STEPPED_BAR) || m_meter_mode;
+        vec4 color;
+        auto range = border_bottom - border_top;
+        auto t = (m_pulse_mode == PulseMode::MAGNITUDE) ? saturate((border_bottom - miny) / (range * m_grad_ratio)) : saturate(minpos / ((bars ? (float)(m_num_bars - 1) : (float)(m_width - 1)) * m_grad_ratio));
+        auto x = lerp(m_color_base.x, m_color_crest.x, t);
+        auto y = lerp(m_color_base.y, m_color_crest.y, t);
+        auto z = lerp(m_color_base.z, m_color_crest.z, t);
+        auto w = lerp(m_color_base.w, m_color_crest.w, t);
+        vec4_set(&color, x, y, z, w);
+
+        auto color_base = gs_effect_get_param_by_name(m_shader, "color_base");
+        gs_effect_set_vec4(color_base, &color);
+    }
+    else
+    {
+        auto color_base = gs_effect_get_param_by_name(m_shader, "color_base");
+        gs_effect_set_vec4(color_base, &m_color_base);
+
+        if(m_render_mode == RenderMode::GRADIENT)
+        {
+            auto color_crest = gs_effect_get_param_by_name(m_shader, "color_crest");
+            gs_effect_set_vec4(color_crest, &m_color_crest);
+            auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
+            gs_effect_set_float(grad_height, (cpos - miny - channel_offset) * m_grad_ratio);
+            auto grad_center = gs_effect_get_param_by_name(m_shader, "grad_center");
+            gs_effect_set_float(grad_center, cpos);
+            auto grad_offset = gs_effect_get_param_by_name(m_shader, "grad_offset");
+            gs_effect_set_float(grad_offset, channel_offset);
+        }
+    }
+
+    if(m_radial)
+    {
+        auto graph_width = gs_effect_get_param_by_name(m_shader, "graph_width");
+        gs_effect_set_float(graph_width, float(m_width - 1));
+        auto graph_height = gs_effect_get_param_by_name(m_shader, "graph_height");
+        gs_effect_set_float(graph_height, (float)m_height);
+        auto graph_deadzone = gs_effect_get_param_by_name(m_shader, "graph_deadzone");
+        gs_effect_set_float(graph_deadzone, m_deadzone);
+        auto radial_arc = gs_effect_get_param_by_name(m_shader, "radial_arc");
+        gs_effect_set_float(radial_arc, m_radial_arc);
+        auto radial_rotation = gs_effect_get_param_by_name(m_shader, "radial_rotation");
+        gs_effect_set_float(radial_rotation, m_radial_rotation);
+        auto graph_invert = gs_effect_get_param_by_name(m_shader, "graph_invert");
+        gs_effect_set_bool(graph_invert, m_invert);
+        auto radial_center = gs_effect_get_param_by_name(m_shader, "radial_center");
+        vec2 rc;
+        vec2_set(&rc, (float)m_height + m_deadzone, (float)m_height + m_deadzone);
+        gs_effect_set_vec2(radial_center, &rc);
+    }
+}
+
 void WAVSource::show()
 {
     std::lock_guard lock(m_mtx);
@@ -1591,15 +1712,53 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
     if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
         return;
     std::lock_guard lock(m_mtx, std::adopt_lock);
-    if((m_audio_source == nullptr) || (m_capture_channels == 0))
+    if(((m_audio_source == nullptr) && !m_output_bus_captured) || (m_capture_channels == 0))
         return;
     assert((m_channel_base >= 0) && (m_channel_base < (int)get_audio_channels(m_audio_info.speakers)));
     assert((m_channel_base == 0) || (m_capture_channels == 1));
 
-    if(m_normalize_volume)
-        update_input_rms(audio);
-
+    // audio sync
     m_capture_ts = os_gettime_ns();
+    auto audio_len = audio_frames_to_ns(m_audio_info.samples_per_sec, audio->frames);
+    auto delta = std::max(audio->timestamp, m_capture_ts) - std::min(audio->timestamp, m_capture_ts);
+    if(delta > MAX_TS_DELTA) // attempt to handle extreme / bogus timestamps (e.g. VLC)
+        m_audio_ts = m_capture_ts;
+    else
+        m_audio_ts = audio->timestamp + audio_len;
+    const auto bufsz = m_fft_size * sizeof(float);
+    const int64_t dtaudio = get_audio_sync(m_capture_ts);
+    const size_t dtsamples = (dtaudio > 0) ? (size_t)ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio) : 0;
+
+    // RMS
+    if(m_normalize_volume)
+    {
+        auto frames = (size_t)audio->frames;
+        auto data = (float**)&audio->data;
+        while(frames > 0)
+        {
+            auto count = std::min(frames, (size_t)AUDIO_OUTPUT_FRAMES);
+            for(size_t i = 0u; i < count; ++i)
+            {
+                // sum only the largest sample of all channels from each time point
+                // this prevents excessive boosting when one channel is quiet (and reduces the amount of buffering required)
+                float val = 0.0f;
+                for(auto channel = 0u; channel < m_capture_channels; ++channel)
+                {
+                    auto buf = data[m_channel_base + channel];
+                    if(buf != nullptr)
+                        val = std::max(std::abs(buf[i]), val);
+                }
+                m_rms_temp_buf[i] = val * val;
+            }
+            circlebuf_push_back(&m_rms_sync_buf, m_rms_temp_buf.get(), count * sizeof(float));
+            frames -= count;
+        }
+
+        const size_t max_rms_size = (dtsamples * sizeof(float)) + (m_input_rms_size * sizeof(float));
+        auto total = m_rms_sync_buf.size;
+        if(total > max_rms_size)
+            circlebuf_pop_front(&m_rms_sync_buf, nullptr, total - max_rms_size);
+    }
 
     auto sz = size_t(audio->frames * sizeof(float));
     for(auto i = m_channel_base; i < (m_channel_base + (int)m_capture_channels); ++i)
@@ -1611,43 +1770,14 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
         else
             circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
 
+        const size_t max_size = (dtsamples * sizeof(float)) + bufsz;
         auto total = m_capturebufs[j].size;
-        auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
-        if(total > max)
-            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max);
+        if(total > max_size)
+            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max_size);
     }
 }
 
 void WAVSource::capture_output_bus([[maybe_unused]] size_t mix_idx, const audio_data *audio)
 {
-    if(audio == nullptr)
-        return;
-    if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
-        return;
-    std::lock_guard lock(m_mtx, std::adopt_lock);
-    if(m_capture_channels == 0)
-        return;
-    assert((m_channel_base >= 0) && (m_channel_base < (int)get_audio_channels(m_audio_info.speakers)));
-    assert((m_channel_base == 0) || (m_capture_channels == 1));
-
-    if(m_normalize_volume)
-        update_input_rms(audio);
-
-    m_capture_ts = os_gettime_ns();
-
-    auto sz = size_t(audio->frames * sizeof(float));
-    for(auto i = m_channel_base; i < (m_channel_base + (int)m_capture_channels); ++i)
-    {
-        auto j = i - m_channel_base;
-        assert((j == 0) || (j == 1));
-        if(audio->data[i] == nullptr)
-            circlebuf_push_back_zero(&m_capturebufs[j], sz);
-        else
-            circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
-
-        auto total = m_capturebufs[j].size;
-        auto max = m_meter_mode ? 8192 : m_fft_size * sizeof(float) * 2;
-        if(total > max)
-            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max);
-    }
+    capture_audio(nullptr, audio, false);
 }

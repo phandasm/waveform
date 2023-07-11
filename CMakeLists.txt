@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -8,7 +8,7 @@ include(CheckSymbolExists)
 
 project(waveform)
 
-set(WAVEFORM_VERSION "1.6.1")
+set(WAVEFORM_VERSION "1.7.0")
 
 # set default install prefix to OBS plugin path on linux and MacOS
 # otherwise set it to the windows installer source folder
@@ -48,13 +48,13 @@ if(NOT TARGET OBS::libobs)
     find_package(LibObs REQUIRED)
 
     # emulate modern target
-    add_library(OBS::libobs INTERFACE IMPORTED GLOBAL)
+    add_library(OBS::libobs INTERFACE IMPORTED)
     target_link_libraries(OBS::libobs INTERFACE ${LIBOBS_LIBRARIES})
     target_include_directories(OBS::libobs INTERFACE ${LIBOBS_INCLUDE_DIRS})
 endif()
 
 if(MSVC)
-    add_definitions(/MP) # parallel builds
+    add_compile_options(/MP) # parallel builds
 
     option(EXTRA_OPTIMIZATIONS "Enable additional compiler optimizations" OFF)
     if(EXTRA_OPTIMIZATIONS)
@@ -139,7 +139,7 @@ set(PLUGIN_SOURCES
     "src/source.hpp"
     "src/source.cpp"
     "src/source_generic.cpp"
-    "src/membuf.hpp"
+    "src/aligned_buffer.hpp"
     "src/math_funcs.hpp"
     "src/filter.hpp"
     "src/settings.hpp"
@@ -152,7 +152,6 @@ if(NOT DISABLE_X86_SIMD)
         "src/source_avx2.cpp"
         "src/source_avx.cpp"
         "src/filter_fma3.cpp"
-        "src/aligned_mem.hpp"
     )
 
     # arch flags
@@ -194,7 +193,6 @@ target_link_libraries(waveform PRIVATE OBS::libobs ${FFTW_LIBRARIES})
 if(NOT DISABLE_X86_SIMD)
     target_link_libraries(waveform PRIVATE cpu_features)
 endif()
-target_compile_definitions(waveform PRIVATE _USE_MATH_DEFINES)
 if(MSVC)
     target_compile_options(waveform PRIVATE "/W4") # warning level
     target_link_options(waveform PRIVATE "$<$<CONFIG:Release>:/OPT:REF>") # reduce size of release binaries
