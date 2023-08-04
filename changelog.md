@@ -28,7 +28,7 @@ or
 - `flatpak install flathub com.obsproject.Studio.Plugin.waveform`  
 
 #### Source Build
-- Step-by-step instructions in the [readme](https://github.com/phandasm/waveform/blob/master/README.md#linux-ubuntu-20043-lts).  
+- Step-by-step instructions in the [readme](https://github.com/phandasm/waveform/blob/master/README.md#linux).  
 
 Note: Should work for most distros, but do not mix with the .deb package above.
 </details>
