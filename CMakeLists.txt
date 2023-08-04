@@ -10,6 +10,11 @@ project(waveform)
 
 set(WAVEFORM_VERSION "1.7.0")
 
+# default to release build
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
+endif()
+
 # set default install prefix to OBS plugin path on linux and MacOS
 # otherwise set it to the windows installer source folder
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
