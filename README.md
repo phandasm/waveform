@@ -55,3 +55,13 @@ cmake ..
 make
 make install
 ```
+
+# Special Installation
+## Linux Flatpak
+
+If you install OBS from Flatpak, you must install Waveform from Flatpak as well:
+```
+flatpak install flathub com.obsproject.Studio.Plugin.waveform
+```
+
+
