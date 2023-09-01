@@ -62,7 +62,8 @@ enum class RenderMode
     LINE,
     SOLID,
     GRADIENT,
-    PULSE
+    PULSE,
+    RANGE
 };
 
 enum class PulseMode

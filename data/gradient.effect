@@ -66,6 +66,18 @@ float4 PSGradient(VertGrad vert_in) : TARGET
 	return lerp(color_base, color_crest, lerp_t);
 }
 
+float4 PSRange(VertGrad vert_in) : TARGET
+{
+    float4 color = float4(1.0, 0.0, 0.0, 1.0);  // Default to red
+    
+    if (vert_in.tex.y < 0.75)
+        color = float4(0.0, 1.0, 0.0, 1.0);  // Green
+    else if (vert_in.tex.y < 0.9)
+        color = float4(1.0, 1.0, 0.0, 1.0);  // Yellow
+    
+    return color;
+}
+
 technique Solid
 {
 	pass
@@ -83,6 +95,16 @@ technique Gradient
 		pixel_shader  = PSGradient(vert_in);
 	}
 }
+
+technique Range
+{
+    pass
+    {
+        vertex_shader = VSGradient(vert_in);
+        pixel_shader  = PSRange(vert_in);
+    }
+}
+
 
 technique Radial
 {

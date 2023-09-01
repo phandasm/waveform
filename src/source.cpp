@@ -404,6 +404,7 @@ namespace callbacks {
         obs_property_list_add_string(renderlist, T(P_SOLID), P_SOLID);
         obs_property_list_add_string(renderlist, T(P_GRADIENT), P_GRADIENT);
         obs_property_list_add_string(renderlist, T(P_PULSE), P_PULSE);
+        obs_property_list_add_string(renderlist, T(P_RANGE), P_RANGE);
         auto pulselist = obs_properties_add_list(props, P_PULSE_MODE, T(P_PULSE_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         obs_property_list_add_string(pulselist, T(P_PEAK_MAG), P_PEAK_MAG);
         obs_property_list_add_string(pulselist, T(P_PEAK_FREQ), P_PEAK_FREQ);
@@ -413,8 +414,9 @@ namespace callbacks {
         obs_property_set_modified_callback(renderlist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto grad = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_GRADIENT);
             auto pulse = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_PULSE);
-            obs_property_set_enabled(obs_properties_get(props, P_COLOR_CREST), grad || pulse);
-            set_prop_visible(props, P_GRAD_RATIO, grad || pulse);
+            auto range = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_RANGE);
+            obs_property_set_enabled(obs_properties_get(props, P_COLOR_CREST), grad || pulse || range);
+            set_prop_visible(props, P_GRAD_RATIO, grad || pulse || range);
             set_prop_visible(props, P_PULSE_MODE, pulse);
             return true;
             });
@@ -570,6 +572,8 @@ void WAVSource::get_settings(obs_data_t *settings)
         m_render_mode = RenderMode::GRADIENT;
     else if(p_equ(rendermode, P_PULSE))
         m_render_mode = RenderMode::PULSE;
+    else if(p_equ(rendermode, P_RANGE))
+        m_render_mode = RenderMode::RANGE;
     else
         m_render_mode = RenderMode::SOLID;
 
@@ -1583,8 +1587,12 @@ gs_technique_t *WAVSource::get_shader_tech()
     const char *techname;
     if(m_radial)
         techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
+    else if(m_render_mode == RenderMode::GRADIENT)
+        techname = "Gradient";
+    else if(m_render_mode == RenderMode::RANGE)
+        techname = "Range";
     else
-        techname = (m_render_mode == RenderMode::GRADIENT) ? "Gradient" : "Solid";
+        techname = "Solid";
     return gs_effect_get_technique(m_shader, techname);
 }
 

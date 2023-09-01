@@ -42,6 +42,7 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_SOLID             "solid"
 #define P_GRADIENT          "gradient"
 #define P_PULSE             "pulse"
+#define P_RANGE             "range"
 
 #define P_PULSE_MODE        "pulse_mode"
 #define P_PEAK_MAG          "peak_magnitude"
