@@ -124,3 +124,12 @@ technique RadialGradient
 		pixel_shader  = PSGradient(vert_in);
 	}
 }
+
+technique RadialRange
+{
+	pass
+	{
+		vertex_shader = VSRadial(vert_in);
+		pixel_shader  = PSRange(vert_in);
+	}
+}

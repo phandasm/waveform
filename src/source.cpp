@@ -1608,7 +1608,14 @@ gs_technique_t *WAVSource::get_shader_tech()
 {
     const char *techname;
     if(m_radial)
-        techname = (m_render_mode == RenderMode::GRADIENT) ? "RadialGradient" : "Radial";
+    {
+        if(m_render_mode == RenderMode::GRADIENT)
+            techname = "RadialGradient";
+        else if(m_render_mode == RenderMode::RANGE)
+            techname = "RadialRange";
+        else
+            techname = "Radial";
+    }
     else if(m_render_mode == RenderMode::GRADIENT)
         techname = "Gradient";
     else if(m_render_mode == RenderMode::RANGE)
