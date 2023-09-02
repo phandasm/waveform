@@ -151,8 +151,11 @@ namespace callbacks {
         obs_data_set_default_double(settings, P_ROLLOFF_RATE, 0.0);
         obs_data_set_default_string(settings, P_RENDER_MODE, P_SOLID);
         obs_data_set_default_int(settings, P_COLOR_BASE, 0xffffffff);
+        obs_data_set_default_int(settings, P_COLOR_MIDDLE, 0xffffffff);
         obs_data_set_default_int(settings, P_COLOR_CREST, 0xffffffff);
         obs_data_set_default_double(settings, P_GRAD_RATIO, 0.75);
+        obs_data_set_default_int(settings, P_RANGE_MIDDLE, -20);
+        obs_data_set_default_int(settings, P_RANGE_CREST, -9);
         obs_data_set_default_int(settings, P_BAR_WIDTH, 24);
         obs_data_set_default_int(settings, P_BAR_GAP, 6);
         obs_data_set_default_int(settings, P_STEP_WIDTH, 8);
@@ -409,14 +412,22 @@ namespace callbacks {
         obs_property_list_add_string(pulselist, T(P_PEAK_MAG), P_PEAK_MAG);
         obs_property_list_add_string(pulselist, T(P_PEAK_FREQ), P_PEAK_FREQ);
         obs_properties_add_color_alpha(props, P_COLOR_BASE, T(P_COLOR_BASE));
+        obs_properties_add_color_alpha(props, P_COLOR_MIDDLE, T(P_COLOR_MIDDLE));
         obs_properties_add_color_alpha(props, P_COLOR_CREST, T(P_COLOR_CREST));
         obs_properties_add_float_slider(props, P_GRAD_RATIO, T(P_GRAD_RATIO), 0.0, 4.0, 0.01);
+        auto range_middle = obs_properties_add_int_slider(props, P_RANGE_MIDDLE, T(P_RANGE_MIDDLE), -120, 0, 1);
+        obs_property_int_set_suffix(range_middle, " dBFS");
+        auto range_crest = obs_properties_add_int_slider(props, P_RANGE_CREST, T(P_RANGE_CREST), -120, 0, 1);
+        obs_property_int_set_suffix(range_crest, " dBFS");
         obs_property_set_modified_callback(renderlist, [](obs_properties_t *props, [[maybe_unused]] obs_property_t *property, obs_data_t *settings) -> bool {
             auto grad = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_GRADIENT);
             auto pulse = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_PULSE);
             auto range = p_equ(obs_data_get_string(settings, P_RENDER_MODE), P_RANGE);
+            obs_property_set_enabled(obs_properties_get(props, P_COLOR_MIDDLE), range);
             obs_property_set_enabled(obs_properties_get(props, P_COLOR_CREST), grad || pulse || range);
-            set_prop_visible(props, P_GRAD_RATIO, grad || pulse || range);
+            set_prop_visible(props, P_GRAD_RATIO, grad || pulse);
+            set_prop_visible(props, P_RANGE_MIDDLE, range);
+            set_prop_visible(props, P_RANGE_CREST, range);
             set_prop_visible(props, P_PULSE_MODE, pulse);
             return true;
             });
@@ -496,8 +507,11 @@ void WAVSource::get_settings(obs_data_t *settings)
     auto rendermode = obs_data_get_string(settings, P_RENDER_MODE);
     auto pulsemode = obs_data_get_string(settings, P_PULSE_MODE);
     auto color_base = obs_data_get_int(settings, P_COLOR_BASE);
+    auto color_middle = obs_data_get_int(settings, P_COLOR_MIDDLE);
     auto color_crest = obs_data_get_int(settings, P_COLOR_CREST);
     m_grad_ratio = (float)obs_data_get_double(settings, P_GRAD_RATIO);
+    m_range_middle = (int)obs_data_get_int(settings, P_RANGE_MIDDLE);
+    m_range_crest = (int)obs_data_get_int(settings, P_RANGE_CREST);
     auto display = obs_data_get_string(settings, P_DISPLAY_MODE);
     m_bar_width = (int)obs_data_get_int(settings, P_BAR_WIDTH);
     m_bar_gap = (int)obs_data_get_int(settings, P_BAR_GAP);
@@ -513,6 +527,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_max_gain = (float)obs_data_get_int(settings, P_MAX_GAIN);
 
     m_color_base = { {{(uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f}} };
+    m_color_middle = { {{(uint8_t)color_middle / 255.0f, (uint8_t)(color_middle >> 8) / 255.0f, (uint8_t)(color_middle >> 16) / 255.0f, (uint8_t)(color_middle >> 24) / 255.0f}} };
     m_color_crest = { {{(uint8_t)color_crest / 255.0f, (uint8_t)(color_crest >> 8) / 255.0f, (uint8_t)(color_crest >> 16) / 255.0f, (uint8_t)(color_crest >> 24) / 255.0f}} };
 
     if(m_fft_size < 128)
@@ -1628,6 +1643,23 @@ void WAVSource::set_shader_vars(float cpos, float miny, float minpos, float chan
             gs_effect_set_float(grad_center, cpos);
             auto grad_offset = gs_effect_get_param_by_name(m_shader, "grad_offset");
             gs_effect_set_float(grad_offset, channel_offset);
+        }
+        else if(m_render_mode == RenderMode::RANGE)
+        {
+            auto color_middle = gs_effect_get_param_by_name(m_shader, "color_middle");
+            gs_effect_set_vec4(color_middle, &m_color_middle);
+            auto color_crest = gs_effect_get_param_by_name(m_shader, "color_crest");
+            gs_effect_set_vec4(color_crest, &m_color_crest);
+            auto grad_height = gs_effect_get_param_by_name(m_shader, "grad_height");
+            gs_effect_set_float(grad_height, cpos - channel_offset);
+            auto grad_center = gs_effect_get_param_by_name(m_shader, "grad_center");
+            gs_effect_set_float(grad_center, cpos);
+            auto grad_offset = gs_effect_get_param_by_name(m_shader, "grad_offset");
+            gs_effect_set_float(grad_offset, channel_offset);
+            auto range_middle = gs_effect_get_param_by_name(m_shader, "range_middle");
+            gs_effect_set_float(range_middle, (float)(m_range_middle - m_ceiling) / m_floor);
+            auto range_crest = gs_effect_get_param_by_name(m_shader, "range_crest");
+            gs_effect_set_float(range_crest, (float)(m_range_crest - m_ceiling) / m_floor);
         }
     }
 
