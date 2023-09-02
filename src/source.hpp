@@ -63,7 +63,8 @@ enum class RenderMode
     LINE,
     SOLID,
     GRADIENT,
-    PULSE
+    PULSE,
+    RANGE
 };
 
 enum class PulseMode
@@ -165,8 +166,11 @@ protected:
     int m_ceiling = 0;
     float m_gravity = 0.0f;
     float m_grad_ratio = 1.0f;
+    int m_range_middle = -20;
+    int m_range_crest = -9;
     bool m_fast_peaks = false;
     vec4 m_color_base{ {{1.0, 1.0, 1.0, 1.0}} };
+    vec4 m_color_middle{ {{1.0, 1.0, 1.0, 1.0}} };
     vec4 m_color_crest{ {{1.0, 1.0, 1.0, 1.0}} };
     float m_slope = 0.0f;
     bool m_log_scale = true;
