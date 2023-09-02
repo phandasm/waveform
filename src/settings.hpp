@@ -83,6 +83,7 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_INTERP_MODE       "interp_mode"
 #define P_POINT             "point"
 #define P_LANCZOS           "lanczos"
+#define P_CATROM            "catmull_rom"
 
 #define P_FILTER_MODE       "filter_mode"
 #define P_FILTER_RADIUS     "filter_radius"

@@ -64,6 +64,44 @@ Kernel<T> make_gauss_kernel(T sigma)
     return ret;
 }
 
+template<typename T>
+Kernel<T> make_catrom_kernel(const std::vector<T>& indices, T t)
+{
+    Kernel<T> ret;
+    T matrix[4][4] = {
+        { 0, -t,       2 * t,    -t },
+        { 1,  0,       t - 3, 2 - t },
+        { 0,  t, 3 - (2 * t), t - 2 },
+        { 0,  0,          -t,     t }
+    };
+
+    const auto size = (intmax_t)indices.size();
+    if(size <= 0)
+        return ret;
+    const auto ksize = size * 4;
+    ret.weights.reset(ksize);
+    ret.radius = 2;
+    ret.size = 4;
+    ret.sse_size = 4 & -(16 / (int)sizeof(T));
+    ret.avx_size = 4 & -(32 / (int)sizeof(T));
+
+    for(intmax_t i = 0; i < size; ++i)
+    {
+        auto u = indices[i] - std::floor(indices[i]);
+        T row[4] = { 1, u, u * u, u * u * u };
+
+        for(intmax_t j = 0; j < 4; ++j)
+        {
+            T sum = 0;
+            for(intmax_t k = 0; k < 4; ++k)
+                sum += row[k] * matrix[j][k];
+            ret.weights[(i * 4) + j] = sum;
+        }
+    }
+
+    return ret;
+}
+
 // this creates a rather large lookup table, size * (radius * 2) * sizeof(T) bytes
 template<typename T>
 Kernel<T> make_lanczos_kernel(const std::vector<T>& indices, const intmax_t radius)
@@ -75,9 +113,9 @@ Kernel<T> make_lanczos_kernel(const std::vector<T>& indices, const intmax_t radi
     const auto ksize = size * (radius * 2);
     ret.weights.reset(ksize);
     ret.radius = (int)radius;
-    ret.size = (int)ksize; // size fields currently unused, would probably be more useful if they measured a single node rather than the whole buffer
-    ret.sse_size = ksize & -(16 / (int)sizeof(T));
-    ret.avx_size = ksize & -(32 / (int)sizeof(T));
+    ret.size = (int)(radius * 2);
+    ret.sse_size = ret.size & -(16 / (int)sizeof(T));
+    ret.avx_size = ret.size & -(32 / (int)sizeof(T));
     const auto fradius = (T)radius;
     for(intmax_t i = 0; i < size; ++i)
     {
@@ -120,7 +158,7 @@ T weighted_avg(const std::vector<T>& samples, const Kernel<T>& kernel, intmax_t 
 }
 
 template<typename T>
-WAV_FORCE_INLINE T lanczos_convolve(const T *samples, size_t sz, const Kernel<T>& kernel, intmax_t index, intmax_t kernel_base)
+WAV_FORCE_INLINE T kernel_convolve(const T *samples, size_t sz, const Kernel<T>& kernel, intmax_t index, intmax_t kernel_base)
 {
     const auto start = (index - kernel.radius) + 1;
     const auto stop = std::min(index + kernel.radius + 1, (intmax_t)sz);
@@ -142,20 +180,20 @@ std::vector<T>& apply_filter(const std::vector<T>& samples, const Kernel<T>& ker
 }
 
 template<typename T>
-std::vector<T>& apply_lanczos_filter(const T *samples, size_t sz, const std::vector<T>& x, const Kernel<T>& kernel, std::vector<T>& output)
+std::vector<T>& apply_interp_filter(const T *samples, size_t sz, const std::vector<T>& x, const Kernel<T>& kernel, std::vector<T>& output)
 {
     const auto xsz = (intmax_t)x.size();
     const auto d = (intmax_t)kernel.radius * 2;
     if((intmax_t)output.size() < xsz)
         output.resize(xsz);
     for(intmax_t i = 0, j = 0; i < xsz; ++i, j += d)
-        output[i] = lanczos_convolve(samples, sz, kernel, (intmax_t)x[i], j);
+        output[i] = kernel_convolve(samples, sz, kernel, (intmax_t)x[i], j);
     return output;
 }
 
 // bar graph version
 template<typename T>
-std::vector<T>& apply_lanczos_filter(const T *samples, size_t sz, const std::vector<int>& band_widths, const std::vector<T>& x, const Kernel<T>& kernel, std::vector<T>& output)
+std::vector<T>& apply_interp_filter(const T *samples, size_t sz, const std::vector<int>& band_widths, const std::vector<T>& x, const Kernel<T>& kernel, std::vector<T>& output)
 {
     const auto d = (intmax_t)kernel.radius * 2;
     const auto bands = (intmax_t)band_widths.size();
@@ -166,7 +204,7 @@ std::vector<T>& apply_lanczos_filter(const T *samples, size_t sz, const std::vec
         auto sum = (T)0;
         auto count = (intmax_t)band_widths[i];
         for(intmax_t j = 0; j < count; ++j, ++k, l += d)
-            sum += lanczos_convolve(samples, sz, kernel, (intmax_t)x[k], l);
+            sum += kernel_convolve(samples, sz, kernel, (intmax_t)x[k], l);
         output[i] = sum / (T)count;
     }
     return output;
@@ -180,10 +218,9 @@ float weighted_avg_fma3(const std::vector<float>& samples, const Kernel<float>& 
 std::vector<float>& apply_filter_fma3(const std::vector<float>& samples, const Kernel<float>& kernel, std::vector<float>& output);
 //std::vector<double>& apply_filter_fma3(const std::vector<double>& samples, const Kernel<double>& kernel, std::vector<double>& output);
 
-// WARNING: these require kernel.radius == 4
-std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output);
+std::vector<float>& apply_interp_filter_fma3(const float *samples, size_t sz, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output);
 
 // bar graph version
-std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, const std::vector<int>& band_widths, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output);
+std::vector<float>& apply_interp_filter_fma3(const float *samples, size_t sz, const std::vector<int>& band_widths, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output);
 
 #endif // !DISABLE_X86_SIMD

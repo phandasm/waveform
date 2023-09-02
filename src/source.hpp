@@ -41,7 +41,8 @@ enum class FFTWindow
 enum class InterpMode
 {
     POINT,
-    LANCZOS
+    LANCZOS,
+    CATROM
 };
 
 enum class FilterMode
@@ -205,7 +206,7 @@ protected:
     float m_filter_radius = 0.0f;
 
     // lanczos filter
-    Kernel<float> m_lanczos_kernel;
+    Kernel<float> m_interp_kernel;
 
     // slope
     AVXBufR m_slope_modifiers;

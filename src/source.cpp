@@ -136,7 +136,7 @@ namespace callbacks {
         obs_data_set_default_int(settings, P_FFT_SIZE, 4096);
         obs_data_set_default_bool(settings, P_AUTO_FFT_SIZE, false);
         obs_data_set_default_string(settings, P_WINDOW, P_HANN);
-        obs_data_set_default_string(settings, P_INTERP_MODE, P_LANCZOS);
+        obs_data_set_default_string(settings, P_INTERP_MODE, P_CATROM);
         obs_data_set_default_string(settings, P_FILTER_MODE, P_NONE);
         obs_data_set_default_double(settings, P_FILTER_RADIUS, 1.5);
         obs_data_set_default_string(settings, P_TSMOOTHING, P_EXPAVG);
@@ -370,6 +370,7 @@ namespace callbacks {
         auto interplist = obs_properties_add_list(props, P_INTERP_MODE, T(P_INTERP_MODE), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         obs_property_list_add_string(interplist, T(P_POINT), P_POINT);
         obs_property_list_add_string(interplist, T(P_LANCZOS), P_LANCZOS);
+        obs_property_list_add_string(interplist, T(P_CATROM), P_CATROM);
         obs_property_set_long_description(interplist, T(P_INTERP_DESC));
 
         // filter
@@ -551,6 +552,8 @@ void WAVSource::get_settings(obs_data_t *settings)
 
     if(p_equ(interp, P_LANCZOS))
         m_interp_mode = InterpMode::LANCZOS;
+    else if(p_equ(interp, P_CATROM))
+        m_interp_mode = InterpMode::CATROM;
     else
         m_interp_mode = InterpMode::POINT;
 
@@ -748,7 +751,7 @@ void WAVSource::free_bufs()
     m_rolloff_modifiers.reset();
 
     m_kernel = {};
-    m_lanczos_kernel = {};
+    m_interp_kernel = {};
 
     if(m_fft_plan != nullptr)
     {
@@ -822,8 +825,8 @@ void WAVSource::init_interp(unsigned int sz)
             m_band_widths[i] = std::max((int)(m_interp_indices[i + 1] - m_interp_indices[i]), 1);
     }
 
-    // lanczos filter
-    if(m_interp_mode == InterpMode::LANCZOS)
+    // interpolation filter
+    if(m_interp_mode != InterpMode::POINT)
     {
         if((m_display_mode != DisplayMode::CURVE) && (m_display_mode != DisplayMode::WAVEFORM))
         {
@@ -839,7 +842,11 @@ void WAVSource::init_interp(unsigned int sz)
             }
             m_interp_indices = std::move(samples);
         }
-        m_lanczos_kernel = make_lanczos_kernel(m_interp_indices, 4);
+
+        if(m_interp_mode == InterpMode::LANCZOS)
+            m_interp_kernel = make_lanczos_kernel(m_interp_indices, 4);
+        else if(m_interp_mode == InterpMode::CATROM)
+            m_interp_kernel = make_catrom_kernel(m_interp_indices, 0.5f);
     }
 }
 
@@ -1286,14 +1293,14 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
     auto minpos = 0u;
     for(auto channel = 0u; channel < (m_stereo ? 2u : 1u); ++channel)
     {
-        if(m_interp_mode == InterpMode::LANCZOS)
+        if(m_interp_mode != InterpMode::POINT)
         {
             const auto sz = (m_display_mode == DisplayMode::WAVEFORM) ? m_fft_size : m_fft_size / 2u;
 #ifndef DISABLE_X86_SIMD
             if(HAVE_AVX)
-                apply_lanczos_filter_fma3(m_decibels[channel].get(), sz, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                apply_interp_filter_fma3(m_decibels[channel].get(), sz, m_interp_indices, m_interp_kernel, m_interp_bufs[channel]);
             else
-                apply_lanczos_filter(m_decibels[channel].get(), sz, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                apply_interp_filter(m_decibels[channel].get(), sz, m_interp_indices, m_interp_kernel, m_interp_bufs[channel]);
 #else
             apply_lanczos_filter(m_decibels[channel].get(), sz, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
 #endif
@@ -1418,13 +1425,13 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         }
         else
         {
-            if(m_interp_mode == InterpMode::LANCZOS)
+            if(m_interp_mode != InterpMode::POINT)
             {
 #ifndef DISABLE_X86_SIMD
                 if(HAVE_AVX)
-                    apply_lanczos_filter_fma3(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                    apply_interp_filter_fma3(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_interp_kernel, m_interp_bufs[channel]);
                 else
-                    apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                    apply_interp_filter(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_interp_kernel, m_interp_bufs[channel]);
 #else
                 apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
 #endif

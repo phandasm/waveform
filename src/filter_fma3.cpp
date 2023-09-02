@@ -71,7 +71,8 @@ std::vector<float>& apply_filter_fma3(const std::vector<float>& samples, const K
     return output;
 }
 
-std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output)
+// specialized for kernel.size = 8
+static std::vector<float>& apply_interp_filter_fma3_x8(const float *samples, size_t sz, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output)
 {
     assert(kernel.radius == 4);
     constexpr auto step = sizeof(__m256) / sizeof(float);
@@ -98,7 +99,8 @@ std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, c
 }
 
 // bar graph version
-std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, const std::vector<int>& band_widths, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output)
+// specialized for kernel.size = 8
+static std::vector<float>& apply_interp_filter_fma3_x8(const float *samples, size_t sz, const std::vector<int>& band_widths, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output)
 {
     assert(kernel.radius == 4);
     constexpr auto step = sizeof(__m256) / sizeof(float);
@@ -130,4 +132,86 @@ std::vector<float>& apply_lanczos_filter_fma3(const float *samples, size_t sz, c
         output[i] = horizontal_sum(vecsum) / count;
     }
     return output;
+}
+
+// specialized for kernel.size = 4
+static std::vector<float>& apply_interp_filter_fma3_x4(const float *samples, size_t sz, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output)
+{
+    assert(kernel.radius == 2);
+    constexpr auto step = sizeof(__m128) / sizeof(float);
+    const auto sse_stop = (intmax_t)sz - 2;
+    const auto xsz = x.size();
+    if(output.size() < xsz)
+        output.resize(xsz);
+    for(size_t i = 0, j = 0; i < xsz; ++i, j += step)
+    {
+        auto index = (intmax_t)x[i];
+        if((index >= 1) && (index < sse_stop))
+            output[i] = _mm_cvtss_f32(_mm_dp_ps(_mm_loadu_ps(&samples[index - 1]), _mm_load_ps(&kernel.weights[j]), 0xf1)); // slightly faster than mulps + reduction
+        else
+        {
+            const auto start = index - 1;
+            const auto stop = std::min(index + 3, (intmax_t)sz);
+            auto sum = _mm_setzero_ps();
+            for(auto k = std::max(start, (intmax_t)0); k < stop; ++k)
+                sum = _mm_fmadd_ss(_mm_load_ss(&samples[k]), _mm_load_ss(&kernel.weights[j + (k - start)]), sum);
+            output[i] = _mm_cvtss_f32(sum);
+        }
+    }
+    return output;
+}
+
+// bar graph version
+// specialized for kernel.size = 4
+static std::vector<float>& apply_interp_filter_fma3_x4(const float *samples, size_t sz, const std::vector<int>& band_widths, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output)
+{
+    assert(kernel.radius == 2);
+    constexpr auto step = sizeof(__m128) / sizeof(float);
+    const auto sse_stop = (intmax_t)sz - 2;
+    const auto bands = (intmax_t)band_widths.size();
+    if((intmax_t)output.size() < bands)
+        output.resize(bands);
+    for(intmax_t i = 0, k = 0, l = 0; i < bands; ++i)
+    {
+        auto vecsum = _mm_setzero_ps();
+        auto count = (intmax_t)band_widths[i];
+        for(intmax_t j = 0; j < count; ++j, ++k, l += step)
+        {
+            auto index = (intmax_t)x[k];
+            if((index >= 1) && (index < sse_stop))
+                vecsum = _mm_fmadd_ps(_mm_loadu_ps(&samples[index - 1]), _mm_load_ps(&kernel.weights[l]), vecsum);
+            else
+            {
+                const auto start = index - 1;
+                const auto stop = std::min(index + 3, (intmax_t)sz);
+
+                auto sum = _mm_setzero_ps();
+                for(auto m = std::max(start, (intmax_t)0); m < stop; ++m)
+                    sum = _mm_fmadd_ss(_mm_load_ss(&samples[m]), _mm_load_ss(&kernel.weights[l + (m - start)]), sum);
+                vecsum = _mm_add_ss(vecsum, sum);
+            }
+        }
+        output[i] = horizontal_sum(vecsum) / count;
+    }
+    return output;
+}
+
+std::vector<float>& apply_interp_filter_fma3(const float *samples, size_t sz, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output)
+{
+    if(kernel.size == 8)
+        return apply_interp_filter_fma3_x8(samples, sz, x, kernel, output); // lanczos
+    else if(kernel.size == 4)
+        return apply_interp_filter_fma3_x4(samples, sz, x, kernel, output); // catmull-rom
+    else
+        return apply_interp_filter(samples, sz, x, kernel, output); // fallback
+}
+
+std::vector<float>& apply_interp_filter_fma3(const float *samples, size_t sz, const std::vector<int>& band_widths, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output)
+{
+    if(kernel.size == 8)
+        return apply_interp_filter_fma3_x8(samples, sz, band_widths, x, kernel, output); // lanczos
+    else if(kernel.size == 4)
+        return apply_interp_filter_fma3_x4(samples, sz, band_widths, x, kernel, output); // catmull-rom
+    else
+        return apply_interp_filter(samples, sz, band_widths, x, kernel, output); // fallback
 }
