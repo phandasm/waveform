@@ -1,9 +1,12 @@
 uniform float4x4 ViewProj;
 uniform float4 color_base = {1.0, 1.0, 1.0, 1.0};
+uniform float4 color_middle = {1.0, 1.0, 1.0, 1.0};
 uniform float4 color_crest = {1.0, 1.0, 1.0, 1.0};
 uniform float grad_center = 0.0;
 uniform float grad_height = 0.0;
 uniform float grad_offset = 0.0;
+uniform float range_middle = 0.69;  // -20dB when floor is -65dB
+uniform float range_crest = 0.86;   //  -9dB when floor is -65dB
 
 uniform float graph_width = 0.0;
 uniform float graph_height = 0.0;
@@ -66,6 +69,16 @@ float4 PSGradient(VertGrad vert_in) : TARGET
 	return lerp(color_base, color_crest, lerp_t);
 }
 
+float4 PSRange(VertGrad vert_in) : TARGET
+{
+    float ratio = 1.0 - saturate((distance(vert_in.tex.y, grad_center) - grad_offset) / grad_height);
+    if (ratio > range_middle)
+        return color_base;  // Green
+    else if (ratio < range_crest)
+        return color_crest;  // Red
+	return color_middle;  // Yellow
+}
+
 technique Solid
 {
 	pass
@@ -83,6 +96,16 @@ technique Gradient
 		pixel_shader  = PSGradient(vert_in);
 	}
 }
+
+technique Range
+{
+    pass
+    {
+        vertex_shader = VSGradient(vert_in);
+        pixel_shader  = PSRange(vert_in);
+    }
+}
+
 
 technique Radial
 {
