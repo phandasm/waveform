@@ -1321,7 +1321,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
             else
                 apply_interp_filter(m_decibels[channel].get(), sz, m_interp_indices, m_interp_kernel, m_interp_bufs[channel]);
 #else
-            apply_lanczos_filter(m_decibels[channel].get(), sz, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+            apply_interp_filter(m_decibels[channel].get(), sz, m_interp_indices, m_interp_kernel, m_interp_bufs[channel]);
 #endif
         }
         else
@@ -1452,7 +1452,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                 else
                     apply_interp_filter(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_interp_kernel, m_interp_bufs[channel]);
 #else
-                apply_lanczos_filter(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_lanczos_kernel, m_interp_bufs[channel]);
+                apply_interp_filter(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_interp_kernel, m_interp_bufs[channel]);
 #endif
             }
             else
