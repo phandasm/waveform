@@ -35,7 +35,8 @@ enum class FFTWindow
     HANN,
     HAMMING,
     BLACKMAN,
-    BLACKMAN_HARRIS
+    BLACKMAN_HARRIS,
+    POWER_OF_SINE
 };
 
 enum class InterpMode
@@ -196,6 +197,7 @@ protected:
     int m_min_bar_height = 0;
     int m_channel_base = 0; // channel to use in single channel mode
     bool m_ignore_mute = false;
+    int m_sine_exponent = 2;
 
     // interpolation
     std::vector<float> m_interp_indices;

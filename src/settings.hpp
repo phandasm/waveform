@@ -68,6 +68,10 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_HAMMING           "hamming"
 #define P_BLACKMAN          "blackman"
 #define P_BLACKMAN_HARRIS   "blackman_harris"
+#define P_POWER_OF_SINE     "power_of_sine"
+#define P_SINE_EXPONENT     "sine_exponent"
+
+#define P_ENABLE_LARGE_FFT  "enable_large_fft"
 
 #define P_AUTO_FFT_SIZE     "auto_fft_size"
 #define P_FFT_SIZE          "fft_size"
@@ -147,3 +151,4 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_MIRROR_DESC       "mirror_desc"
 #define P_RADIAL_ARC_DESC   "radial_arc_desc"
 #define P_IGNORE_MUTE_DESC  "ignore_mute_desc"
+#define P_LARGE_FFT_DESC    "lage_fft_desc"
