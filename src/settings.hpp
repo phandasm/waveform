@@ -105,6 +105,7 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_GRAVITY           "gravity"
 #define P_TSMOOTHING        "temporal_smoothing"
 #define P_EXPAVG            "exp_moving_avg"
+#define P_TVEXPAVG          "tv_exp_moving_avg"
 #define P_FAST_PEAKS        "fast_peaks"
 
 #define P_COLOR_BASE        "color_base"

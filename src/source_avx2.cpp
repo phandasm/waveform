@@ -118,7 +118,7 @@ void WAVSourceAVX2::tick_spectrum([[maybe_unused]] float seconds)
         // normalize FFT output and convert to dBFS
         const auto shuffle_mask = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
         const auto mag_coefficient = _mm256_set1_ps(2.0f / m_window_sum);
-        const auto g = _mm256_set1_ps(m_gravity);
+        const auto g = _mm256_set1_ps(get_gravity(seconds));
         const auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g); // 1 - gravity
         const bool slope = m_slope > 0.0f;
         for(size_t i = 0; i < outsz; i += step)
@@ -143,7 +143,7 @@ void WAVSourceAVX2::tick_spectrum([[maybe_unused]] float seconds)
                 mag = _mm256_mul_ps(mag, _mm256_load_ps(&m_slope_modifiers[i]));
 
             // time domain smoothing
-            if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
+            if(m_tsmoothing != TSmoothingMode::NONE)
             {
                 auto oldval = _mm256_load_ps(&m_tsmooth_buf[channel][i]);
                 // take new values immediately if larger

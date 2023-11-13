@@ -56,7 +56,8 @@ enum class FilterMode
 enum class TSmoothingMode
 {
     NONE,
-    EXPONENTIAL
+    EXPONENTIAL,
+    TVEXPONENTIAL
 };
 
 enum class RenderMode
@@ -286,6 +287,16 @@ protected:
             return 20.0f * std::log10(mag);
         else
             return DB_MIN;
+    }
+
+    inline float get_gravity(float seconds)
+    {
+        constexpr float denom = 0.03868924705242879469662125316986f;
+        constexpr float hi = denom * 5.0f;
+        constexpr float lo = 0.0f;
+        if((m_tsmoothing == TSmoothingMode::NONE) || (m_gravity <= 0.0f))
+            return 0.0f;
+        return (m_tsmoothing == TSmoothingMode::TVEXPONENTIAL) ? std::exp(-seconds / lerp(lo, hi, m_gravity)) : m_gravity;
     }
 
 public:

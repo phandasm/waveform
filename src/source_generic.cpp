@@ -108,7 +108,7 @@ void WAVSourceGeneric::tick_spectrum([[maybe_unused]] float seconds)
             continue;
 
         const auto mag_coefficient = 2.0f / m_window_sum;
-        const auto g = m_gravity;
+        const auto g = get_gravity(seconds);
         const auto g2 = 1.0f - g;
         const bool slope = m_slope > 0.0f;
         for(size_t i = 0; i < outsz; i += step)
@@ -116,12 +116,12 @@ void WAVSourceGeneric::tick_spectrum([[maybe_unused]] float seconds)
             auto real = m_fft_output[i][0];
             auto imag = m_fft_output[i][1];
 
-            auto mag = std::sqrt((real * real) + (imag * imag)) * mag_coefficient;
+            auto mag = std::hypot(real, imag) * mag_coefficient;
 
             if(slope)
                 mag *= m_slope_modifiers[i];
 
-            if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
+            if(m_tsmoothing != TSmoothingMode::NONE)
             {
                 auto oldval = m_tsmooth_buf[channel][i];
                 if(m_fast_peaks)
@@ -249,9 +249,9 @@ void WAVSourceGeneric::tick_meter([[maybe_unused]] float seconds)
                 out = std::max(out, std::abs(m_decibels[channel][i]));
         }
 
-        if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
+        if(m_tsmoothing != TSmoothingMode::NONE)
         {
-            const auto g = m_gravity;
+            const auto g = get_gravity(seconds);
             const auto g2 = 1.0f - g;
             if(!m_fast_peaks || (out <= m_meter_buf[channel]))
                 out = (g * m_meter_buf[channel]) + (g2 * out);

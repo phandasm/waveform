@@ -376,6 +376,7 @@ namespace callbacks {
         auto tsmoothlist = obs_properties_add_list(props, P_TSMOOTHING, T(P_TSMOOTHING), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
         obs_property_list_add_string(tsmoothlist, T(P_NONE), P_NONE);
         obs_property_list_add_string(tsmoothlist, T(P_EXPAVG), P_EXPAVG);
+        obs_property_list_add_string(tsmoothlist, T(P_TVEXPAVG), P_TVEXPAVG);
         auto grav = obs_properties_add_float_slider(props, P_GRAVITY, T(P_GRAVITY), 0.0, 1.0, 0.01);
         auto peaks = obs_properties_add_bool(props, P_FAST_PEAKS, T(P_FAST_PEAKS));
         obs_property_set_long_description(tsmoothlist, T(P_TEMPORAL_DESC));
@@ -603,6 +604,8 @@ void WAVSource::get_settings(obs_data_t *settings)
 
     if(p_equ(tsmoothing, P_EXPAVG))
         m_tsmoothing = TSmoothingMode::EXPONENTIAL;
+    else if(p_equ(tsmoothing, P_TVEXPAVG))
+        m_tsmoothing = TSmoothingMode::TVEXPONENTIAL;
     else
         m_tsmoothing = TSmoothingMode::NONE;
 

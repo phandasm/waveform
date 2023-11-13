@@ -24,6 +24,8 @@
 
 // adaptation of WAVSourceAVX2 to support CPUs without AVX2
 // see comments of WAVSourceAVX2
+// FIXME: this specialization should be removed.
+// The only CPUs with FMA3 but not AVX2 are ancient AMD chips that prefer SSE code anyway.
 void WAVSourceAVX::tick_spectrum([[maybe_unused]] float seconds)
 {
     //std::lock_guard lock(m_mtx); // now locked in tick()
@@ -114,7 +116,7 @@ void WAVSourceAVX::tick_spectrum([[maybe_unused]] float seconds)
         constexpr auto shuffle_mask_r = 0 | (2 << 2) | (0 << 4) | (2 << 6);
         constexpr auto shuffle_mask_i = 1 | (3 << 2) | (1 << 4) | (3 << 6);
         const auto mag_coefficient = _mm256_set1_ps(2.0f / m_window_sum);
-        const auto g = _mm256_set1_ps(m_gravity);
+        const auto g = _mm256_set1_ps(get_gravity(seconds));
         const auto g2 = _mm256_sub_ps(_mm256_set1_ps(1.0), g);
         const bool slope = m_slope > 0.0f;
         for(size_t i = 0; i < outsz; i += step)
@@ -138,7 +140,7 @@ void WAVSourceAVX::tick_spectrum([[maybe_unused]] float seconds)
             if(slope)
                 mag = _mm256_mul_ps(mag, _mm256_load_ps(&m_slope_modifiers[i]));
 
-            if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
+            if(m_tsmoothing != TSmoothingMode::NONE)
             {
                 auto oldval = _mm256_load_ps(&m_tsmooth_buf[channel][i]);
                 if(m_fast_peaks)
@@ -280,9 +282,9 @@ void WAVSourceAVX::tick_meter([[maybe_unused]] float seconds)
             out = horizontal_max(_mm256_max_ps(max1, max2));
         }
 
-        if(m_tsmoothing == TSmoothingMode::EXPONENTIAL)
+        if(m_tsmoothing != TSmoothingMode::NONE)
         {
-            const auto g = m_gravity;
+            const auto g = get_gravity(seconds);
             const auto g2 = 1.0f - g;
             if(!m_fast_peaks || (out <= m_meter_buf[channel]))
                 out = (g * m_meter_buf[channel]) + (g2 * out);
