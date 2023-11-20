@@ -1,14 +1,11 @@
-## Changes in 1.7.0-beta1
-- Add the ironically missing-until-now waveform display mode (experimental)
-- Add 'Pulse' render mode
-- Add option to continue processing audio while source is muted
-- Add option to adjust maximum volume normalization gain
-- Add option to adjust rotation of radial display
-- Add Traditional Chinese localization (#44 thanks to Kai Lee)
-- Add Italian localization (thanks to Peppe73)
-- Attempt to mitigate A/V desync in some setups
-- Fix spectrum accuracy, **spectrum graphs will appear slightly "louder" now.**
-- Increase 'FFT Size' limit
+## Changes in 1.8.0-beta1
+- Add 'Range' render mode (#56 thanks to @filiphanes)
+- Add power-of-sine windows (#58)
+- Add 'Time Variant EMA' temporal smoothing method (#58)
+- Add Cubic interpolation method
+- Increase 'FFT Size' limit to 65536 (#58)
+- Update Chinese translation (#51 thanks to @GodGun968)
+- Rename 'Gravity' setting to 'Inertia'
 
 ## Installation
 ### Windows
