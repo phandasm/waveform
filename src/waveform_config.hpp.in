@@ -3,6 +3,18 @@
 #cmakedefine DISABLE_X86_SIMD
 #cmakedefine WAVEFORM_VERSION "@WAVEFORM_VERSION@"
 
+#if defined(__x86_64__) || defined(_M_X64)
+#define WAVEFORM_ARCH "x64";
+#elif defined(__i386__) || defined(_M_IX86)
+#define WAVEFORM_ARCH "x86";
+#elif defined(__aarch64__) || defined(_M_ARM64)
+#define WAVEFORM_ARCH "ARM64";
+#elif defined(__arm__) || defined(_M_ARM)
+#define WAVEFORM_ARCH "ARM";
+#else
+#define WAVEFORM_ARCH "Unknown Arch";
+#endif
+
 #ifdef _MSC_VER
 #define WAV_FORCE_INLINE __forceinline
 #else

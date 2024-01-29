@@ -22,6 +22,8 @@
 
 float weighted_avg_fma3(const std::vector<float>& samples, const Kernel<float>& kernel, intmax_t index)
 {
+    // NOTE: Initial tests with 'usuable' radius values seemed to reveal performance benefit for 128-bit vectors
+    // averaging 2-3 iterations vs 1 iteration of 256-bit, but this could use re-tesing and can definitely be done better in any case.
     const auto start = (index - kernel.radius) + 1;
     const auto stop = index + kernel.radius;
     float sum = 0.0f;
@@ -147,7 +149,7 @@ static std::vector<float>& apply_interp_filter_fma3_x4(const float *samples, siz
     {
         auto index = (intmax_t)x[i];
         if((index >= 1) && (index < sse_stop))
-            output[i] = _mm_cvtss_f32(_mm_dp_ps(_mm_loadu_ps(&samples[index - 1]), _mm_load_ps(&kernel.weights[j]), 0xf1)); // slightly faster than mulps + reduction
+            output[i] = horizontal_sum(_mm_mul_ps(_mm_loadu_ps(&samples[index - 1]), _mm_load_ps(&kernel.weights[j])));
         else
         {
             const auto start = index - 1;

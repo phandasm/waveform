@@ -291,6 +291,9 @@ protected:
 
     inline float get_gravity(float seconds)
     {
+        // FIXME: Scaling on this slider could probably use adjustment.
+        // I don't remember what this constant is supposed to be but originally the idea was to tune the slider so the default value behaved
+        // about the same for both EMA types at 60 FPS, but it made for weird scaling so now we have this.
         constexpr float denom = 0.03868924705242879469662125316986f;
         constexpr float hi = denom * 5.0f;
         constexpr float lo = 0.0f;

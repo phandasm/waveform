@@ -213,10 +213,8 @@ std::vector<T>& apply_interp_filter(const T *samples, size_t sz, const std::vect
 #ifndef DISABLE_X86_SIMD
 
 float weighted_avg_fma3(const std::vector<float>& samples, const Kernel<float>& kernel, intmax_t index);
-//double weighted_avg_fma3(const std::vector<double>& samples, const Kernel<double>& kernel, intmax_t index);
 
 std::vector<float>& apply_filter_fma3(const std::vector<float>& samples, const Kernel<float>& kernel, std::vector<float>& output);
-//std::vector<double>& apply_filter_fma3(const std::vector<double>& samples, const Kernel<double>& kernel, std::vector<double>& output);
 
 std::vector<float>& apply_interp_filter_fma3(const float *samples, size_t sz, const std::vector<float>& x, const Kernel<float>& kernel, std::vector<float>& output);
 

@@ -1755,17 +1755,7 @@ void WAVSource::register_source()
     arch = " Generic";
 #endif // !DISABLE_X86_SIMD
 
-#if defined(__x86_64__) || defined(_M_X64)
-    LogInfo << "Registered v" VERSION_STRING " x64";
-#elif defined(__i386__) || defined(_M_IX86)
-    LogInfo << "Registered v" VERSION_STRING " x86";
-#elif defined(__aarch64__) || defined(_M_ARM64)
-    LogInfo << "Registered v" VERSION_STRING " ARM64";
-#elif defined(__arm__) || defined(_M_ARM)
-    LogInfo << "Registered v" VERSION_STRING " ARM";
-#else
-    LogInfo << "Registered v" VERSION_STRING " Unknown Arch";
-#endif
+    LogInfo << "Registered v" WAVEFORM_VERSION " " WAVEFORM_ARCH;
     LogInfo << "Using CPU capabilities:" << arch;
 
     obs_source_info info{};
@@ -1791,6 +1781,7 @@ void WAVSource::register_source()
 
 void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio_data *audio, bool muted)
 {
+    static_assert(AUDIO_OUTPUT_FRAMES > 0, "AUDIO_OUTPUT_FRAMES must be greater than zero."); // sanity check
     if(audio == nullptr)
         return;
     if(!m_mtx.try_lock_for(std::chrono::milliseconds(10)))
