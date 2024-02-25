@@ -170,6 +170,7 @@ namespace callbacks {
         obs_data_set_default_bool(settings, P_NORMALIZE_VOLUME, false);
         obs_data_set_default_int(settings, P_VOLUME_TARGET, -8);
         obs_data_set_default_int(settings, P_MAX_GAIN, 30);
+        obs_data_set_default_int(settings, P_AUDIO_SYNC_OFFSET, 0);
     }
 
     static obs_properties_t *get_properties([[maybe_unused]] void *data)
@@ -189,6 +190,11 @@ namespace callbacks {
 
         for(const auto& str : enumerate_audio_sources())
             obs_property_list_add_string(srclist, str.c_str(), str.c_str());
+
+        // audio sync
+        auto audio_sync = obs_properties_add_int_slider(props, P_AUDIO_SYNC_OFFSET, T(P_AUDIO_SYNC_OFFSET), -1000, 1000, 10);
+        obs_property_int_set_suffix(audio_sync, " ms");
+        obs_property_set_long_description(audio_sync, T(P_AUDIO_SYNC_DESC));
 
         // hide on silent audio
         obs_properties_add_bool(props, P_HIDE_SILENT, T(P_HIDE_SILENT));
@@ -547,6 +553,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     m_normalize_volume = obs_data_get_bool(settings, P_NORMALIZE_VOLUME);
     m_volume_target = (float)obs_data_get_int(settings, P_VOLUME_TARGET);
     m_max_gain = (float)obs_data_get_int(settings, P_MAX_GAIN);
+    m_ts_offset = (int64_t)obs_data_get_int(settings, P_AUDIO_SYNC_OFFSET) * 1000000ll;
 
     m_color_base = { {{(uint8_t)color_base / 255.0f, (uint8_t)(color_base >> 8) / 255.0f, (uint8_t)(color_base >> 16) / 255.0f, (uint8_t)(color_base >> 24) / 255.0f}} };
     m_color_middle = { {{(uint8_t)color_middle / 255.0f, (uint8_t)(color_middle >> 8) / 255.0f, (uint8_t)(color_middle >> 16) / 255.0f, (uint8_t)(color_middle >> 24) / 255.0f}} };

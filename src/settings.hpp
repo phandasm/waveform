@@ -132,6 +132,7 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_STEP_GAP          "step_gap"
 #define P_MIN_BAR_HEIGHT    "min_bar_height"
 
+#define P_AUDIO_SYNC_OFFSET "audio_sync_offset"
 
 // tooltip descriptions
 #define P_CHAN_DESC         "chan_desc"
@@ -153,3 +154,4 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_RADIAL_ARC_DESC   "radial_arc_desc"
 #define P_IGNORE_MUTE_DESC  "ignore_mute_desc"
 #define P_LARGE_FFT_DESC    "lage_fft_desc"
+#define P_AUDIO_SYNC_DESC   "audio_sync_desc"

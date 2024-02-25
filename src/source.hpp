@@ -150,6 +150,7 @@ protected:
     uint64_t m_capture_ts = 0;  // timestamp of last audio callback in nanoseconds
     uint64_t m_audio_ts = 0;    // timestamp of the end of available audio in nanoseconds
     uint64_t m_tick_ts = 0;     // timestamp of last 'tick' in nanoseconds
+    int64_t m_ts_offset = 0;    // audio sync offset in nanoseconds
 
     // settings
     RenderMode m_render_mode = RenderMode::SOLID;
@@ -270,9 +271,10 @@ protected:
 
     int64_t get_audio_sync(uint64_t ts)     // get delta between end of available audio and given time in nanoseconds
     {
-        auto delta = std::max(m_audio_ts, ts) - std::min(m_audio_ts, ts);
+        auto audio_ts = m_audio_ts + m_ts_offset;
+        auto delta = std::max(audio_ts, ts) - std::min(audio_ts, ts);
         delta = std::min(delta, MAX_TS_DELTA);
-        return (m_audio_ts < ts) ? -(int64_t)delta : (int64_t)delta;
+        return (audio_ts < ts) ? -(int64_t)delta : (int64_t)delta;
     }
 
     // constants
