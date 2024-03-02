@@ -153,5 +153,5 @@ static inline bool p_equ(const char *s1, const char *s2) { return std::strcmp(s1
 #define P_MIRROR_DESC       "mirror_desc"
 #define P_RADIAL_ARC_DESC   "radial_arc_desc"
 #define P_IGNORE_MUTE_DESC  "ignore_mute_desc"
-#define P_LARGE_FFT_DESC    "lage_fft_desc"
+#define P_LARGE_FFT_DESC    "large_fft_desc"
 #define P_AUDIO_SYNC_DESC   "audio_sync_desc"
