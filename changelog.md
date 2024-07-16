@@ -1,12 +1,7 @@
-## Changes in 1.8.0
-- Add 'Range' (tricolor dB range) render mode (#56 thanks to @filiphanes)
-- Add power-of-sine windows (#58)
-- Add 'Time Variant EMA' temporal smoothing method (#58, decouples smoothing from framerate)
-- Add Cubic interpolation method (now default)
-- Add option to adjust audio sync
-- Increase 'FFT Size' limit to 65536 (#58, requires 'Enable Large FFT Sizes' to be checked)
-- Update Chinese translation (#51, #61 thanks to @GodGun968)
-- Rename 'Gravity' setting to 'Inertia'
+## Changes in 1.8.1
+- Update Chinese translations (#66 thanks to @KaiLee2588)
+- Update Italian translation (thanks to Peppe73)
+- Fix build issues on certain platforms
 
 ## Installation
 ### Windows
