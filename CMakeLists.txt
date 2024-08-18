@@ -78,16 +78,7 @@ if(MSVC)
     # allow static linked CRT
     option(STATIC_RUNTIME "Static link CRT" OFF)
     if(STATIC_RUNTIME)
-        foreach(flag
-            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-            CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
-            CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
-            CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
-            if(${flag} MATCHES "/MD") # older versions of CMake used to specify this by default, paranoia check
-                string(REGEX REPLACE "/MD" "" ${flag} "${${flag}}")
-            endif()
-        endforeach()
-        add_compile_options("$<$<CONFIG:Release>:/MT>") # release builds only
+        set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:DebugDLL>") # requires CMake 3.15+
     endif()
 
     # build fftw
