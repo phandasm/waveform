@@ -320,7 +320,7 @@ namespace callbacks {
 
         // meter
         obs_properties_add_bool(props, P_RMS_MODE, T(P_RMS_MODE));
-        auto meterbuf = obs_properties_add_int_slider(props, P_METER_BUF, T(P_METER_BUF), 16, 1000, 1);
+        auto meterbuf = obs_properties_add_int(props, P_METER_BUF, T(P_METER_BUF), 10, 600000, 10);
         obs_property_int_set_suffix(meterbuf, " ms");
 
         // channels
