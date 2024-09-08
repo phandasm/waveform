@@ -271,7 +271,6 @@ void WAVSourceGeneric::tick_meter([[maybe_unused]] float seconds)
 void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
 {
     // TODO: optimization
-    const auto bufsz = m_fft_size * sizeof(float);
     const auto outsz = m_fft_size;
     constexpr auto step = 1;
 
@@ -289,17 +288,50 @@ void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
     }
 
     const int64_t dtaudio = get_audio_sync(m_tick_ts);
-    const size_t dtsize = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0) + bufsz;
+    const size_t reserve = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0);
+    const size_t max_size = (m_waveform_samples * sizeof(float)) + reserve;
     for(auto i = 0u; i < m_capture_channels; ++i)
-        if(m_capturebufs[i].size < dtsize) // check if we have enough audio in advance
+        if(m_capturebufs[i].size <= reserve) // check if we have enough audio in advance
             return;
 
-
+    size_t counts[2] = {};
     auto silent_channels = 0u;
+    const auto step_ns = ((size_t)m_meter_ms * 1000000u) / (size_t)outsz;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
-        circlebuf_peek_front(&m_capturebufs[channel], m_decibels[channel].get(), bufsz);
+        if(m_capturebufs[channel].size > max_size)
+            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - max_size);
+        if(m_interp_bufs[2].size() < (m_capturebufs[channel].size / sizeof(float)))
+            m_interp_bufs[2].resize(m_capturebufs[channel].size / sizeof(float)); // FIXME: temporary hack
+        const auto consume = m_capturebufs[channel].size - reserve;
+        const auto total_samples = m_capturebufs[channel].size / sizeof(float);
+        const auto reserve_samples = reserve / sizeof(float);
+        assert(total_samples > reserve_samples);
+        if(total_samples <= reserve_samples)
+            return; // sanity check, shouldn't be possible
+
+        // FIXME: spaghetti
+        const auto start_ts = m_audio_ts - audio_frames_to_ns(m_audio_info.samples_per_sec, total_samples);
+        const auto stop_ts = m_audio_ts - audio_frames_to_ns(m_audio_info.samples_per_sec, reserve_samples);
+        if((start_ts >= m_audio_ts) || (stop_ts > m_audio_ts))
+            return; // timestamp rollover, give up
+        if(m_waveform_ts < start_ts)
+            m_waveform_ts = start_ts; // catch up if we're falling behind
+        if((m_waveform_ts > stop_ts) && ((m_waveform_ts - stop_ts) > step_ns))
+            m_waveform_ts = start_ts; // fix desync
+        circlebuf_pop_front(&m_capturebufs[channel], m_interp_bufs[2].data(), consume);
+        for(size_t i = 0; i < outsz; ++i)
+        {
+            const auto ts = m_waveform_ts + (i * step_ns);
+            if(ts >= stop_ts)
+                break;
+            if(ts < m_waveform_ts)
+                break; // rollover
+            // TODO: interpolation
+            const auto index = std::clamp(ns_to_audio_frames(m_audio_info.samples_per_sec, m_audio_ts - ts), reserve_samples + 1, total_samples);
+            m_decibels[channel][counts[channel]++] = m_interp_bufs[2][total_samples - index];
+        }
+        std::rotate(&m_decibels[channel][0], &m_decibels[channel][counts[channel]], &m_decibels[channel][outsz]);
 
         bool silent = true;
         for(auto i = 0u; i < m_fft_size; i += step)
@@ -318,6 +350,7 @@ void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
                 m_last_silent = true;
         }
     }
+    m_waveform_ts += (counts[0] * step_ns);
 
     if(m_last_silent)
     {
@@ -333,17 +366,17 @@ void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
     if(m_stereo)
     {
         for(auto channel = 0; channel < 2; ++channel)
-            for(size_t i = 0; i < outsz; ++i)
+            for(size_t i = (outsz - counts[channel]); i < outsz; ++i)
                 m_decibels[channel][i] = dbfs(std::abs(m_decibels[channel][i]));
     }
     else if(m_capture_channels > 1)
     {
-        for(size_t i = 0; i < outsz; ++i)
+        for(size_t i = (outsz - counts[0]); i < outsz; ++i)
             m_decibels[0][i] = dbfs((std::abs(m_decibels[0][i]) + std::abs(m_decibels[1][i])) * 0.5f);
     }
     else
     {
-        for(size_t i = 0; i < outsz; ++i)
+        for(size_t i = (outsz - counts[0]); i < outsz; ++i)
             m_decibels[0][i] = dbfs(std::abs(m_decibels[0][i]));
     }
 
@@ -351,7 +384,7 @@ void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
     {
         const auto volume_compensation = std::min(m_volume_target - dbfs(m_input_rms), m_max_gain);
         for(auto channel = 0; channel < (m_stereo ? 2 : 1); ++channel)
-            for(size_t i = 1; i < outsz; ++i)
+            for(size_t i = (outsz - counts[channel]); i < outsz; ++i)
                 m_decibels[channel][i] += volume_compensation;
     }
 }

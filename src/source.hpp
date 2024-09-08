@@ -130,6 +130,10 @@ protected:
     bool m_meter_mode = false;              // either meter or stepped meter display mode is selected
     int m_meter_ms = 100;                   // milliseconds of audio data to buffer
 
+    // waveform
+    size_t m_waveform_samples = 0;          // maximum number of input samples to buffer in waveform mode
+    size_t m_waveform_ts = 0;               // timestamp of next sample in nanoseconds
+
     // video fps
     double m_fps = 0.0;
 

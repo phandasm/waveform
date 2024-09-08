@@ -1113,7 +1113,9 @@ void WAVSource::update(obs_data_t *settings)
         m_log_scale = false;
 
         // repurpose m_fft_size for buffer size
-        m_fft_size = size_t(m_audio_info.samples_per_sec * (m_meter_ms / 1000.0)) & -16;
+        m_fft_size = m_width;
+        m_waveform_samples = size_t(m_audio_info.samples_per_sec * (m_meter_ms / 1000.0));
+        m_waveform_ts = 0;
     }
 
     if(m_normalize_volume)
@@ -1807,7 +1809,7 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
         m_audio_ts = m_capture_ts;
     else
         m_audio_ts = audio->timestamp + audio_len;
-    const auto bufsz = m_fft_size * sizeof(float);
+    const auto bufsz = ((m_display_mode == DisplayMode::WAVEFORM) ? m_waveform_samples : m_fft_size) * sizeof(float);
     const int64_t dtaudio = get_audio_sync(m_capture_ts);
     const size_t dtsamples = (dtaudio > 0) ? (size_t)ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio) : 0;
 
