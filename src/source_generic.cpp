@@ -328,7 +328,7 @@ void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
             if(ts < m_waveform_ts)
                 break; // rollover
             // TODO: interpolation
-            const auto index = std::clamp(ns_to_audio_frames(m_audio_info.samples_per_sec, m_audio_ts - ts), reserve_samples + 1, total_samples);
+            const auto index = std::clamp((uint64_t)ns_to_audio_frames(m_audio_info.samples_per_sec, m_audio_ts - ts), (uint64_t)reserve_samples + 1u, (uint64_t)total_samples);
             m_decibels[channel][counts[channel]++] = m_interp_bufs[2][total_samples - index];
         }
         std::rotate(&m_decibels[channel][0], &m_decibels[channel][counts[channel]], &m_decibels[channel][outsz]);
