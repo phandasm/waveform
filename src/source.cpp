@@ -564,7 +564,7 @@ void WAVSource::get_settings(obs_data_t *settings)
     else if(m_fft_size & 15)
         m_fft_size &= -16; // align to 64-byte multiple so that N/2 is AVX aligned
 
-    if((m_cutoff_high - m_cutoff_low) < 1)
+    if((m_cutoff_high - m_cutoff_low) < 0)
     {
         m_cutoff_high = 17500;
         m_cutoff_low = 120;
