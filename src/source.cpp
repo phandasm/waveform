@@ -29,7 +29,7 @@
 #include <util/platform.h>
 #include <utility>
 
-#ifndef DISABLE_X86_SIMD
+#ifdef ENABLE_X86_SIMD
 
 #include "cpuinfo_x86.h"
 
@@ -38,7 +38,7 @@ const bool WAVSource::HAVE_AVX2 = CPU_INFO.features.avx2 && CPU_INFO.features.fm
 const bool WAVSource::HAVE_AVX = CPU_INFO.features.avx && CPU_INFO.features.fma3;
 const bool WAVSource::HAVE_FMA3 = CPU_INFO.features.fma3;
 
-#endif // !DISABLE_X86_SIMD
+#endif // ENABLE_X86_SIMD
 
 const float WAVSource::DB_MIN = 20.0f * std::log10(std::numeric_limits<float>::min());
 
@@ -86,7 +86,7 @@ namespace callbacks {
 
     static void *create(obs_data_t *settings, obs_source_t *source)
     {
-#ifndef DISABLE_X86_SIMD
+#ifdef ENABLE_X86_SIMD
         WAVSource *obj;
         if(WAVSource::HAVE_AVX2)
             obj = new WAVSourceAVX2(source);
@@ -96,7 +96,7 @@ namespace callbacks {
             obj = new WAVSourceGeneric(source);
 #else
         WAVSource *obj = new WAVSourceGeneric(source);
-#endif // !DISABLE_X86_SIMD
+#endif // ENABLE_X86_SIMD
         obj->update(settings); // must be fully constructed before calling update()
         return static_cast<void*>(obj);
     }
@@ -1354,7 +1354,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
         if(m_interp_mode != InterpMode::POINT)
         {
             const auto sz = (m_display_mode == DisplayMode::WAVEFORM) ? m_fft_size : m_fft_size / 2u;
-#ifndef DISABLE_X86_SIMD
+#ifdef ENABLE_X86_SIMD
             if(HAVE_AVX)
                 apply_interp_filter_fma3(m_decibels[channel].get(), sz, m_interp_indices, m_interp_kernel, m_interp_bufs[channel]);
             else
@@ -1369,14 +1369,14 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
 
         if(m_filter_mode != FilterMode::NONE)
         {
-#ifndef DISABLE_X86_SIMD
+#ifdef ENABLE_X86_SIMD
             if(HAVE_AVX)
                 std::swap(m_interp_bufs[channel], apply_filter_fma3(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]));
             else
                 std::swap(m_interp_bufs[channel], apply_filter(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]));
 #else
             m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]);
-#endif // !DISABLE_X86_SIMD
+#endif // ENABLE_X86_SIMD
         }
         
         for(auto i = 0u; i < m_width; ++i)
@@ -1485,7 +1485,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
         {
             if(m_interp_mode != InterpMode::POINT)
             {
-#ifndef DISABLE_X86_SIMD
+#ifdef ENABLE_X86_SIMD
                 if(HAVE_AVX)
                     apply_interp_filter_fma3(m_decibels[channel].get(), m_fft_size / 2, m_band_widths, m_interp_indices, m_interp_kernel, m_interp_bufs[channel]);
                 else
@@ -1508,14 +1508,14 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
 
             if(m_filter_mode != FilterMode::NONE)
             {
-#ifndef DISABLE_X86_SIMD
+#ifdef ENABLE_X86_SIMD
                 if(HAVE_AVX)
                     std::swap(m_interp_bufs[channel], apply_filter_fma3(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]));
                 else
                     std::swap(m_interp_bufs[channel], apply_filter(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]));
 #else
                 m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]);
-#endif // !DISABLE_X86_SIMD
+#endif // ENABLE_X86_SIMD
             }
         }
 
@@ -1752,7 +1752,7 @@ void WAVSource::hide()
 void WAVSource::register_source()
 {
     std::string arch;
-#ifndef DISABLE_X86_SIMD
+#ifdef ENABLE_X86_SIMD
     if(HAVE_AVX2)
         arch += " AVX2";
     if(HAVE_AVX)
@@ -1762,7 +1762,7 @@ void WAVSource::register_source()
     arch += " SSE2";
 #else
     arch = " Generic";
-#endif // !DISABLE_X86_SIMD
+#endif // ENABLE_X86_SIMD
 
     LogInfo << "Registered v" WAVEFORM_VERSION " " WAVEFORM_ARCH;
     LogInfo << "Using CPU capabilities:" << arch;

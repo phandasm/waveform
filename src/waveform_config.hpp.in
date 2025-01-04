@@ -1,6 +1,6 @@
 #pragma once
 #cmakedefine HAVE_OBS_PROP_ALPHA
-#cmakedefine DISABLE_X86_SIMD
+#cmakedefine ENABLE_X86_SIMD
 #cmakedefine WAVEFORM_VERSION "@WAVEFORM_VERSION@"
 
 #if defined(__x86_64__) || defined(_M_X64)

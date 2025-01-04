@@ -335,12 +335,12 @@ public:
     // for capturing the final OBS audio output stream
     void capture_output_bus(size_t mix_idx, const audio_data *audio);
 
-#ifndef DISABLE_X86_SIMD
+#ifdef ENABLE_X86_SIMD
     // constants
     static const bool HAVE_AVX2;
     static const bool HAVE_AVX;
     static const bool HAVE_FMA3;
-#endif // !DISABLE_X86_SIMD
+#endif // ENABLE_X86_SIMD
 };
 
 class WAVSourceGeneric : public WAVSource
@@ -357,7 +357,7 @@ public:
     ~WAVSourceGeneric() override = default;
 };
 
-#ifndef DISABLE_X86_SIMD
+#ifdef ENABLE_X86_SIMD
 
 class WAVSourceAVX : public WAVSourceGeneric
 {
@@ -382,4 +382,4 @@ public:
     ~WAVSourceAVX2() override = default;
 };
 
-#endif // !DISABLE_X86_SIMD
+#endif // ENABLE_X86_SIMD

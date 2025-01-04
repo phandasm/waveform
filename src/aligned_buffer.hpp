@@ -47,11 +47,11 @@ public:
     void reset(std::size_t count) { m_buf.reset(alloc(count)); }
 
 private:
-#ifndef DISABLE_X86_SIMD
+#ifdef ENABLE_X86_SIMD
     static constexpr std::size_t ALIGNMENT = ((alignof(T) > 32u) ? alignof(T) : 32u);
 #else
     static constexpr std::size_t ALIGNMENT = alignof(T);
-#endif // !DISABLE_X86_SIMD
+#endif // ENABLE_X86_SIMD
 
     T *alloc(std::size_t count)
     {

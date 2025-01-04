@@ -34,7 +34,11 @@ if(UNIX)
     option(MAKE_DEB "Package as .deb" OFF)
 endif()
 
-option(DISABLE_X86_SIMD "Disable x86 SIMD optimizations" OFF)
+option(ENABLE_X86_SIMD "Enable x86 SIMD optimizations" ON)
+if(DISABLE_X86_SIMD)
+    set(ENABLE_X86_SIMD OFF) # backwards compatibility
+endif()
+
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF) # static link dependencies
 if(NOT MSVC)
     option(STATIC_FFTW "Static link FFTW" OFF) # allow static linking FFTW on non-windows platforms
@@ -103,7 +107,7 @@ if(BUILTIN_FFTW)
         option(WITH_COMBINED_THREADS "Merge thread library" ON)
     endif()
     option(ENABLE_FLOAT "single-precision" ON)
-    if(NOT MSVC AND NOT DISABLE_X86_SIMD)
+    if(NOT MSVC AND ENABLE_X86_SIMD)
         option(ENABLE_SSE "Compile with SSE instruction set support" ON)
         option(ENABLE_SSE2 "Compile with SSE2 instruction set support" ON)
         #option(ENABLE_AVX "Compile with AVX instruction set support" ON) # i think this results in global VEX when building with CMake
@@ -143,7 +147,7 @@ set(PLUGIN_SOURCES
     "src/simd_helpers.hpp"
 )
 
-if(NOT DISABLE_X86_SIMD)
+if(ENABLE_X86_SIMD)
     list(APPEND PLUGIN_SOURCES
         "src/source_avx2.cpp"
         "src/source_avx.cpp"
@@ -186,7 +190,7 @@ add_library(waveform MODULE ${PLUGIN_SOURCES})
 set_target_properties(waveform PROPERTIES PREFIX "")
 target_include_directories(waveform PRIVATE ${FFTW_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR}/include)
 target_link_libraries(waveform PRIVATE OBS::libobs ${FFTW_LIBRARIES})
-if(NOT DISABLE_X86_SIMD)
+if(ENABLE_X86_SIMD)
     target_link_libraries(waveform PRIVATE cpu_features)
 endif()
 if(MSVC)
