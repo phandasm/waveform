@@ -947,10 +947,7 @@ WAVSource::WAVSource(obs_source_t *source)
 
     obs_enter_graphics();
 
-    // create shader
-    auto filename = obs_module_file("gradient.effect");
-    m_shader = gs_effect_create_from_file(filename, nullptr);
-    bfree(filename);
+    create_shader();
 
     obs_leave_graphics();
 }
@@ -960,8 +957,8 @@ WAVSource::~WAVSource()
     std::lock_guard lock(m_mtx);
     obs_enter_graphics();
 
-    gs_vertexbuffer_destroy(m_vbuf);
-    gs_effect_destroy(m_shader);
+    free_vbuf();
+    free_shader();
 
     obs_leave_graphics();
 
@@ -1018,36 +1015,76 @@ void WAVSource::create_vbuf() {
             num_verts += m_cap_tris * ((m_channel_spacing > 0) ? 12 : 6) * m_num_bars; // 2 caps per bar (middle omitted when 0 spacing)
     }
 
+    constexpr auto signbit = (size_t)1 << ((sizeof(num_verts) * 8) - 1);
+    assert(num_verts > 0);
+    assert((num_verts & signbit) == 0); // if MSB is set something has gone very wrong
+    assert((num_verts * sizeof(vec3)) < (1u << 30)); // abnormally large allocation
+
     obs_enter_graphics();
 
-    gs_vertexbuffer_destroy(m_vbuf);
+    free_vbuf();
 
-    auto vbdata = gs_vbdata_create();
-    vbdata->num = num_verts;
-    vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
-    vbdata->num_tex = 1;
-    vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
-    vbdata->tvarray->width = 2;
-    vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
-    m_vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
+    // FIXME: temporary workaround
+    if((num_verts > 0) && ((num_verts * sizeof(vec3)) < (1u << 30)))
+    {
+        auto vbdata = gs_vbdata_create();
+        vbdata->num = num_verts;
+        vbdata->points = (vec3*)bmalloc(num_verts * sizeof(vec3));
+        vbdata->num_tex = 1;
+        vbdata->tvarray = (gs_tvertarray*)bzalloc(sizeof(gs_tvertarray));
+        vbdata->tvarray->width = 2;
+        vbdata->tvarray->array = bmalloc(2 * num_verts * sizeof(float));
+        m_vbuf = gs_vertexbuffer_create(vbdata, GS_DYNAMIC);
 
-    if(curve) {
-        if(m_render_mode == RenderMode::LINE)
-        {
-            for(auto i = 0u; i < m_width; ++i)
-                vec3_set(&vbdata->points[i], (float)i, 0, 0);
-        }
-        else
-        {
-            for(auto i = 0u; i < m_width; ++i)
+        if(curve) {
+            if(m_render_mode == RenderMode::LINE)
             {
-                vec3_set(&vbdata->points[i * 2], (float)i, 0, 0);
-                vec3_set(&vbdata->points[(i * 2) + 1], (float)i, 0, 0);
+                for(auto i = 0u; i < m_width; ++i)
+                    vec3_set(&vbdata->points[i], (float)i, 0, 0);
+            }
+            else
+            {
+                for(auto i = 0u; i < m_width; ++i)
+                {
+                    vec3_set(&vbdata->points[i * 2], (float)i, 0, 0);
+                    vec3_set(&vbdata->points[(i * 2) + 1], (float)i, 0, 0);
+                }
             }
         }
     }
+    else
+    {
+        LogError << "Tried to allocate vbuf of size: " << (num_verts * sizeof(vec3));
+    }
 
     obs_leave_graphics();
+}
+
+void WAVSource::free_vbuf()
+{
+    if(m_vbuf != nullptr)
+    {
+        gs_vertexbuffer_destroy(m_vbuf);
+        m_vbuf = nullptr;
+    }
+}
+
+void WAVSource::create_shader()
+{
+    free_shader();
+
+    auto filename = obs_module_file("gradient.effect");
+    m_shader = gs_effect_create_from_file(filename, nullptr);
+    bfree(filename);
+}
+
+void WAVSource::free_shader()
+{
+    if(m_shader != nullptr)
+    {
+        gs_effect_destroy(m_shader);
+        m_shader = nullptr;
+    }
 }
 
 void WAVSource::update(obs_data_t *settings)
@@ -1323,6 +1360,8 @@ void WAVSource::render([[maybe_unused]] gs_effect_t *effect)
 {
     std::lock_guard lock(m_mtx);
     if(m_last_silent && m_hide_on_silent)
+        return;
+    if(m_vbuf == nullptr)
         return;
 
     if((m_display_mode == DisplayMode::CURVE) || (m_display_mode == DisplayMode::WAVEFORM))

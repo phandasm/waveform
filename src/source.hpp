@@ -247,6 +247,9 @@ protected:
     float m_window_sum = 1.0f;
 
     void create_vbuf();
+    void free_vbuf();
+    void create_shader();
+    void free_shader();
 
     void get_settings(obs_data_t *settings);
 
