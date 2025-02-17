@@ -1375,7 +1375,7 @@ void WAVSource::render_curve([[maybe_unused]] gs_effect_t *effect)
             else
                 std::swap(m_interp_bufs[channel], apply_filter(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]));
 #else
-            m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]);
+            std::swap(m_interp_bufs[channel], apply_filter(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]));
 #endif // ENABLE_X86_SIMD
         }
         
@@ -1514,7 +1514,7 @@ void WAVSource::render_bars([[maybe_unused]] gs_effect_t *effect)
                 else
                     std::swap(m_interp_bufs[channel], apply_filter(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]));
 #else
-                m_interp_bufs[channel] = apply_filter(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]);
+                std::swap(m_interp_bufs[channel], apply_filter(m_interp_bufs[channel], m_kernel, m_interp_bufs[2]));
 #endif // ENABLE_X86_SIMD
             }
         }
