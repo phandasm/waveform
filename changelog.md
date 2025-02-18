@@ -1,7 +1,8 @@
-## Changes in 1.8.1
-- Update Chinese translations (#66 thanks to @KaiLee2588)
-- Update Italian translation (thanks to Peppe73)
-- Fix build issues on certain platforms
+## Changes in 1.9.0-beta1
+- Hotfix for possible OOM crash
+- Allow high and low cutoffs to be equal
+- Improve render quality in waveform mode
+- Allow much larger buffer sizes in waveform mode
 
 ## Installation
 ### Windows
