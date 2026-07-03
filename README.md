@@ -31,7 +31,24 @@ Or if you already cloned without them: `git submodule update --init --recursive`
 ## Windows
 Waveform's only external dependency is libobs.  
 You'll need to build obs-studio separately and point [CMake](https://cmake.org/) to it when building Waveform.  
-From the CLI interface, the latter can be accomplished via `-DCMAKE_PREFIX_PATH="path/to/obs-studio/build"`.
+From the CLI interface, the latter can be accomplished via `-DCMAKE_PREFIX_PATH="path/to/obs-studio/build_x64/libobs"`.
+
+You may also need to point to the w32-pthreads library as well, which is under `"path/to/obs-studio/build_x64/deps/w32-pthreads"`.
+
+#### Create build directory
+`mkdir build
+&& cd build`
+
+#### Run CMake
+`cmake ../`
+
+#### Build Solution
+Double-click generated .sln file in build directory. When VisualStudio loads, go to "Build -> Build Solution" or `Ctrl-Shift-B`
+
+#### Installation
+Copy waveform.dll and waveform.pdb to `C://Program Files/obs-studio/obs-plugins/64bit/`
+
+Copy contents of "data" folder ("locale" folder and "gradient.effect" in waveform source directory) to `C://Program Files/obs-studio/data/obs-plugins/waveform/`
 
 ## Linux
 ### Ubuntu 20.04
