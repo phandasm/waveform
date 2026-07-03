@@ -52,10 +52,10 @@ void WAVSourceGeneric::tick_spectrum([[maybe_unused]] float seconds)
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        if(m_capturebufs[channel].size >= dtsize)
+        if(m_capturebufs[channel].size() >= dtsize)
         {
-            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
-            circlebuf_peek_front(&m_capturebufs[channel], m_fft_input.get(), bufsz);
+            m_capturebufs[channel].pop_front(nullptr, m_capturebufs[channel].size() - dtsize);
+            m_capturebufs[channel].peek_front(m_fft_input.get(), bufsz);
         }
         else
             continue;
@@ -204,18 +204,18 @@ void WAVSourceGeneric::tick_meter([[maybe_unused]] float seconds)
 
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        while(m_capturebufs[channel].size > dtsize)
+        while(m_capturebufs[channel].size() > dtsize)
         {
-            auto consume = m_capturebufs[channel].size - dtsize;
+            auto consume = m_capturebufs[channel].size() - dtsize;
             auto max = (m_fft_size - m_meter_pos[channel]) * sizeof(float);
             if(consume >= max)
             {
-                circlebuf_pop_front(&m_capturebufs[channel], &m_decibels[channel][m_meter_pos[channel]], max);
+                m_capturebufs[channel].pop_front(&m_decibels[channel][m_meter_pos[channel]], max);
                 m_meter_pos[channel] = 0;
             }
             else
             {
-                circlebuf_pop_front(&m_capturebufs[channel], &m_decibels[channel][m_meter_pos[channel]], consume);
+                m_capturebufs[channel].pop_front(&m_decibels[channel][m_meter_pos[channel]], consume);
                 m_meter_pos[channel] += consume / sizeof(float);
             }
         }
@@ -291,7 +291,7 @@ void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
     const size_t reserve = ((dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0);
     const size_t max_size = (m_waveform_samples * sizeof(float)) + reserve;
     for(auto i = 0u; i < m_capture_channels; ++i)
-        if(m_capturebufs[i].size <= reserve) // check if we have enough audio in advance
+        if(m_capturebufs[i].size() <= reserve) // check if we have enough audio in advance
             return;
 
     size_t counts[2] = {};
@@ -299,12 +299,12 @@ void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
     const auto step_ns = ((size_t)m_meter_ms * 1000000u) / (size_t)outsz;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        if(m_capturebufs[channel].size > max_size)
-            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - max_size);
-        if(m_interp_bufs[2].size() < (m_capturebufs[channel].size / sizeof(float)))
-            m_interp_bufs[2].resize(m_capturebufs[channel].size / sizeof(float)); // FIXME: temporary hack
-        const auto consume = m_capturebufs[channel].size - reserve;
-        const auto total_samples = m_capturebufs[channel].size / sizeof(float);
+        if(m_capturebufs[channel].size() > max_size)
+            m_capturebufs[channel].pop_front(nullptr, m_capturebufs[channel].size() - max_size);
+        if(m_interp_bufs[2].size() < (m_capturebufs[channel].size() / sizeof(float)))
+            m_interp_bufs[2].resize(m_capturebufs[channel].size() / sizeof(float)); // FIXME: temporary hack
+        const auto consume = m_capturebufs[channel].size() - reserve;
+        const auto total_samples = m_capturebufs[channel].size() / sizeof(float);
         const auto reserve_samples = reserve / sizeof(float);
         assert(total_samples > reserve_samples);
         if(total_samples <= reserve_samples)
@@ -319,7 +319,7 @@ void WAVSourceGeneric::tick_waveform([[maybe_unused]] float seconds)
             m_waveform_ts = start_ts; // catch up if we're falling behind
         if((m_waveform_ts > stop_ts) && ((m_waveform_ts - stop_ts) > step_ns))
             m_waveform_ts = start_ts; // fix desync
-        circlebuf_pop_front(&m_capturebufs[channel], m_interp_bufs[2].data(), consume);
+        m_capturebufs[channel].pop_front(m_interp_bufs[2].data(), consume);
         for(size_t i = 0; i < outsz; ++i)
         {
             const auto ts = m_waveform_ts + (i * step_ns);

@@ -18,12 +18,12 @@
 #pragma once
 #include <mutex>
 #include <obs-module.h>
-#include <util/circlebuf.h>
 #include <graphics/vec3.h>
 #include <graphics/vec4.h>
 #include <fftw3.h>
 #include "module.hpp"
 #include "aligned_buffer.hpp"
+#include "circular_buffer.hpp"
 #include "filter.hpp"
 
 using AVXBufR = AlignedBuffer<float>;
@@ -107,7 +107,7 @@ protected:
 
     // audio capture
     obs_audio_info m_audio_info{};
-    circlebuf m_capturebufs[2]{};
+    CircularBuffer m_capturebufs[2];
     uint32_t m_capture_channels = 0;        // audio input channels
     uint32_t m_output_channels = 0;         // fft output channels (*not* display channels)
     bool m_output_bus_captured = false;     // do we have an active audio output callback? (via audio_output_connect())
@@ -239,7 +239,7 @@ protected:
     float m_input_rms = 0.0f;
     AVXBufR m_input_rms_buf;
     AVXBufR m_rms_temp_buf;     // temp buffer, bit too large for stack
-    circlebuf m_rms_sync_buf{}; // A/V syncronization buffer
+    CircularBuffer m_rms_sync_buf; // A/V syncronization buffer
     size_t m_input_rms_size = 0;
     size_t m_input_rms_pos = 0;
 

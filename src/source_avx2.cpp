@@ -53,10 +53,10 @@ void WAVSourceAVX2::tick_spectrum([[maybe_unused]] float seconds)
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
         // get captured audio
-        if(m_capturebufs[channel].size >= dtsize)
+        if(m_capturebufs[channel].size() >= dtsize)
         {
-            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
-            circlebuf_peek_front(&m_capturebufs[channel], m_fft_input.get(), bufsz);
+            m_capturebufs[channel].pop_front(nullptr, m_capturebufs[channel].size() - dtsize);
+            m_capturebufs[channel].peek_front(m_fft_input.get(), bufsz);
         }
         else
             continue;

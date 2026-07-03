@@ -55,10 +55,10 @@ void WAVSourceAVX::tick_spectrum([[maybe_unused]] float seconds)
     auto silent_channels = 0u;
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        if(m_capturebufs[channel].size >= dtsize)
+        if(m_capturebufs[channel].size() >= dtsize)
         {
-            circlebuf_pop_front(&m_capturebufs[channel], nullptr, m_capturebufs[channel].size - dtsize);
-            circlebuf_peek_front(&m_capturebufs[channel], m_fft_input.get(), bufsz);
+            m_capturebufs[channel].pop_front(nullptr, m_capturebufs[channel].size() - dtsize);
+            m_capturebufs[channel].peek_front(m_fft_input.get(), bufsz);
         }
         else
             continue;
@@ -227,18 +227,18 @@ void WAVSourceAVX::tick_meter([[maybe_unused]] float seconds)
     // repurpose m_decibels as circular buffer for sample data
     for(auto channel = 0u; channel < m_capture_channels; ++channel)
     {
-        while(m_capturebufs[channel].size > dtsize)
+        while(m_capturebufs[channel].size() > dtsize)
         {
-            auto consume = m_capturebufs[channel].size - dtsize;
+            auto consume = m_capturebufs[channel].size() - dtsize;
             auto max = (m_fft_size - m_meter_pos[channel]) * sizeof(float);
             if(consume >= max)
             {
-                circlebuf_pop_front(&m_capturebufs[channel], &m_decibels[channel][m_meter_pos[channel]], max);
+                m_capturebufs[channel].pop_front(&m_decibels[channel][m_meter_pos[channel]], max);
                 m_meter_pos[channel] = 0;
             }
             else
             {
-                circlebuf_pop_front(&m_capturebufs[channel], &m_decibels[channel][m_meter_pos[channel]], consume);
+                m_capturebufs[channel].pop_front(&m_decibels[channel][m_meter_pos[channel]], consume);
                 m_meter_pos[channel] += consume / sizeof(float);
             }
         }

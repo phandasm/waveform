@@ -741,14 +741,8 @@ void WAVSource::release_audio_capture()
 
     // reset circular buffers
     for(auto& i : m_capturebufs)
-    {
-        i.end_pos = 0;
-        i.start_pos = 0;
-        i.size = 0;
-    }
-    m_rms_sync_buf.end_pos = 0;
-    m_rms_sync_buf.start_pos = 0;
-    m_rms_sync_buf.size = 0;
+        i.reset();
+    m_rms_sync_buf.reset();
 
     m_capture_ts = 0;
     m_audio_ts = 0;
@@ -818,21 +812,21 @@ bool WAVSource::sync_rms_buffer()
     const int64_t dtaudio = get_audio_sync(m_tick_ts);
     const size_t dtsize = (dtaudio > 0) ? size_t(ns_to_audio_frames(m_audio_info.samples_per_sec, (uint64_t)dtaudio)) * sizeof(float) : 0;
 
-    if(m_rms_sync_buf.size <= dtsize)
+    if(m_rms_sync_buf.size() <= dtsize)
         return false;
 
-    while(m_rms_sync_buf.size > dtsize)
+    while(m_rms_sync_buf.size() > dtsize)
     {
-        auto consume = m_rms_sync_buf.size - dtsize;
+        auto consume = m_rms_sync_buf.size() - dtsize;
         auto max = (m_input_rms_size - m_input_rms_pos) * sizeof(float);
         if(consume >= max)
         {
-            circlebuf_pop_front(&m_rms_sync_buf, &m_input_rms_buf[m_input_rms_pos], max);
+            m_rms_sync_buf.pop_front(&m_input_rms_buf[m_input_rms_pos], max);
             m_input_rms_pos = 0;
         }
         else
         {
-            circlebuf_pop_front(&m_rms_sync_buf, &m_input_rms_buf[m_input_rms_pos], consume);
+            m_rms_sync_buf.pop_front(&m_input_rms_buf[m_input_rms_pos], consume);
             m_input_rms_pos += consume / sizeof(float);
         }
     }
@@ -941,9 +935,6 @@ void WAVSource::init_steps()
 WAVSource::WAVSource(obs_source_t *source)
 {
     m_source = source;
-    for(auto& i : m_capturebufs)
-        circlebuf_init(&i);
-    circlebuf_init(&m_rms_sync_buf);
 
     obs_enter_graphics();
 
@@ -964,10 +955,6 @@ WAVSource::~WAVSource()
 
     release_audio_capture();
     free_bufs();
-
-    for(auto& i : m_capturebufs)
-        circlebuf_free(&i);
-    circlebuf_free(&m_rms_sync_buf);
 }
 
 unsigned int WAVSource::width()
@@ -1015,7 +1002,7 @@ void WAVSource::create_vbuf() {
             num_verts += m_cap_tris * ((m_channel_spacing > 0) ? 12 : 6) * m_num_bars; // 2 caps per bar (middle omitted when 0 spacing)
     }
 
-    constexpr auto signbit = (size_t)1 << ((sizeof(num_verts) * 8) - 1);
+    [[maybe_unused]] constexpr auto signbit = (size_t)1 << ((sizeof(num_verts) * 8) - 1);
     assert(num_verts > 0);
     assert((num_verts & signbit) == 0); // if MSB is set something has gone very wrong
     assert((num_verts * sizeof(vec3)) < (1u << 30)); // abnormally large allocation
@@ -1257,7 +1244,7 @@ void WAVSource::update(obs_data_t *settings)
     {
         // fill input buffers with silent audio to avoid startup lag e.g. when changing settings
         for(auto i = 0u; i < m_capture_channels; ++i)
-            circlebuf_push_back_zero(&m_capturebufs[i], m_fft_size * sizeof(float));
+            m_capturebufs[i].push_back_zero(m_fft_size * sizeof(float));
     }
 
     // precomupte interpolated indices
@@ -1873,14 +1860,14 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
                 }
                 m_rms_temp_buf[i] = val * val;
             }
-            circlebuf_push_back(&m_rms_sync_buf, m_rms_temp_buf.get(), count * sizeof(float));
+            m_rms_sync_buf.push_back(m_rms_temp_buf.get(), count * sizeof(float));
             frames -= count;
         }
 
         const size_t max_rms_size = (dtsamples * sizeof(float)) + (m_input_rms_size * sizeof(float));
-        auto total = m_rms_sync_buf.size;
+        auto total = m_rms_sync_buf.size();
         if(total > max_rms_size)
-            circlebuf_pop_front(&m_rms_sync_buf, nullptr, total - max_rms_size);
+            m_rms_sync_buf.pop_front(nullptr, total - max_rms_size);
     }
 
     auto sz = size_t(audio->frames * sizeof(float));
@@ -1889,14 +1876,14 @@ void WAVSource::capture_audio([[maybe_unused]] obs_source_t *source, const audio
         auto j = i - m_channel_base;
         assert((j == 0) || (j == 1));
         if((muted && !m_ignore_mute) || (audio->data[i] == nullptr))
-            circlebuf_push_back_zero(&m_capturebufs[j], sz);
+            m_capturebufs[j].push_back_zero(sz);
         else
-            circlebuf_push_back(&m_capturebufs[j], audio->data[i], sz);
+            m_capturebufs[j].push_back(audio->data[i], sz);
 
         const size_t max_size = (dtsamples * sizeof(float)) + bufsz;
-        auto total = m_capturebufs[j].size;
+        auto total = m_capturebufs[j].size();
         if(total > max_size)
-            circlebuf_pop_front(&m_capturebufs[j], nullptr, total - max_size);
+            m_capturebufs[j].pop_front(nullptr, total - max_size);
     }
 }
 

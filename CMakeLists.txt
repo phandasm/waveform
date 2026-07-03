@@ -32,6 +32,7 @@ include(GNUInstallDirs)
 if(UNIX)
     option(PACKAGED_INSTALL "Use folder structure for package managers and system-wide installs" OFF)
     option(MAKE_DEB "Package as .deb" OFF)
+    option(CMAKE_POSITION_INDEPENDENT_CODE "Use -fPIC" ON)
 endif()
 
 option(ENABLE_X86_SIMD "Enable x86 SIMD optimizations" ON)
@@ -113,9 +114,6 @@ if(BUILTIN_FFTW)
         #option(ENABLE_AVX "Compile with AVX instruction set support" ON) # i think this results in global VEX when building with CMake
     endif()
     add_subdirectory("deps/fftw-3.3.10" EXCLUDE_FROM_ALL)
-    if(NOT MSVC AND NOT BUILD_SHARED_LIBS)
-        target_compile_options(fftw3f PRIVATE "-fPIC") # GCC complains
-    endif()
     set(FFTW_LIBRARIES fftw3f)
     set(FFTW_INCLUDE_DIRS "deps/fftw-3.3.10/api")
 else()
@@ -140,6 +138,7 @@ set(PLUGIN_SOURCES
     "src/source.cpp"
     "src/source_generic.cpp"
     "src/aligned_buffer.hpp"
+    "src/circular_buffer.hpp"
     "src/math_funcs.hpp"
     "src/filter.hpp"
     "src/settings.hpp"
@@ -166,9 +165,6 @@ if(ENABLE_X86_SIMD)
     endif()
 
     add_subdirectory(deps/cpu_features EXCLUDE_FROM_ALL)
-    if(NOT MSVC AND NOT BUILD_SHARED_LIBS) # Clang complains
-        target_compile_options(cpu_features PRIVATE "-fPIC")
-    endif()
 endif()
 
 if(MAKE_BUNDLE)
