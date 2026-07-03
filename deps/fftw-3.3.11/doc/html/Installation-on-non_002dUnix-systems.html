@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Installation on non-Unix systems (FFTW 3.3.11)</title>
+
+<meta name="description" content="Installation on non-Unix systems (FFTW 3.3.11)">
+<meta name="keywords" content="Installation on non-Unix systems (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Installation-and-Customization.html" rel="up" title="Installation and Customization">
+<link href="Cycle-Counters.html" rel="next" title="Cycle Counters">
+<link href="Installation-on-Unix.html" rel="prev" title="Installation on Unix">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Installation-on-non_002dUnix-systems">
+<div class="nav-panel">
+<p>
+Next: <a href="Cycle-Counters.html" accesskey="n" rel="next">Cycle Counters</a>, Previous: <a href="Installation-on-Unix.html" accesskey="p" rel="prev">Installation on Unix</a>, Up: <a href="Installation-and-Customization.html" accesskey="u" rel="up">Installation and Customization</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Installation-on-non_002dUnix-systems-1"><span>10.2 Installation on non-Unix systems<a class="copiable-link" href="#Installation-on-non_002dUnix-systems-1"> &para;</a></span></h3>
+
+<p>It should be relatively straightforward to compile FFTW even on non-Unix
+systems lacking the niceties of a <code class="code">configure</code> script.  Basically,
+you need to edit the <code class="code">config.h</code> header (copy it from
+<code class="code">config.h.in</code>) to <code class="code">#define</code> the various options and compiler
+characteristics, and then compile all the &lsquo;<samp class="samp">.c</samp>&rsquo; files in the
+relevant directories.  
+</p>
+<p>The <code class="code">config.h</code> header contains about 100 options to set, each one
+initially an <code class="code">#undef</code>, each documented with a comment, and most of
+them fairly obvious.  For most of the options, you should simply
+<code class="code">#define</code> them to <code class="code">1</code> if they are applicable, although a few
+options require a particular value (e.g. <code class="code">SIZEOF_LONG_LONG</code> should
+be defined to the size of the <code class="code">long long</code> type, in bytes, or zero
+if it is not supported).  We will likely post some sample
+<code class="code">config.h</code> files for various operating systems and compilers for
+you to use (at least as a starting point).  Please let us know if you
+have to hand-create a configuration file (and/or a pre-compiled binary)
+that you want to share.
+</p>
+<p>To create the FFTW library, you will then need to compile all of the
+&lsquo;<samp class="samp">.c</samp>&rsquo; files in the <code class="code">kernel</code>, <code class="code">dft</code>, <code class="code">dft/scalar</code>,
+<code class="code">dft/scalar/codelets</code>, <code class="code">rdft</code>, <code class="code">rdft/scalar</code>,
+<code class="code">rdft/scalar/r2cf</code>, <code class="code">rdft/scalar/r2cb</code>,
+<code class="code">rdft/scalar/r2r</code>, <code class="code">reodft</code>, and <code class="code">api</code> directories.
+If you are compiling with SIMD support (e.g. you defined
+<code class="code">HAVE_SSE2</code> in <code class="code">config.h</code>), then you also need to compile
+the <code class="code">.c</code> files in the <code class="code">simd-support</code>,
+<code class="code">{dft,rdft}/simd</code>, <code class="code">{dft,rdft}/simd/*</code> directories.
+</p>
+<p>Once these files are all compiled, link them into a library, or a shared
+library, or directly into your program.
+</p>
+<p>To compile the FFTW test program, additionally compile the code in the
+<code class="code">libbench2/</code> directory, and link it into a library.  Then compile
+the code in the <code class="code">tests/</code> directory and link it to the
+<code class="code">libbench2</code> and FFTW libraries.  To compile the <code class="code">fftw-wisdom</code>
+(command-line) tool (see <a class="pxref" href="Wisdom-Utilities.html">Wisdom Utilities</a>), compile
+<code class="code">tools/fftw-wisdom.c</code> and link it to the <code class="code">libbench2</code> and FFTW
+libraries
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Cycle-Counters.html">Cycle Counters</a>, Previous: <a href="Installation-on-Unix.html">Installation on Unix</a>, Up: <a href="Installation-and-Customization.html">Installation and Customization</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

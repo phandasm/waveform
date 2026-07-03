@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Guru Real-data DFTs (FFTW 3.3.11)</title>
+
+<meta name="description" content="Guru Real-data DFTs (FFTW 3.3.11)">
+<meta name="keywords" content="Guru Real-data DFTs (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Guru-Interface.html" rel="up" title="Guru Interface">
+<link href="Guru-Real_002dto_002dreal-Transforms.html" rel="next" title="Guru Real-to-real Transforms">
+<link href="Guru-Complex-DFTs.html" rel="prev" title="Guru Complex DFTs">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Guru-Real_002ddata-DFTs">
+<div class="nav-panel">
+<p>
+Next: <a href="Guru-Real_002dto_002dreal-Transforms.html" accesskey="n" rel="next">Guru Real-to-real Transforms</a>, Previous: <a href="Guru-Complex-DFTs.html" accesskey="p" rel="prev">Guru Complex DFTs</a>, Up: <a href="Guru-Interface.html" accesskey="u" rel="up">Guru Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Guru-Real_002ddata-DFTs-1"><span>4.5.4 Guru Real-data DFTs<a class="copiable-link" href="#Guru-Real_002ddata-DFTs-1"> &para;</a></span></h4>
+
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_plan_guru_dft_r2c(
+     int rank, const fftw_iodim *dims,
+     int howmany_rank, const fftw_iodim *howmany_dims,
+     double *in, fftw_complex *out,
+     unsigned flags);
+
+fftw_plan fftw_plan_guru_split_dft_r2c(
+     int rank, const fftw_iodim *dims,
+     int howmany_rank, const fftw_iodim *howmany_dims,
+     double *in, double *ro, double *io,
+     unsigned flags);
+
+fftw_plan fftw_plan_guru_dft_c2r(
+     int rank, const fftw_iodim *dims,
+     int howmany_rank, const fftw_iodim *howmany_dims,
+     fftw_complex *in, double *out,
+     unsigned flags);
+
+fftw_plan fftw_plan_guru_split_dft_c2r(
+     int rank, const fftw_iodim *dims,
+     int howmany_rank, const fftw_iodim *howmany_dims,
+     double *ri, double *ii, double *out,
+     unsigned flags);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fplan_005fguru_005fdft_005fr2c"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fguru_005fsplit_005fdft_005fr2c"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fguru_005fdft_005fc2r"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fguru_005fsplit_005fdft_005fc2r"></a>
+
+<p>Plan a real-input (r2c) or real-output (c2r), multi-dimensional DFT with
+transform dimensions given by (<code class="code">rank</code>, <code class="code">dims</code>) over a
+multi-dimensional vector (loop) of dimensions (<code class="code">howmany_rank</code>,
+<code class="code">howmany_dims</code>).  <code class="code">dims</code> and <code class="code">howmany_dims</code> should point
+to <code class="code">fftw_iodim</code> arrays of length <code class="code">rank</code> and
+<code class="code">howmany_rank</code>, respectively.  As for the basic and advanced
+interfaces, an r2c transform is <code class="code">FFTW_FORWARD</code> and a c2r transform
+is <code class="code">FFTW_BACKWARD</code>.
+</p>
+<p>The <em class="emph">last</em> dimension of <code class="code">dims</code> is interpreted specially:
+that dimension of the real array has size <code class="code">dims[rank-1].n</code>, but
+that dimension of the complex array has size <code class="code">dims[rank-1].n/2+1</code>
+(division rounded down).  The strides, on the other hand, are taken to
+be exactly as specified.  It is up to the user to specify the strides
+appropriately for the peculiar dimensions of the data, and we do not
+guarantee that the planner will succeed (return non-<code class="code">NULL</code>) for
+any dimensions other than those described in <a class="ref" href="Real_002ddata-DFT-Array-Format.html">Real-data DFT Array Format</a> and generalized in <a class="ref" href="Advanced-Real_002ddata-DFTs.html">Advanced Real-data DFTs</a>.  (That is,
+for an in-place transform, each individual dimension should be able to
+operate in place.)
+<a class="index-entry-id" id="index-in_002dplace-6"></a>
+</p>
+
+<p><code class="code">in</code> and <code class="code">out</code> point to the input and output arrays for r2c
+and c2r transforms, respectively.  For split arrays, <code class="code">ri</code> and
+<code class="code">ii</code> point to the real and imaginary input arrays for a c2r
+transform, and <code class="code">ro</code> and <code class="code">io</code> point to the real and imaginary
+output arrays for an r2c transform.  <code class="code">in</code> and <code class="code">ro</code> or
+<code class="code">ri</code> and <code class="code">out</code> may be the same, indicating an in-place
+transform.   (In-place transforms where <code class="code">in</code> and <code class="code">io</code> or
+<code class="code">ii</code> and <code class="code">out</code> are the same are not currently supported.)
+</p>
+<a class="index-entry-id" id="index-flags-6"></a>
+<p><code class="code">flags</code> is a bitwise OR (&lsquo;<samp class="samp">|</samp>&rsquo;) of zero or more planner flags,
+as defined in <a class="ref" href="Planner-Flags.html">Planner Flags</a>.
+</p>
+<p>In-place transforms of rank greater than 1 are currently only
+supported for interleaved arrays.  For split arrays, the planner will
+return <code class="code">NULL</code>.
+<a class="index-entry-id" id="index-in_002dplace-7"></a>
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Guru-Real_002dto_002dreal-Transforms.html">Guru Real-to-real Transforms</a>, Previous: <a href="Guru-Complex-DFTs.html">Guru Complex DFTs</a>, Up: <a href="Guru-Interface.html">Guru Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

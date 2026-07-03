@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Guru Complex DFTs (FFTW 3.3.11)</title>
+
+<meta name="description" content="Guru Complex DFTs (FFTW 3.3.11)">
+<meta name="keywords" content="Guru Complex DFTs (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Guru-Interface.html" rel="up" title="Guru Interface">
+<link href="Guru-Real_002ddata-DFTs.html" rel="next" title="Guru Real-data DFTs">
+<link href="Guru-vector-and-transform-sizes.html" rel="prev" title="Guru vector and transform sizes">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Guru-Complex-DFTs">
+<div class="nav-panel">
+<p>
+Next: <a href="Guru-Real_002ddata-DFTs.html" accesskey="n" rel="next">Guru Real-data DFTs</a>, Previous: <a href="Guru-vector-and-transform-sizes.html" accesskey="p" rel="prev">Guru vector and transform sizes</a>, Up: <a href="Guru-Interface.html" accesskey="u" rel="up">Guru Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Guru-Complex-DFTs-1"><span>4.5.3 Guru Complex DFTs<a class="copiable-link" href="#Guru-Complex-DFTs-1"> &para;</a></span></h4>
+
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_plan_guru_dft(
+     int rank, const fftw_iodim *dims,
+     int howmany_rank, const fftw_iodim *howmany_dims,
+     fftw_complex *in, fftw_complex *out,
+     int sign, unsigned flags);
+
+fftw_plan fftw_plan_guru_split_dft(
+     int rank, const fftw_iodim *dims,
+     int howmany_rank, const fftw_iodim *howmany_dims,
+     double *ri, double *ii, double *ro, double *io,
+     unsigned flags);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fplan_005fguru_005fdft"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fguru_005fsplit_005fdft"></a>
+
+<p>These two functions plan a complex-data, multi-dimensional DFT
+for the interleaved and split format, respectively.
+Transform dimensions are given by (<code class="code">rank</code>, <code class="code">dims</code>) over a
+multi-dimensional vector (loop) of dimensions (<code class="code">howmany_rank</code>,
+<code class="code">howmany_dims</code>).  <code class="code">dims</code> and <code class="code">howmany_dims</code> should point
+to <code class="code">fftw_iodim</code> arrays of length <code class="code">rank</code> and
+<code class="code">howmany_rank</code>, respectively.
+</p>
+<a class="index-entry-id" id="index-flags-5"></a>
+<p><code class="code">flags</code> is a bitwise OR (&lsquo;<samp class="samp">|</samp>&rsquo;) of zero or more planner flags,
+as defined in <a class="ref" href="Planner-Flags.html">Planner Flags</a>.
+</p>
+<p>In the <code class="code">fftw_plan_guru_dft</code> function, the pointers <code class="code">in</code> and
+<code class="code">out</code> point to the interleaved input and output arrays,
+respectively.  The sign can be either <em class="math">-1</em> (=
+<code class="code">FFTW_FORWARD</code>) or <em class="math">+1</em> (= <code class="code">FFTW_BACKWARD</code>).  If the
+pointers are equal, the transform is in-place.
+</p>
+<p>In the <code class="code">fftw_plan_guru_split_dft</code> function,
+<code class="code">ri</code> and <code class="code">ii</code> point to the real and imaginary input arrays,
+and <code class="code">ro</code> and <code class="code">io</code> point to the real and imaginary output
+arrays.  The input and output pointers may be the same, indicating an
+in-place transform.  For example, for <code class="code">fftw_complex</code> pointers
+<code class="code">in</code> and <code class="code">out</code>, the corresponding parameters are:
+</p>
+<div class="example">
+<pre class="example-preformatted">ri = (double *) in;
+ii = (double *) in + 1;
+ro = (double *) out;
+io = (double *) out + 1;
+</pre></div>
+
+<p>Because <code class="code">fftw_plan_guru_split_dft</code> accepts split arrays, strides
+are expressed in units of <code class="code">double</code>.  For a contiguous
+<code class="code">fftw_complex</code> array, the overall stride of the transform should
+be 2, the distance between consecutive real parts or between
+consecutive imaginary parts; see <a class="ref" href="Guru-vector-and-transform-sizes.html">Guru vector and transform sizes</a>.  Note that the dimension strides are applied equally to the
+real and imaginary parts; real and imaginary arrays with different
+strides are not supported.
+</p>
+<p>There is no <code class="code">sign</code> parameter in <code class="code">fftw_plan_guru_split_dft</code>.
+This function always plans for an <code class="code">FFTW_FORWARD</code> transform.  To
+plan for an <code class="code">FFTW_BACKWARD</code> transform, you can exploit the
+identity that the backwards DFT is equal to the forwards DFT with the
+real and imaginary parts swapped.  For example, in the case of the
+<code class="code">fftw_complex</code> arrays above, the <code class="code">FFTW_BACKWARD</code> transform
+is computed by the parameters:
+</p>
+<div class="example">
+<pre class="example-preformatted">ri = (double *) in + 1;
+ii = (double *) in;
+ro = (double *) out + 1;
+io = (double *) out;
+</pre></div>
+
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Guru-Real_002ddata-DFTs.html">Guru Real-data DFTs</a>, Previous: <a href="Guru-vector-and-transform-sizes.html">Guru vector and transform sizes</a>, Up: <a href="Guru-Interface.html">Guru Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Extended and quadruple precision in Fortran (FFTW 3.3.11)</title>
+
+<meta name="description" content="Extended and quadruple precision in Fortran (FFTW 3.3.11)">
+<meta name="keywords" content="Extended and quadruple precision in Fortran (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Overview-of-Fortran-interface.html" rel="up" title="Overview of Fortran interface">
+<link href="Overview-of-Fortran-interface.html" rel="prev" title="Overview of Fortran interface">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Extended-and-quadruple-precision-in-Fortran">
+<div class="nav-panel">
+<p>
+Previous: <a href="Overview-of-Fortran-interface.html" accesskey="p" rel="prev">Overview of Fortran interface</a>, Up: <a href="Overview-of-Fortran-interface.html" accesskey="u" rel="up">Overview of Fortran interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Extended-and-quadruple-precision-in-Fortran-1"><span>7.1.1 Extended and quadruple precision in Fortran<a class="copiable-link" href="#Extended-and-quadruple-precision-in-Fortran-1"> &para;</a></span></h4>
+<a class="index-entry-id" id="index-precision-7"></a>
+
+<p>If FFTW is compiled in <code class="code">long double</code> (extended) precision
+(see <a class="pxref" href="Installation-and-Customization.html">Installation and Customization</a>), you may be able to call the
+resulting <code class="code">fftwl_</code> routines (see <a class="pxref" href="Precision.html">Precision</a>) from Fortran if
+your compiler supports the <code class="code">C_LONG_DOUBLE_COMPLEX</code> type code.
+</p>
+<p>Because some Fortran compilers do not support
+<code class="code">C_LONG_DOUBLE_COMPLEX</code>, the <code class="code">fftwl_</code> declarations are
+segregated into a separate interface file <code class="code">fftw3l.f03</code>, which you
+should include <em class="emph">in addition</em> to <code class="code">fftw3.f03</code> (which declares
+precision-independent &lsquo;<samp class="samp">FFTW_</samp>&rsquo; constants):
+</p>
+<a class="index-entry-id" id="index-iso_005fc_005fbinding-2"></a>
+<div class="example">
+<pre class="example-preformatted">  use, intrinsic :: iso_c_binding 
+  include 'fftw3.f03'
+  include 'fftw3l.f03'
+</pre></div>
+
+<p>We also support using the nonstandard <code class="code">__float128</code>
+quadruple-precision type provided by recent versions of <code class="code">gcc</code> on
+32- and 64-bit x86 hardware (see <a class="pxref" href="Installation-and-Customization.html">Installation and Customization</a>),
+using the corresponding <code class="code">real(16)</code> and <code class="code">complex(16)</code> types
+supported by <code class="code">gfortran</code>.  The quadruple-precision &lsquo;<samp class="samp">fftwq_</samp>&rsquo;
+functions (see <a class="pxref" href="Precision.html">Precision</a>) are declared in a <code class="code">fftw3q.f03</code>
+interface file, which should be included in addition to
+<code class="code">fftw3.f03</code>, as above.  You should also link with
+<code class="code">-lfftw3q -lquadmath -lm</code> as in C.
+</p>
+</div>
+
+
+
+</body>
+</html>

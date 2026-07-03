@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Avoiding MPI Deadlocks (FFTW 3.3.11)</title>
+
+<meta name="description" content="Avoiding MPI Deadlocks (FFTW 3.3.11)">
+<meta name="keywords" content="Avoiding MPI Deadlocks (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Distributed_002dmemory-FFTW-with-MPI.html" rel="up" title="Distributed-memory FFTW with MPI">
+<link href="FFTW-MPI-Performance-Tips.html" rel="next" title="FFTW MPI Performance Tips">
+<link href="FFTW-MPI-Wisdom.html" rel="prev" title="FFTW MPI Wisdom">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Avoiding-MPI-Deadlocks">
+<div class="nav-panel">
+<p>
+Next: <a href="FFTW-MPI-Performance-Tips.html" accesskey="n" rel="next">FFTW MPI Performance Tips</a>, Previous: <a href="FFTW-MPI-Wisdom.html" accesskey="p" rel="prev">FFTW MPI Wisdom</a>, Up: <a href="Distributed_002dmemory-FFTW-with-MPI.html" accesskey="u" rel="up">Distributed-memory FFTW with MPI</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Avoiding-MPI-Deadlocks-1"><span>6.9 Avoiding MPI Deadlocks<a class="copiable-link" href="#Avoiding-MPI-Deadlocks-1"> &para;</a></span></h3>
+<a class="index-entry-id" id="index-deadlock"></a>
+
+<p>An MPI program can <em class="emph">deadlock</em> if one process is waiting for a
+message from another process that never gets sent.  To avoid deadlocks
+when using FFTW&rsquo;s MPI routines, it is important to know which
+functions are <em class="emph">collective</em>: that is, which functions must
+<em class="emph">always</em> be called in the <em class="emph">same order</em> from <em class="emph">every</em>
+process in a given communicator.  (For example, <code class="code">MPI_Barrier</code> is
+the canonical example of a collective function in the MPI standard.)
+<a class="index-entry-id" id="index-collective-function-2"></a>
+<a class="index-entry-id" id="index-MPI_005fBarrier"></a>
+</p>
+
+<p>The functions in FFTW that are <em class="emph">always</em> collective are: every
+function beginning with &lsquo;<samp class="samp">fftw_mpi_plan</samp>&rsquo;, as well as
+<code class="code">fftw_mpi_broadcast_wisdom</code> and <code class="code">fftw_mpi_gather_wisdom</code>.
+Also, the following functions from the ordinary FFTW interface are
+collective when they are applied to a plan created by an
+&lsquo;<samp class="samp">fftw_mpi_plan</samp>&rsquo; function: <code class="code">fftw_execute</code>,
+<code class="code">fftw_destroy_plan</code>, and <code class="code">fftw_flops</code>.
+<a class="index-entry-id" id="index-fftw_005fexecute-4"></a>
+<a class="index-entry-id" id="index-fftw_005fdestroy_005fplan-2"></a>
+<a class="index-entry-id" id="index-fftw_005fflops-1"></a>
+</p>
+</div>
+
+
+
+</body>
+</html>

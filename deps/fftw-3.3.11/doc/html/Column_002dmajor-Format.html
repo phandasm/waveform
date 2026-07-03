@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Column-major Format (FFTW 3.3.11)</title>
+
+<meta name="description" content="Column-major Format (FFTW 3.3.11)">
+<meta name="keywords" content="Column-major Format (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Multi_002ddimensional-Array-Format.html" rel="up" title="Multi-dimensional Array Format">
+<link href="Fixed_002dsize-Arrays-in-C.html" rel="next" title="Fixed-size Arrays in C">
+<link href="Row_002dmajor-Format.html" rel="prev" title="Row-major Format">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Column_002dmajor-Format">
+<div class="nav-panel">
+<p>
+Next: <a href="Fixed_002dsize-Arrays-in-C.html" accesskey="n" rel="next">Fixed-size Arrays in C</a>, Previous: <a href="Row_002dmajor-Format.html" accesskey="p" rel="prev">Row-major Format</a>, Up: <a href="Multi_002ddimensional-Array-Format.html" accesskey="u" rel="up">Multi-dimensional Array Format</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Column_002dmajor-Format-1"><span>3.2.2 Column-major Format<a class="copiable-link" href="#Column_002dmajor-Format-1"> &para;</a></span></h4>
+<a class="index-entry-id" id="index-column_002dmajor"></a>
+
+<p>Readers from the Fortran world are used to arrays stored in
+<em class="dfn">column-major</em> order (sometimes called &ldquo;Fortran order&rdquo;).  This is
+essentially the exact opposite of row-major order in that, here, the
+<em class="emph">first</em> dimension&rsquo;s index varies most quickly.
+</p>
+<p>If you have an array stored in column-major order and wish to
+transform it using FFTW, it is quite easy to do.  When creating the
+plan, simply pass the dimensions of the array to the planner in
+<em class="emph">reverse order</em>.  For example, if your array is a rank three
+<code class="code">N x M x L</code> matrix in column-major order, you should pass the
+dimensions of the array as if it were an <code class="code">L x M x N</code> matrix
+(which it is, from the perspective of FFTW).  This is done for you
+<em class="emph">automatically</em> by the FFTW legacy-Fortran interface
+(see <a class="pxref" href="Calling-FFTW-from-Legacy-Fortran.html">Calling FFTW from Legacy Fortran</a>), but you must do it
+manually with the modern Fortran interface (see <a class="pxref" href="Reversing-array-dimensions.html">Reversing array dimensions</a>).
+<a class="index-entry-id" id="index-Fortran-interface"></a>
+</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>MPI Initialization (FFTW 3.3.11)</title>
+
+<meta name="description" content="MPI Initialization (FFTW 3.3.11)">
+<meta name="keywords" content="MPI Initialization (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="FFTW-MPI-Reference.html" rel="up" title="FFTW MPI Reference">
+<link href="Using-MPI-Plans.html" rel="next" title="Using MPI Plans">
+<link href="MPI-Files-and-Data-Types.html" rel="prev" title="MPI Files and Data Types">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="MPI-Initialization">
+<div class="nav-panel">
+<p>
+Next: <a href="Using-MPI-Plans.html" accesskey="n" rel="next">Using MPI Plans</a>, Previous: <a href="MPI-Files-and-Data-Types.html" accesskey="p" rel="prev">MPI Files and Data Types</a>, Up: <a href="FFTW-MPI-Reference.html" accesskey="u" rel="up">FFTW MPI Reference</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="MPI-Initialization-1"><span>6.12.2 MPI Initialization<a class="copiable-link" href="#MPI-Initialization-1"> &para;</a></span></h4>
+
+<p>Before calling any other FFTW MPI (&lsquo;<samp class="samp">fftw_mpi_</samp>&rsquo;) function, and
+before importing any wisdom for MPI problems, you must call:
+</p>
+<a class="index-entry-id" id="index-fftw_005fmpi_005finit-4"></a>
+<div class="example">
+<pre class="example-preformatted">void fftw_mpi_init(void);
+</pre></div>
+
+<a class="index-entry-id" id="index-fftw_005finit_005fthreads-3"></a>
+<p>If FFTW threads support is used, however, <code class="code">fftw_mpi_init</code> should
+be called <em class="emph">after</em> <code class="code">fftw_init_threads</code> (see <a class="pxref" href="Combining-MPI-and-Threads.html">Combining MPI and Threads</a>).  Calling <code class="code">fftw_mpi_init</code> additional times (before
+<code class="code">fftw_mpi_cleanup</code>) has no effect.
+</p>
+
+<p>If you want to deallocate all persistent data and reset FFTW to the
+pristine state it was in when you started your program, you can call:
+</p>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fcleanup-1"></a>
+<div class="example">
+<pre class="example-preformatted">void fftw_mpi_cleanup(void);
+</pre></div>
+
+<a class="index-entry-id" id="index-fftw_005fcleanup-1"></a>
+<p>(This calls <code class="code">fftw_cleanup</code>, so you need not call the serial
+cleanup routine too, although it is safe to do so.)  After calling
+<code class="code">fftw_mpi_cleanup</code>, all existing plans become undefined, and you
+should not attempt to execute or destroy them.  You must call
+<code class="code">fftw_mpi_init</code> again after <code class="code">fftw_mpi_cleanup</code> if you want
+to resume using the MPI FFTW routines.
+</p>
+</div>
+
+
+
+</body>
+</html>

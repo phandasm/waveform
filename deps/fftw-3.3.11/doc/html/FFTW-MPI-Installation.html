@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>FFTW MPI Installation (FFTW 3.3.11)</title>
+
+<meta name="description" content="FFTW MPI Installation (FFTW 3.3.11)">
+<meta name="keywords" content="FFTW MPI Installation (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Distributed_002dmemory-FFTW-with-MPI.html" rel="up" title="Distributed-memory FFTW with MPI">
+<link href="Linking-and-Initializing-MPI-FFTW.html" rel="next" title="Linking and Initializing MPI FFTW">
+<link href="Distributed_002dmemory-FFTW-with-MPI.html" rel="prev" title="Distributed-memory FFTW with MPI">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="FFTW-MPI-Installation">
+<div class="nav-panel">
+<p>
+Next: <a href="Linking-and-Initializing-MPI-FFTW.html" accesskey="n" rel="next">Linking and Initializing MPI FFTW</a>, Previous: <a href="Distributed_002dmemory-FFTW-with-MPI.html" accesskey="p" rel="prev">Distributed-memory FFTW with MPI</a>, Up: <a href="Distributed_002dmemory-FFTW-with-MPI.html" accesskey="u" rel="up">Distributed-memory FFTW with MPI</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="FFTW-MPI-Installation-1"><span>6.1 FFTW MPI Installation<a class="copiable-link" href="#FFTW-MPI-Installation-1"> &para;</a></span></h3>
+
+<p>All of the FFTW MPI code is located in the <code class="code">mpi</code> subdirectory of
+the FFTW package.  On Unix systems, the FFTW MPI libraries and header
+files are automatically configured, compiled, and installed along with
+the uniprocessor FFTW libraries simply by including
+<code class="code">--enable-mpi</code> in the flags to the <code class="code">configure</code> script
+(see <a class="pxref" href="Installation-on-Unix.html">Installation on Unix</a>).
+<a class="index-entry-id" id="index-configure-1"></a>
+</p>
+
+<p>Any implementation of the MPI standard, version 1 or later, should
+work with FFTW.  The <code class="code">configure</code> script will attempt to
+automatically detect how to compile and link code using your MPI
+implementation.  In some cases, especially if you have multiple
+different MPI implementations installed or have an unusual MPI
+software package, you may need to provide this information explicitly.
+</p>
+<p>Most commonly, one compiles MPI code by invoking a special compiler
+command, typically <code class="code">mpicc</code> for C code.  The <code class="code">configure</code>
+script knows the most common names for this command, but you can
+specify the MPI compilation command explicitly by setting the
+<code class="code">MPICC</code> variable, as in &lsquo;<samp class="samp">./configure MPICC=mpicc ...</samp>&rsquo;.
+<a class="index-entry-id" id="index-mpicc"></a>
+</p>
+
+<p>If, instead of a special compiler command, you need to link a certain
+library, you can specify the link command via the <code class="code">MPILIBS</code>
+variable, as in &lsquo;<samp class="samp">./configure MPILIBS=-lmpi ...</samp>&rsquo;.  Note that if
+your MPI library is installed in a non-standard location (one the
+compiler does not know about by default), you may also have to specify
+the location of the library and header files via <code class="code">LDFLAGS</code> and
+<code class="code">CPPFLAGS</code> variables, respectively, as in &lsquo;<samp class="samp">./configure
+LDFLAGS=-L/path/to/mpi/libs CPPFLAGS=-I/path/to/mpi/include ...</samp>&rsquo;.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Linking-and-Initializing-MPI-FFTW.html">Linking and Initializing MPI FFTW</a>, Previous: <a href="Distributed_002dmemory-FFTW-with-MPI.html">Distributed-memory FFTW with MPI</a>, Up: <a href="Distributed_002dmemory-FFTW-with-MPI.html">Distributed-memory FFTW with MPI</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

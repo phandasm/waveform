@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Tutorial (FFTW 3.3.11)</title>
+
+<meta name="description" content="Tutorial (FFTW 3.3.11)">
+<meta name="keywords" content="Tutorial (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="Other-Important-Topics.html" rel="next" title="Other Important Topics">
+<link href="Introduction.html" rel="prev" title="Introduction">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="chapter-level-extent" id="Tutorial">
+<div class="nav-panel">
+<p>
+Next: <a href="Other-Important-Topics.html" accesskey="n" rel="next">Other Important Topics</a>, Previous: <a href="Introduction.html" accesskey="p" rel="prev">Introduction</a>, Up: <a href="index.html" accesskey="u" rel="up">FFTW User Manual</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h2 class="chapter" id="Tutorial-1"><span>2 Tutorial<a class="copiable-link" href="#Tutorial-1"> &para;</a></span></h2>
+
+<p>This chapter describes the basic usage of FFTW, i.e., how to compute
+<a class="index-entry-id" id="index-basic-interface-1"></a>
+the Fourier transform of a single array.  This chapter tells the
+truth, but not the <em class="emph">whole</em> truth. Specifically, FFTW implements
+additional routines and flags that are not documented here, although
+in many cases we try to indicate where added capabilities exist.  For
+more complete information, see <a class="ref" href="FFTW-Reference.html">FFTW Reference</a>.  (Note that you
+need to compile and install FFTW before you can use it in a program.
+For the details of the installation, see <a class="ref" href="Installation-and-Customization.html">Installation and Customization</a>.)
+</p>
+<p>We recommend that you read this tutorial in order.<a class="footnote" id="DOCF1" href="#FOOT1"><sup>1</sup></a>  At the least, read the first section (see <a class="pxref" href="Complex-One_002dDimensional-DFTs.html">Complex One-Dimensional DFTs</a>) before reading any of the others, even if your
+main interest lies in one of the other transform types.
+</p>
+<p>Users of FFTW version 2 and earlier may also want to read <a class="ref" href="Upgrading-from-FFTW-version-2.html">Upgrading from FFTW version 2</a>.
+</p>
+<ul class="mini-toc">
+<li><a href="Complex-One_002dDimensional-DFTs.html" accesskey="1">Complex One-Dimensional DFTs</a></li>
+<li><a href="Complex-Multi_002dDimensional-DFTs.html" accesskey="2">Complex Multi-Dimensional DFTs</a></li>
+<li><a href="One_002dDimensional-DFTs-of-Real-Data.html" accesskey="3">One-Dimensional DFTs of Real Data</a></li>
+<li><a href="Multi_002dDimensional-DFTs-of-Real-Data.html" accesskey="4">Multi-Dimensional DFTs of Real Data</a></li>
+<li><a href="More-DFTs-of-Real-Data.html" accesskey="5">More DFTs of Real Data</a></li>
+</ul>
+</div>
+<div class="footnotes-segment">
+<hr>
+<h4 class="footnotes-heading">Footnotes</h4>
+
+<h5 class="footnote-body-heading"><a id="FOOT1" href="#DOCF1">(1)</a></h5>
+<p>You can
+read the tutorial in bit-reversed order after computing your first
+transform.</p>
+</div>
+
+
+
+</body>
+</html>

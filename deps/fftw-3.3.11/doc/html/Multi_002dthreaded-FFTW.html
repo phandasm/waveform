@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Multi-threaded FFTW (FFTW 3.3.11)</title>
+
+<meta name="description" content="Multi-threaded FFTW (FFTW 3.3.11)">
+<meta name="keywords" content="Multi-threaded FFTW (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="Distributed_002dmemory-FFTW-with-MPI.html" rel="next" title="Distributed-memory FFTW with MPI">
+<link href="FFTW-Reference.html" rel="prev" title="FFTW Reference">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="chapter-level-extent" id="Multi_002dthreaded-FFTW">
+<div class="nav-panel">
+<p>
+Next: <a href="Distributed_002dmemory-FFTW-with-MPI.html" accesskey="n" rel="next">Distributed-memory FFTW with MPI</a>, Previous: <a href="FFTW-Reference.html" accesskey="p" rel="prev">FFTW Reference</a>, Up: <a href="index.html" accesskey="u" rel="up">FFTW User Manual</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h2 class="chapter" id="Multi_002dthreaded-FFTW-1"><span>5 Multi-threaded FFTW<a class="copiable-link" href="#Multi_002dthreaded-FFTW-1"> &para;</a></span></h2>
+
+<a class="index-entry-id" id="index-parallel-transform"></a>
+<p>In this chapter we document the parallel FFTW routines for
+shared-memory parallel hardware.  These routines, which support
+parallel one- and multi-dimensional transforms of both real and
+complex data, are the easiest way to take advantage of multiple
+processors with FFTW.  They work just like the corresponding
+uniprocessor transform routines, except that you have an extra
+initialization routine to call, and there is a routine to set the
+number of threads to employ.  Any program that uses the uniprocessor
+FFTW can therefore be trivially modified to use the multi-threaded
+FFTW.
+</p>
+<p>A shared-memory machine is one in which all CPUs can directly access
+the same main memory, and such machines are now common due to the
+ubiquity of multi-core CPUs.  FFTW&rsquo;s multi-threading support allows
+you to utilize these additional CPUs transparently from a single
+program.  However, this does not necessarily translate into
+performance gains&mdash;when multiple threads/CPUs are employed, there is
+an overhead required for synchronization that may outweigh the
+computatational parallelism.  Therefore, you can only benefit from
+threads if your problem is sufficiently large.
+<a class="index-entry-id" id="index-shared_002dmemory"></a>
+<a class="index-entry-id" id="index-threads"></a>
+</p>
+
+<ul class="mini-toc">
+<li><a href="Installation-and-Supported-Hardware_002fSoftware.html" accesskey="1">Installation and Supported Hardware/Software</a></li>
+<li><a href="Usage-of-Multi_002dthreaded-FFTW.html" accesskey="2">Usage of Multi-threaded FFTW</a></li>
+<li><a href="How-Many-Threads-to-Use_003f.html" accesskey="3">How Many Threads to Use?</a></li>
+<li><a href="Thread-safety.html" accesskey="4">Thread safety</a></li>
+</ul>
+</div>
+
+
+
+</body>
+</html>

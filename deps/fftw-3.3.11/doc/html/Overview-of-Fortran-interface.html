@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Overview of Fortran interface (FFTW 3.3.11)</title>
+
+<meta name="description" content="Overview of Fortran interface (FFTW 3.3.11)">
+<meta name="keywords" content="Overview of Fortran interface (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Calling-FFTW-from-Modern-Fortran.html" rel="up" title="Calling FFTW from Modern Fortran">
+<link href="Reversing-array-dimensions.html" rel="next" title="Reversing array dimensions">
+<link href="Calling-FFTW-from-Modern-Fortran.html" rel="prev" title="Calling FFTW from Modern Fortran">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+ul.mark-bullet {list-style-type: disc}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Overview-of-Fortran-interface">
+<div class="nav-panel">
+<p>
+Next: <a href="Reversing-array-dimensions.html" accesskey="n" rel="next">Reversing array dimensions</a>, Previous: <a href="Calling-FFTW-from-Modern-Fortran.html" accesskey="p" rel="prev">Calling FFTW from Modern Fortran</a>, Up: <a href="Calling-FFTW-from-Modern-Fortran.html" accesskey="u" rel="up">Calling FFTW from Modern Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Overview-of-Fortran-interface-1"><span>7.1 Overview of Fortran interface<a class="copiable-link" href="#Overview-of-Fortran-interface-1"> &para;</a></span></h3>
+
+<p>FFTW provides a file <code class="code">fftw3.f03</code> that defines Fortran 2003
+interfaces for all of its C routines, except for the MPI routines
+described elsewhere, which can be found in the same directory as
+<code class="code">fftw3.h</code> (the C header file).  In any Fortran subroutine where
+you want to use FFTW functions, you should begin with:
+</p>
+<a class="index-entry-id" id="index-iso_005fc_005fbinding-1"></a>
+<div class="example">
+<pre class="example-preformatted">  use, intrinsic :: iso_c_binding 
+  include 'fftw3.f03'
+</pre></div>
+
+<p>This includes the interface definitions and the standard
+<code class="code">iso_c_binding</code> module (which defines the equivalents of C
+types).  You can also put the FFTW functions into a module if you
+prefer (see <a class="pxref" href="Defining-an-FFTW-module.html">Defining an FFTW module</a>).
+</p>
+<p>At this point, you can now call anything in the FFTW C interface
+directly, almost exactly as in C other than minor changes in syntax.
+For example:
+</p>
+<a class="index-entry-id" id="index-fftw_005fplan_005fdft_005f2d-2"></a>
+<a class="index-entry-id" id="index-fftw_005fexecute_005fdft-2"></a>
+<a class="index-entry-id" id="index-fftw_005fdestroy_005fplan-3"></a>
+<div class="example">
+<pre class="example-preformatted">  type(C_PTR) :: plan
+  complex(C_DOUBLE_COMPLEX), dimension(1024,1000) :: in, out
+  plan = fftw_plan_dft_2d(1000,1024, in,out, FFTW_FORWARD,FFTW_ESTIMATE)
+  ...
+  call fftw_execute_dft(plan, in, out)
+  ...
+  call fftw_destroy_plan(plan)
+</pre></div>
+
+<p>A few important things to keep in mind are:
+</p>
+<ul class="itemize mark-bullet">
+<li><a class="index-entry-id" id="index-fftw_005fcomplex-2"></a>
+<a class="index-entry-id" id="index-C_005fPTR"></a>
+<a class="index-entry-id" id="index-C_005fINT"></a>
+<a class="index-entry-id" id="index-C_005fDOUBLE"></a>
+<a class="index-entry-id" id="index-C_005fDOUBLE_005fCOMPLEX"></a>
+FFTW plans are <code class="code">type(C_PTR)</code>.  Other C types are mapped in the
+obvious way via the <code class="code">iso_c_binding</code> standard: <code class="code">int</code> turns
+into <code class="code">integer(C_INT)</code>, <code class="code">fftw_complex</code> turns into
+<code class="code">complex(C_DOUBLE_COMPLEX)</code>, <code class="code">double</code> turns into
+<code class="code">real(C_DOUBLE)</code>, and so on. See <a class="xref" href="FFTW-Fortran-type-reference.html">FFTW Fortran type reference</a>.
+
+</li><li>Functions in C become functions in Fortran if they have a return value,
+and subroutines in Fortran otherwise.
+
+</li><li>The ordering of the Fortran array dimensions must be <em class="emph">reversed</em>
+when they are passed to the FFTW plan creation, thanks to differences
+in array indexing conventions (see <a class="pxref" href="Multi_002ddimensional-Array-Format.html">Multi-dimensional Array Format</a>).  This is <em class="emph">unlike</em> the legacy Fortran interface
+(see <a class="pxref" href="Fortran_002dinterface-routines.html">Fortran-interface routines</a>), which reversed the dimensions
+for you.  See <a class="xref" href="Reversing-array-dimensions.html">Reversing array dimensions</a>.
+
+</li><li><a class="index-entry-id" id="index-alignment-4"></a>
+<a class="index-entry-id" id="index-SIMD-2"></a>
+Using ordinary Fortran array declarations like this works, but may
+yield suboptimal performance because the data may not be not aligned
+to exploit SIMD instructions on modern proessors (see <a class="pxref" href="SIMD-alignment-and-fftw_005fmalloc.html">SIMD alignment and fftw_malloc</a>). Better performance will often be obtained
+by allocating with &lsquo;<samp class="samp">fftw_alloc</samp>&rsquo;. See <a class="xref" href="Allocating-aligned-memory-in-Fortran.html">Allocating aligned memory in Fortran</a>.
+
+</li><li><a class="index-entry-id" id="index-fftw_005fexecute-5"></a>
+Similar to the legacy Fortran interface (see <a class="pxref" href="FFTW-Execution-in-Fortran.html">FFTW Execution in Fortran</a>), we currently recommend <em class="emph">not</em> using <code class="code">fftw_execute</code>
+but rather using the more specialized functions like
+<code class="code">fftw_execute_dft</code> (see <a class="pxref" href="New_002darray-Execute-Functions.html">New-array Execute Functions</a>).  
+However, you should execute the plan on the <code class="code">same arrays</code> as the
+ones for which you created the plan, unless you are especially
+careful.  See <a class="xref" href="Plan-execution-in-Fortran.html">Plan execution in Fortran</a>.  To prevent
+you from using <code class="code">fftw_execute</code> by mistake, the <code class="code">fftw3.f03</code>
+file does not provide an <code class="code">fftw_execute</code> interface declaration.
+
+</li><li><a class="index-entry-id" id="index-flags-8"></a>
+Multiple planner flags are combined with <code class="code">ior</code> (equivalent to &lsquo;<samp class="samp">|</samp>&rsquo; in C).  e.g. <code class="code">FFTW_MEASURE | FFTW_DESTROY_INPUT</code> becomes <code class="code">ior(FFTW_MEASURE, FFTW_DESTROY_INPUT)</code>.  (You can also use &lsquo;<samp class="samp">+</samp>&rsquo; as long as you don&rsquo;t try to include a given flag more than once.)
+
+</li></ul>
+
+
+<ul class="mini-toc">
+<li><a href="Extended-and-quadruple-precision-in-Fortran.html" accesskey="1">Extended and quadruple precision in Fortran</a></li>
+</ul>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Reversing-array-dimensions.html">Reversing array dimensions</a>, Previous: <a href="Calling-FFTW-from-Modern-Fortran.html">Calling FFTW from Modern Fortran</a>, Up: <a href="Calling-FFTW-from-Modern-Fortran.html">Calling FFTW from Modern Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

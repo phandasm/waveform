@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>FFTW Fortran type reference (FFTW 3.3.11)</title>
+
+<meta name="description" content="FFTW Fortran type reference (FFTW 3.3.11)">
+<meta name="keywords" content="FFTW Fortran type reference (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Calling-FFTW-from-Modern-Fortran.html" rel="up" title="Calling FFTW from Modern Fortran">
+<link href="Plan-execution-in-Fortran.html" rel="next" title="Plan execution in Fortran">
+<link href="Reversing-array-dimensions.html" rel="prev" title="Reversing array dimensions">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+ul.mark-bullet {list-style-type: disc}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="FFTW-Fortran-type-reference">
+<div class="nav-panel">
+<p>
+Next: <a href="Plan-execution-in-Fortran.html" accesskey="n" rel="next">Plan execution in Fortran</a>, Previous: <a href="Reversing-array-dimensions.html" accesskey="p" rel="prev">Reversing array dimensions</a>, Up: <a href="Calling-FFTW-from-Modern-Fortran.html" accesskey="u" rel="up">Calling FFTW from Modern Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="FFTW-Fortran-type-reference-1"><span>7.3 FFTW Fortran type reference<a class="copiable-link" href="#FFTW-Fortran-type-reference-1"> &para;</a></span></h3>
+
+<p>The following are the most important type correspondences between the
+C interface and Fortran:
+</p>
+<ul class="itemize mark-bullet">
+<li><a class="index-entry-id" id="index-fftw_005fplan-2"></a>
+Plans (<code class="code">fftw_plan</code> and variants) are <code class="code">type(C_PTR)</code> (i.e. an
+opaque pointer).
+
+</li><li><a class="index-entry-id" id="index-fftw_005fcomplex-3"></a>
+<a class="index-entry-id" id="index-precision-8"></a>
+<a class="index-entry-id" id="index-C_005fDOUBLE-1"></a>
+<a class="index-entry-id" id="index-C_005fFLOAT"></a>
+<a class="index-entry-id" id="index-C_005fLONG_005fDOUBLE"></a>
+<a class="index-entry-id" id="index-C_005fDOUBLE_005fCOMPLEX-1"></a>
+<a class="index-entry-id" id="index-C_005fFLOAT_005fCOMPLEX"></a>
+<a class="index-entry-id" id="index-C_005fLONG_005fDOUBLE_005fCOMPLEX"></a>
+The C floating-point types <code class="code">double</code>, <code class="code">float</code>, and <code class="code">long
+double</code> correspond to <code class="code">real(C_DOUBLE)</code>, <code class="code">real(C_FLOAT)</code>, and
+<code class="code">real(C_LONG_DOUBLE)</code>, respectively.  The C complex types
+<code class="code">fftw_complex</code>, <code class="code">fftwf_complex</code>, and <code class="code">fftwl_complex</code>
+correspond in Fortran to <code class="code">complex(C_DOUBLE_COMPLEX)</code>,
+<code class="code">complex(C_FLOAT_COMPLEX)</code>, and
+<code class="code">complex(C_LONG_DOUBLE_COMPLEX)</code>, respectively.  
+Just as in C
+(see <a class="pxref" href="Precision.html">Precision</a>), the FFTW subroutines and types are prefixed with
+&lsquo;<samp class="samp">fftw_</samp>&rsquo;, <code class="code">fftwf_</code>, and <code class="code">fftwl_</code> for the different precisions, and link to different libraries (<code class="code">-lfftw3</code>, <code class="code">-lfftw3f</code>, and <code class="code">-lfftw3l</code> on Unix), but use the <em class="emph">same</em> include file <code class="code">fftw3.f03</code> and the <em class="emph">same</em> constants (all of which begin with &lsquo;<samp class="samp">FFTW_</samp>&rsquo;).  The exception is <code class="code">long double</code> precision, for which you should <em class="emph">also</em> include <code class="code">fftw3l.f03</code> (see <a class="pxref" href="Extended-and-quadruple-precision-in-Fortran.html">Extended and quadruple precision in Fortran</a>).
+
+</li><li><a class="index-entry-id" id="index-ptrdiff_005ft-2"></a>
+<a class="index-entry-id" id="index-C_005fINT-1"></a>
+<a class="index-entry-id" id="index-C_005fINTPTR_005fT"></a>
+<a class="index-entry-id" id="index-C_005fSIZE_005fT"></a>
+<a class="index-entry-id" id="index-fftw_005fmalloc-7"></a>
+The C integer types <code class="code">int</code> and <code class="code">unsigned</code> (used for planner
+flags) become <code class="code">integer(C_INT)</code>.  The C integer type <code class="code">ptrdiff_t</code> (e.g. in the <a class="ref" href="64_002dbit-Guru-Interface.html">64-bit Guru Interface</a>) becomes <code class="code">integer(C_INTPTR_T)</code>, and <code class="code">size_t</code> (in <code class="code">fftw_malloc</code> etc.) becomes <code class="code">integer(C_SIZE_T)</code>.
+
+</li><li><a class="index-entry-id" id="index-fftw_005fr2r_005fkind-2"></a>
+<a class="index-entry-id" id="index-C_005fFFTW_005fR2R_005fKIND"></a>
+The <code class="code">fftw_r2r_kind</code> type (see <a class="pxref" href="Real_002dto_002dReal-Transform-Kinds.html">Real-to-Real Transform Kinds</a>)
+becomes <code class="code">integer(C_FFTW_R2R_KIND)</code>.  The various constant values
+of the C enumerated type (<code class="code">FFTW_R2HC</code> etc.) become simply integer
+constants of the same names in Fortran.
+
+</li><li><a class="index-entry-id" id="index-FFTW_005fDESTROY_005fINPUT-2"></a>
+<a class="index-entry-id" id="index-in_002dplace-10"></a>
+<a class="index-entry-id" id="index-fftw_005fflops-2"></a>
+Numeric array pointer arguments (e.g. <code class="code">double *</code>)
+become <code class="code">dimension(*), intent(out)</code> arrays of the same type, or
+<code class="code">dimension(*), intent(in)</code> if they are pointers to constant data
+(e.g. <code class="code">const int *</code>).  There are a few exceptions where numeric
+pointers refer to scalar outputs (e.g. for <code class="code">fftw_flops</code>), in which
+case they are <code class="code">intent(out)</code> scalar arguments in Fortran too.
+For the new-array execute functions (see <a class="pxref" href="New_002darray-Execute-Functions.html">New-array Execute Functions</a>),
+the input arrays are declared <code class="code">dimension(*), intent(inout)</code>, since
+they can be modified in the case of in-place or <code class="code">FFTW_DESTROY_INPUT</code>
+transforms.
+
+</li><li><a class="index-entry-id" id="index-fftw_005falloc_005freal-4"></a>
+<a class="index-entry-id" id="index-c_005ff_005fpointer-1"></a>
+Pointer <em class="emph">return</em> values (e.g <code class="code">double *</code>) become
+<code class="code">type(C_PTR)</code>.  (If they are pointers to arrays, as for
+<code class="code">fftw_alloc_real</code>, you can convert them back to Fortran array
+pointers with the standard intrinsic function <code class="code">c_f_pointer</code>.)
+
+</li><li><a class="index-entry-id" id="index-guru-interface-3"></a>
+<a class="index-entry-id" id="index-fftw_005fiodim-1"></a>
+<a class="index-entry-id" id="index-fftw_005fiodim64-1"></a>
+<a class="index-entry-id" id="index-64_002dbit-architecture-2"></a>
+The <code class="code">fftw_iodim</code> type in the guru interface (see <a class="pxref" href="Guru-vector-and-transform-sizes.html">Guru vector and transform sizes</a>) becomes <code class="code">type(fftw_iodim)</code> in Fortran, a
+derived data type (the Fortran analogue of C&rsquo;s <code class="code">struct</code>) with
+three <code class="code">integer(C_INT)</code> components: <code class="code">n</code>, <code class="code">is</code>, and
+<code class="code">os</code>, with the same meanings as in C.  The <code class="code">fftw_iodim64</code> type in the 64-bit guru interface (see <a class="pxref" href="64_002dbit-Guru-Interface.html">64-bit Guru Interface</a>) is the same, except that its components are of type <code class="code">integer(C_INTPTR_T)</code>.
+
+</li><li><a class="index-entry-id" id="index-C_005fFUNPTR"></a>
+Using the wisdom import/export functions from Fortran is a bit tricky,
+and is discussed in <a class="ref" href="Accessing-the-wisdom-API-from-Fortran.html">Accessing the wisdom API from Fortran</a>.  In
+brief, the <code class="code">FILE *</code> arguments map to <code class="code">type(C_PTR)</code>, <code class="code">const char *</code> to <code class="code">character(C_CHAR), dimension(*), intent(in)</code> (null-terminated!), and the generic read-char/write-char functions map to <code class="code">type(C_FUNPTR)</code>.
+
+</li></ul>
+
+<a class="index-entry-id" id="index-portability-5"></a>
+<p>You may be wondering if you need to search-and-replace
+<code class="code">real(kind(0.0d0))</code> (or whatever your favorite Fortran spelling
+of &ldquo;double precision&rdquo; is) with <code class="code">real(C_DOUBLE)</code> everywhere in
+your program, and similarly for <code class="code">complex</code> and <code class="code">integer</code>
+types.  The answer is no; you can still use your existing types.  As
+long as these types match their C counterparts, things should work
+without a hitch.  The worst that can happen, e.g. in the (unlikely)
+event of a system where <code class="code">real(kind(0.0d0))</code> is different from
+<code class="code">real(C_DOUBLE)</code>, is that the compiler will give you a
+type-mismatch error.  That is, if you don&rsquo;t use the
+<code class="code">iso_c_binding</code> kinds you need to accept at least the theoretical
+possibility of having to change your code in response to compiler
+errors on some future machine, but you don&rsquo;t need to worry about
+silently compiling incorrect code that yields runtime errors.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Plan-execution-in-Fortran.html">Plan execution in Fortran</a>, Previous: <a href="Reversing-array-dimensions.html">Reversing array dimensions</a>, Up: <a href="Calling-FFTW-from-Modern-Fortran.html">Calling FFTW from Modern Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

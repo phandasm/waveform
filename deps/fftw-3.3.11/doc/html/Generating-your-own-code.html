@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Generating your own code (FFTW 3.3.11)</title>
+
+<meta name="description" content="Generating your own code (FFTW 3.3.11)">
+<meta name="keywords" content="Generating your own code (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Installation-and-Customization.html" rel="up" title="Installation and Customization">
+<link href="Cycle-Counters.html" rel="prev" title="Cycle Counters">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Generating-your-own-code">
+<div class="nav-panel">
+<p>
+Previous: <a href="Cycle-Counters.html" accesskey="p" rel="prev">Cycle Counters</a>, Up: <a href="Installation-and-Customization.html" accesskey="u" rel="up">Installation and Customization</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Generating-your-own-code-1"><span>10.4 Generating your own code<a class="copiable-link" href="#Generating-your-own-code-1"> &para;</a></span></h3>
+<a class="index-entry-id" id="index-code-generator-1"></a>
+
+<p>The directory <code class="code">genfft</code> contains the programs that were used to
+generate FFTW&rsquo;s &ldquo;codelets,&rdquo; which are hard-coded transforms of small
+sizes.
+<a class="index-entry-id" id="index-codelet-2"></a>
+We do not expect casual users to employ the generator, which is a rather
+sophisticated program that generates directed acyclic graphs of FFT
+algorithms and performs algebraic simplifications on them.  It was
+written in Objective Caml, a dialect of ML, which is available at
+<a class="uref" href="http://caml.inria.fr/ocaml/index.en.html">http://caml.inria.fr/ocaml/index.en.html</a>.
+<a class="index-entry-id" id="index-Caml"></a>
+</p>
+
+<p>If you have Objective Caml installed (along with recent versions of
+GNU <code class="code">autoconf</code>, <code class="code">automake</code>, and <code class="code">libtool</code>), then you
+can change the set of codelets that are generated or play with the
+generation options.  The set of generated codelets is specified by the
+<code class="code">{dft,rdft}/{codelets,simd}/*/Makefile.am</code> files.  For example, you can add
+efficient REDFT codelets of small sizes by modifying
+<code class="code">rdft/codelets/r2r/Makefile.am</code>.
+<a class="index-entry-id" id="index-REDFT-2"></a>
+After you modify any <code class="code">Makefile.am</code> files, you can type <code class="code">sh
+bootstrap.sh</code> in the top-level directory followed by <code class="code">make</code> to
+re-generate the files.
+</p>
+<p>We do not provide more details about the code-generation process, since
+we do not expect that most users will need to generate their own code.
+However, feel free to contact us at <a class="email" href="mailto:fftw@fftw.org">fftw@fftw.org</a> if
+you are interested in the subject.
+</p>
+<a class="index-entry-id" id="index-monadic-programming"></a>
+<p>You might find it interesting to learn Caml and/or some modern
+programming techniques that we used in the generator (including monadic
+programming), especially if you heard the rumor that Java and
+object-oriented programming are the latest advancement in the field.
+The internal operation of the codelet generator is described in the
+paper, &ldquo;A Fast Fourier Transform Compiler,&rdquo; by M. Frigo, which is
+available from the <a class="uref" href="http://www.fftw.org">FFTW home page</a> and also
+appeared in the <cite class="cite">Proceedings of the 1999 ACM SIGPLAN Conference on
+Programming Language Design and Implementation (PLDI)</cite>.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Previous: <a href="Cycle-Counters.html">Cycle Counters</a>, Up: <a href="Installation-and-Customization.html">Installation and Customization</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

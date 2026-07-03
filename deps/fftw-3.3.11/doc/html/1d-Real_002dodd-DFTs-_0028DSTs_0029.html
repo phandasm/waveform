@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>1d Real-odd DFTs (DSTs) (FFTW 3.3.11)</title>
+
+<meta name="description" content="1d Real-odd DFTs (DSTs) (FFTW 3.3.11)">
+<meta name="keywords" content="1d Real-odd DFTs (DSTs) (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="What-FFTW-Really-Computes.html" rel="up" title="What FFTW Really Computes">
+<link href="1d-Discrete-Hartley-Transforms-_0028DHTs_0029.html" rel="next" title="1d Discrete Hartley Transforms (DHTs)">
+<link href="1d-Real_002deven-DFTs-_0028DCTs_0029.html" rel="prev" title="1d Real-even DFTs (DCTs)">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="g_t1d-Real_002dodd-DFTs-_0028DSTs_0029">
+<div class="nav-panel">
+<p>
+Next: <a href="1d-Discrete-Hartley-Transforms-_0028DHTs_0029.html" accesskey="n" rel="next">1d Discrete Hartley Transforms (DHTs)</a>, Previous: <a href="1d-Real_002deven-DFTs-_0028DCTs_0029.html" accesskey="p" rel="prev">1d Real-even DFTs (DCTs)</a>, Up: <a href="What-FFTW-Really-Computes.html" accesskey="u" rel="up">What FFTW Really Computes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="g_t1d-Real_002dodd-DFTs-_0028DSTs_0029-1"><span>4.8.4 1d Real-odd DFTs (DSTs)<a class="copiable-link" href="#g_t1d-Real_002dodd-DFTs-_0028DSTs_0029-1"> &para;</a></span></h4>
+
+<p>The Real-odd symmetry DFTs in FFTW are exactly equivalent to the unnormalized
+forward (and backward) DFTs as defined above, where the input array
+<em class="math">X</em> of length <em class="math">N</em> is purely real and is also <em class="dfn">odd</em> symmetry.  In
+this case, the output is odd symmetry and purely imaginary.
+<a class="index-entry-id" id="index-real_002dodd-DFT-1"></a>
+<a class="index-entry-id" id="index-RODFT-1"></a>
+</p>
+
+<a class="index-entry-id" id="index-RODFT00"></a>
+<p>For the case of <code class="code">RODFT00</code>, this odd symmetry means that
+<i>X<sub>j</sub> = -X<sub>N-j</sub></i>,
+where we take <em class="math">X</em> to be periodic so that
+<i>X<sub>N</sub> = X</i><sub>0</sub>.
+Because of this redundancy, only the first <em class="math">n</em> real numbers
+starting at <em class="math">j=1</em> are actually stored (the <em class="math">j=0</em> element is
+zero), where <em class="math">N = 2(n+1)</em>.
+</p>
+<p>The proper definition of odd symmetry for <code class="code">RODFT10</code>,
+<code class="code">RODFT01</code>, and <code class="code">RODFT11</code> transforms is somewhat more intricate
+because of the shifts by <em class="math">1/2</em> of the input and/or output, although
+the corresponding boundary conditions are given in <a class="ref" href="Real-even_002fodd-DFTs-_0028cosine_002fsine-transforms_0029.html">Real even/odd DFTs (cosine/sine transforms)</a>.  Because of the odd symmetry, however,
+the cosine terms in the DFT all cancel and the remaining sine terms are
+written explicitly below.  This formulation often leads people to call
+such a transform a <em class="dfn">discrete sine transform</em> (DST), although it is
+really just a special case of the DFT.
+<a class="index-entry-id" id="index-discrete-sine-transform-2"></a>
+<a class="index-entry-id" id="index-DST-2"></a>
+</p>
+
+<p>In each of the definitions below, we transform a real array <em class="math">X</em> of
+length <em class="math">n</em> to a real array <em class="math">Y</em> of length <em class="math">n</em>:
+</p>
+<h4 class="subsubheading" id="RODFT00-_0028DST_002dI_0029"><span>RODFT00 (DST-I)<a class="copiable-link" href="#RODFT00-_0028DST_002dI_0029"> &para;</a></span></h4>
+<a class="index-entry-id" id="index-RODFT00-1"></a>
+<p>An <code class="code">RODFT00</code> transform (type-I DST) in FFTW is defined by:
+<center><img src="equation-rodft00.png" align="top">.</center>
+</p>
+<h4 class="subsubheading" id="RODFT10-_0028DST_002dII_0029"><span>RODFT10 (DST-II)<a class="copiable-link" href="#RODFT10-_0028DST_002dII_0029"> &para;</a></span></h4>
+<a class="index-entry-id" id="index-RODFT10"></a>
+<p>An <code class="code">RODFT10</code> transform (type-II DST) in FFTW is defined by:
+<center><img src="equation-rodft10.png" align="top">.</center>
+</p>
+<h4 class="subsubheading" id="RODFT01-_0028DST_002dIII_0029"><span>RODFT01 (DST-III)<a class="copiable-link" href="#RODFT01-_0028DST_002dIII_0029"> &para;</a></span></h4>
+<a class="index-entry-id" id="index-RODFT01"></a>
+<p>An <code class="code">RODFT01</code> transform (type-III DST) in FFTW is defined by:
+<center><img src="equation-rodft01.png" align="top">.</center>
+In the case of <em class="math">n=1</em>, this reduces to
+<i>Y</i><sub>0</sub> = <i>X</i><sub>0</sub>.
+</p>
+<h4 class="subsubheading" id="RODFT11-_0028DST_002dIV_0029"><span>RODFT11 (DST-IV)<a class="copiable-link" href="#RODFT11-_0028DST_002dIV_0029"> &para;</a></span></h4>
+<a class="index-entry-id" id="index-RODFT11"></a>
+<p>An <code class="code">RODFT11</code> transform (type-IV DST) in FFTW is defined by:
+<center><img src="equation-rodft11.png" align="top">.</center>
+</p>
+<h4 class="subsubheading" id="Inverses-and-Normalization-1"><span>Inverses and Normalization<a class="copiable-link" href="#Inverses-and-Normalization-1"> &para;</a></span></h4>
+
+<p>These definitions correspond directly to the unnormalized DFTs used
+elsewhere in FFTW (hence the factors of <em class="math">2</em> in front of the
+summations).  The unnormalized inverse of <code class="code">RODFT00</code> is
+<code class="code">RODFT00</code>, of <code class="code">RODFT10</code> is <code class="code">RODFT01</code> and vice versa, and
+of <code class="code">RODFT11</code> is <code class="code">RODFT11</code>.  Each unnormalized inverse results
+in the original array multiplied by <em class="math">N</em>, where <em class="math">N</em> is the
+<em class="emph">logical</em> DFT size.  For <code class="code">RODFT00</code>, <em class="math">N=2(n+1)</em>;
+otherwise, <em class="math">N=2n</em>.
+<a class="index-entry-id" id="index-normalization-11"></a>
+</p>
+
+<p>In defining the discrete sine transform, some authors also include
+additional factors of
+&radic;2
+(or its inverse) multiplying selected inputs and/or outputs.  This is a
+mostly cosmetic change that makes the transform orthogonal, but
+sacrifices the direct equivalence to an antisymmetric DFT.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="1d-Discrete-Hartley-Transforms-_0028DHTs_0029.html">1d Discrete Hartley Transforms (DHTs)</a>, Previous: <a href="1d-Real_002deven-DFTs-_0028DCTs_0029.html">1d Real-even DFTs (DCTs)</a>, Up: <a href="What-FFTW-Really-Computes.html">What FFTW Really Computes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

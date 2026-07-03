@@ -1,0 +1,1280 @@
+This is fftw3.info, produced by makeinfo version 7.1.1 from fftw3.texi.
+
+This manual is for FFTW (version 3.3.11, 18 April 2026).
+
+   Copyright © 2003 Matteo Frigo.
+
+   Copyright © 2003 Massachusetts Institute of Technology.
+
+     Permission is granted to make and distribute verbatim copies of
+     this manual provided the copyright notice and this permission
+     notice are preserved on all copies.
+
+     Permission is granted to copy and distribute modified versions of
+     this manual under the conditions for verbatim copying, provided
+     that the entire resulting derived work is distributed under the
+     terms of a permission notice identical to this one.
+
+     Permission is granted to copy and distribute translations of this
+     manual into another language, under the above conditions for
+     modified versions, except that this permission notice may be stated
+     in a translation approved by the Free Software Foundation.
+INFO-DIR-SECTION Development
+START-INFO-DIR-ENTRY
+* fftw3: (fftw3).	FFTW User's Manual.
+END-INFO-DIR-ENTRY
+
+
+File: fftw3.info,  Node: Generating your own code,  Prev: Cycle Counters,  Up: Installation and Customization
+
+10.4 Generating your own code
+=============================
+
+The directory ‘genfft’ contains the programs that were used to generate
+FFTW's "codelets," which are hard-coded transforms of small sizes.  We
+do not expect casual users to employ the generator, which is a rather
+sophisticated program that generates directed acyclic graphs of FFT
+algorithms and performs algebraic simplifications on them.  It was
+written in Objective Caml, a dialect of ML, which is available at
+<http://caml.inria.fr/ocaml/index.en.html>.
+
+   If you have Objective Caml installed (along with recent versions of
+GNU ‘autoconf’, ‘automake’, and ‘libtool’), then you can change the set
+of codelets that are generated or play with the generation options.  The
+set of generated codelets is specified by the
+‘{dft,rdft}/{codelets,simd}/*/Makefile.am’ files.  For example, you can
+add efficient REDFT codelets of small sizes by modifying
+‘rdft/codelets/r2r/Makefile.am’.  After you modify any ‘Makefile.am’
+files, you can type ‘sh bootstrap.sh’ in the top-level directory
+followed by ‘make’ to re-generate the files.
+
+   We do not provide more details about the code-generation process,
+since we do not expect that most users will need to generate their own
+code.  However, feel free to contact us at <fftw@fftw.org> if you are
+interested in the subject.
+
+   You might find it interesting to learn Caml and/or some modern
+programming techniques that we used in the generator (including monadic
+programming), especially if you heard the rumor that Java and
+object-oriented programming are the latest advancement in the field.
+The internal operation of the codelet generator is described in the
+paper, "A Fast Fourier Transform Compiler," by M. Frigo, which is
+available from the FFTW home page (http://www.fftw.org) and also
+appeared in the ‘Proceedings of the 1999 ACM SIGPLAN Conference on
+Programming Language Design and Implementation (PLDI)’.
+
+
+File: fftw3.info,  Node: Acknowledgments,  Next: License and Copyright,  Prev: Installation and Customization,  Up: Top
+
+11 Acknowledgments
+******************
+
+Matteo Frigo was supported in part by the Special Research Program SFB
+F011 "AURORA" of the Austrian Science Fund FWF and by MIT Lincoln
+Laboratory.  For previous versions of FFTW, he was supported in part by
+the Defense Advanced Research Projects Agency (DARPA), under Grants
+N00014-94-1-0985 and F30602-97-1-0270, and by a Digital Equipment
+Corporation Fellowship.
+
+   Steven G. Johnson was supported in part by a Dept. of Defense NDSEG
+Fellowship, an MIT Karl Taylor Compton Fellowship, and by the Materials
+Research Science and Engineering Center program of the National Science
+Foundation under award DMR-9400334.
+
+   Code for the Cell Broadband Engine was graciously donated to the FFTW
+project by the IBM Austin Research Lab and included in fftw-3.2.  (This
+code was removed in fftw-3.3.)
+
+   Code for the MIPS paired-single SIMD support was graciously donated
+to the FFTW project by CodeSourcery, Inc.
+
+   We are grateful to Sun Microsystems Inc. for its donation of a
+cluster of 9 8-processor Ultra HPC 5000 SMPs (24 Gflops peak).  These
+machines served as the primary platform for the development of early
+versions of FFTW.
+
+   We thank Intel Corporation for donating a four-processor Pentium Pro
+machine.  We thank the GNU/Linux community for giving us a decent OS to
+run on that machine.
+
+   We are thankful to the AMD corporation for donating an AMD Athlon XP
+1700+ computer to the FFTW project.
+
+   We thank the Compaq/HP testdrive program and VA Software Corporation
+(SourceForge.net) for providing remote access to machines that were used
+to test FFTW.
+
+   The ‘genfft’ suite of code generators was written using Objective
+Caml, a dialect of ML. Objective Caml is a small and elegant language
+developed by Xavier Leroy.  The implementation is available from
+‘http://caml.inria.fr/’ (http://caml.inria.fr/).  In previous releases
+of FFTW, ‘genfft’ was written in Caml Light, by the same authors.  An
+even earlier implementation of ‘genfft’ was written in Scheme, but Caml
+is definitely better for this kind of application.
+
+   FFTW uses many tools from the GNU project, including ‘automake’,
+‘texinfo’, and ‘libtool’.
+
+   Prof. Charles E. Leiserson of MIT provided continuous support and
+encouragement.  This program would not exist without him.  Charles also
+proposed the name "codelets" for the basic FFT blocks.
+
+   Prof. John D. Joannopoulos of MIT demonstrated continuing tolerance
+of Steven's "extra-curricular" computer-science activities, as well as
+remarkable creativity in working them into his grant proposals.
+Steven's physics degree would not exist without him.
+
+   Franz Franchetti wrote SIMD extensions to FFTW 2, which eventually
+led to the SIMD support in FFTW 3.
+
+   Stefan Kral wrote most of the K7 code generator distributed with FFTW
+3.0.x and 3.1.x.
+
+   Andrew Sterian contributed the Windows timing code in FFTW 2.
+
+   Didier Miras reported a bug in the test procedure used in FFTW 1.2.
+We now use a completely different test algorithm by Funda Ergun that
+does not require a separate FFT program to compare against.
+
+   Wolfgang Reimer contributed the Pentium cycle counter and a few fixes
+that help portability.
+
+   Ming-Chang Liu uncovered a well-hidden bug in the complex transforms
+of FFTW 2.0 and supplied a patch to correct it.
+
+   The FFTW FAQ was written in ‘bfnn’ (Bizarre Format With No Name) and
+formatted using the tools developed by Ian Jackson for the Linux FAQ.
+
+   _We are especially thankful to all of our users for their continuing
+support, feedback, and interest during our development of FFTW._
+
+
+File: fftw3.info,  Node: License and Copyright,  Next: Concept Index,  Prev: Acknowledgments,  Up: Top
+
+12 License and Copyright
+************************
+
+FFTW is Copyright © 2003, 2007-11 Matteo Frigo, Copyright © 2003,
+2007-11 Massachusetts Institute of Technology.
+
+   FFTW is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2 of the License, or (at your
+option) any later version.
+
+   This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software Foundation,
+Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA You can
+also find the GPL on the GNU web site
+(http://www.gnu.org/licenses/gpl-2.0.html).
+
+   In addition, we kindly ask you to acknowledge FFTW and its authors in
+any program or publication in which you use FFTW. (You are not
+_required_ to do so; it is up to your common sense to decide whether you
+want to comply with this request or not.)  For general publications, we
+suggest referencing: Matteo Frigo and Steven G. Johnson, "The design and
+implementation of FFTW3," Proc.  IEEE 93 (2), 216-231 (2005).
+
+   Non-free versions of FFTW are available under terms different from
+those of the General Public License.  (e.g.  they do not require you to
+accompany any object code using FFTW with the corresponding source
+code.)  For these alternative terms you must purchase a license from
+MIT's Technology Licensing Office.  Users interested in such a license
+should contact us (<fftw@fftw.org>) for more information.
+
+
+File: fftw3.info,  Node: Concept Index,  Next: Library Index,  Prev: License and Copyright,  Up: Top
+
+13 Concept Index
+****************
+
+ [index ]
+* Menu:
+
+* 64-bit architecture:                   64-bit Guru Interface.
+                                                              (line   6)
+* 64-bit architecture <1>:               2d MPI example.      (line  69)
+* 64-bit architecture <2>:               FFTW Fortran type reference.
+                                                              (line  53)
+* advanced interface:                    Introduction.        (line  64)
+* advanced interface <1>:                Complex Multi-Dimensional DFTs.
+                                                              (line  61)
+* advanced interface <2>:                Row-major Format.    (line  26)
+* advanced interface <3>:                Advanced Interface.  (line   6)
+* advanced interface <4>:                Basic and advanced distribution interfaces.
+                                                              (line  44)
+* advanced interface <5>:                MPI Data Distribution Functions.
+                                                              (line  47)
+* advanced interface <6>:                MPI Plan Creation.   (line  43)
+* algorithm:                             Introduction.        (line  96)
+* alignment:                             Memory Allocation.   (line  12)
+* alignment <1>:                         Planner Flags.       (line  75)
+* alignment <2>:                         New-array Execute Functions.
+                                                              (line  35)
+* alignment <3>:                         Using MPI Plans.     (line  24)
+* alignment <4>:                         Overview of Fortran interface.
+                                                              (line  50)
+* alignment <5>:                         Allocating aligned memory in Fortran.
+                                                              (line   6)
+* AltiVec:                               SIMD alignment and fftw_malloc.
+                                                              (line  12)
+* AVX:                                   SIMD alignment and fftw_malloc.
+                                                              (line  12)
+* AVX2:                                  SIMD alignment and fftw_malloc.
+                                                              (line  12)
+* AVX512:                                SIMD alignment and fftw_malloc.
+                                                              (line  12)
+* basic interface:                       Introduction.        (line  64)
+* basic interface <1>:                   Tutorial.            (line  14)
+* basic interface <2>:                   Basic Interface.     (line   6)
+* block distribution:                    MPI Data Distribution.
+                                                              (line  21)
+* block distribution <1>:                Basic and advanced distribution interfaces.
+                                                              (line  71)
+* block distribution <2>:                FFTW MPI Performance Tips.
+                                                              (line  14)
+* C multi-dimensional arrays:            Fixed-size Arrays in C.
+                                                              (line   6)
+* C++:                                   Complex One-Dimensional DFTs.
+                                                              (line 114)
+* C++ <1>:                               SIMD alignment and fftw_malloc.
+                                                              (line  32)
+* C++ <2>:                               Dynamic Arrays in C. (line  31)
+* C++ <3>:                               Complex numbers.     (line  35)
+* C++ <4>:                               Memory Allocation.   (line  24)
+* c2r:                                   One-Dimensional DFTs of Real Data.
+                                                              (line  37)
+* c2r <1>:                               Planner Flags.       (line  73)
+* c2r <2>:                               Real-data DFTs.      (line  88)
+* C99:                                   Dynamic Arrays in C. (line  31)
+* C99 <1>:                               Complex numbers.     (line  22)
+* C99 <2>:                               Precision.           (line  29)
+* Caml:                                  Generating your own code.
+                                                              (line  12)
+* Caml <1>:                              Acknowledgments.     (line  47)
+* code generator:                        Introduction.        (line  77)
+* code generator <1>:                    Generating your own code.
+                                                              (line   6)
+* codelet:                               Introduction.        (line  77)
+* codelet <1>:                           Installation and Customization.
+                                                              (line  29)
+* codelet <2>:                           Generating your own code.
+                                                              (line   7)
+* codelet <3>:                           Acknowledgments.     (line  54)
+* collective function:                   2d MPI example.      (line  61)
+* collective function <1>:               FFTW MPI Wisdom.     (line  39)
+* collective function <2>:               Avoiding MPI Deadlocks.
+                                                              (line  12)
+* collective function <3>:               Using MPI Plans.     (line  10)
+* collective function <4>:               MPI Plan Creation.   (line  27)
+* column-major:                          Column-major Format. (line   6)
+* column-major <1>:                      Reversing array dimensions.
+                                                              (line   6)
+* column-major <2>:                      Fortran-interface routines.
+                                                              (line  27)
+* column-major <3>:                      Fortran Examples.    (line  99)
+* compiler:                              Introduction.        (line  84)
+* compiler <1>:                          Installation and Customization.
+                                                              (line  16)
+* compiler <2>:                          Installation on Unix.
+                                                              (line 148)
+* compiler <3>:                          Cycle Counters.      (line  14)
+* compiler flags:                        Installation on Unix.
+                                                              (line  29)
+* compiler flags <1>:                    Installation on Unix.
+                                                              (line 151)
+* configuration routines:                Wisdom Utilities.    (line  26)
+* configure:                             Installation and Supported Hardware/Software.
+                                                              (line  12)
+* configure <1>:                         FFTW MPI Installation.
+                                                              (line  10)
+* configure <2>:                         Installation on Unix.
+                                                              (line   7)
+* cycle counter:                         Installation and Customization.
+                                                              (line  16)
+* cycle counter <1>:                     Cycle Counters.      (line   6)
+* data distribution:                     Distributed-memory FFTW with MPI.
+                                                              (line  14)
+* data distribution <1>:                 2d MPI example.      (line  81)
+* data distribution <2>:                 MPI Data Distribution.
+                                                              (line   6)
+* data distribution <3>:                 Multi-dimensional MPI DFTs of Real Data.
+                                                              (line  33)
+* data distribution <4>:                 Basic distributed-transpose interface.
+                                                              (line  33)
+* data distribution <5>:                 MPI Data Distribution Functions.
+                                                              (line   6)
+* DCT:                                   Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  15)
+* DCT <1>:                               Real-to-Real Transform Kinds.
+                                                              (line  32)
+* DCT <2>:                               1d Real-even DFTs (DCTs).
+                                                              (line  24)
+* deadlock:                              Avoiding MPI Deadlocks.
+                                                              (line   6)
+* Devil:                                 Complex One-Dimensional DFTs.
+                                                              (line   8)
+* DFT:                                   Introduction.        (line   9)
+* DFT <1>:                               Complex One-Dimensional DFTs.
+                                                              (line 106)
+* DFT <2>:                               The 1d Discrete Fourier Transform (DFT).
+                                                              (line   6)
+* DHT:                                   The Discrete Hartley Transform.
+                                                              (line  17)
+* DHT <1>:                               1d Discrete Hartley Transforms (DHTs).
+                                                              (line   6)
+* discrete cosine transform:             Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  15)
+* discrete cosine transform <1>:         Real-to-Real Transform Kinds.
+                                                              (line  32)
+* discrete cosine transform <2>:         1d Real-even DFTs (DCTs).
+                                                              (line  24)
+* discrete Fourier transform:            Introduction.        (line   9)
+* discrete Fourier transform <1>:        The 1d Discrete Fourier Transform (DFT).
+                                                              (line   6)
+* discrete Hartley transform:            The Discrete Hartley Transform.
+                                                              (line  17)
+* discrete Hartley transform <1>:        Real-to-Real Transform Kinds.
+                                                              (line  29)
+* discrete Hartley transform <2>:        1d Discrete Hartley Transforms (DHTs).
+                                                              (line   6)
+* discrete sine transform:               Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  15)
+* discrete sine transform <1>:           Real-to-Real Transform Kinds.
+                                                              (line  46)
+* discrete sine transform <2>:           1d Real-odd DFTs (DSTs).
+                                                              (line  24)
+* dist:                                  Advanced Complex DFTs.
+                                                              (line  30)
+* dist <1>:                              Guru vector and transform sizes.
+                                                              (line  41)
+* DST:                                   Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  15)
+* DST <1>:                               Real-to-Real Transform Kinds.
+                                                              (line  46)
+* DST <2>:                               1d Real-odd DFTs (DSTs).
+                                                              (line  24)
+* Ecclesiastes:                          Caveats in Using Wisdom.
+                                                              (line   7)
+* execute:                               Introduction.        (line  42)
+* execute <1>:                           Complex One-Dimensional DFTs.
+                                                              (line  91)
+* execute <2>:                           New-array Execute Functions.
+                                                              (line   6)
+* FFTW:                                  Introduction.        (line  33)
+* fftw-wisdom utility:                   Caveats in Using Wisdom.
+                                                              (line  40)
+* fftw-wisdom utility <1>:               Wisdom Utilities.    (line  15)
+* fftw-wisdom-to-conf utility:           Wisdom Utilities.    (line  26)
+* flags:                                 Complex One-Dimensional DFTs.
+                                                              (line  65)
+* flags <1>:                             One-Dimensional DFTs of Real Data.
+                                                              (line  61)
+* flags <2>:                             Complex DFTs.        (line  74)
+* flags <3>:                             Real-data DFTs.      (line  69)
+* flags <4>:                             Real-to-Real Transforms.
+                                                              (line  75)
+* flags <5>:                             Guru Complex DFTs.   (line  25)
+* flags <6>:                             Guru Real-data DFTs. (line  58)
+* flags <7>:                             Guru Real-to-real Transforms.
+                                                              (line  27)
+* flags <8>:                             Overview of Fortran interface.
+                                                              (line  67)
+* flags <9>:                             FFTW Constants in Fortran.
+                                                              (line  18)
+* Fortran interface:                     Column-major Format. (line  20)
+* Fortran interface <1>:                 FFTW MPI Fortran Interface.
+                                                              (line   6)
+* Fortran interface <2>:                 Calling FFTW from Modern Fortran.
+                                                              (line   6)
+* Fortran interface <3>:                 Calling FFTW from Legacy Fortran.
+                                                              (line   6)
+* Fortran-callable wrappers:             Installation on Unix.
+                                                              (line  92)
+* frequency:                             Complex One-Dimensional DFTs.
+                                                              (line  87)
+* frequency <1>:                         The 1d Discrete Fourier Transform (DFT).
+                                                              (line  17)
+* g77:                                   Installation on Unix.
+                                                              (line 113)
+* guru interface:                        Introduction.        (line  64)
+* guru interface <1>:                    Complex Multi-Dimensional DFTs.
+                                                              (line  61)
+* guru interface <2>:                    Guru Interface.      (line   6)
+* guru interface <3>:                    FFTW Fortran type reference.
+                                                              (line  53)
+* guru interface <4>:                    Fortran-interface routines.
+                                                              (line  43)
+* halfcomplex format:                    One-Dimensional DFTs of Real Data.
+                                                              (line  75)
+* halfcomplex format <1>:                The Halfcomplex-format DFT.
+                                                              (line   9)
+* halfcomplex format <2>:                The 1d Real-data DFT.
+                                                              (line  21)
+* hc2r:                                  The Halfcomplex-format DFT.
+                                                              (line   9)
+* hc2r <1>:                              Planner Flags.       (line  73)
+* HDF5:                                  2d MPI example.      (line  90)
+* Hermitian:                             One-Dimensional DFTs of Real Data.
+                                                              (line   7)
+* Hermitian <1>:                         The 1d Real-data DFT.
+                                                              (line  10)
+* howmany loop:                          Guru vector and transform sizes.
+                                                              (line  41)
+* howmany parameter:                     Advanced Complex DFTs.
+                                                              (line  30)
+* IDCT:                                  Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  40)
+* IDCT <1>:                              Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  66)
+* IDCT <2>:                              Real-to-Real Transform Kinds.
+                                                              (line  40)
+* IDCT <3>:                              1d Real-even DFTs (DCTs).
+                                                              (line  51)
+* in-place:                              Complex One-Dimensional DFTs.
+                                                              (line  58)
+* in-place <1>:                          One-Dimensional DFTs of Real Data.
+                                                              (line  47)
+* in-place <2>:                          Complex DFTs.        (line  62)
+* in-place <3>:                          Real-data DFTs.      (line  63)
+* in-place <4>:                          Real-data DFT Array Format.
+                                                              (line  31)
+* in-place <5>:                          Real-to-Real Transforms.
+                                                              (line  64)
+* in-place <6>:                          Guru Real-data DFTs. (line  48)
+* in-place <7>:                          Guru Real-data DFTs. (line  63)
+* in-place <8>:                          An improved replacement for MPI_Alltoall.
+                                                              (line  34)
+* in-place <9>:                          Reversing array dimensions.
+                                                              (line  53)
+* in-place <10>:                         FFTW Fortran type reference.
+                                                              (line  37)
+* installation:                          Installation and Customization.
+                                                              (line   6)
+* interleaved format:                    Interleaved and split arrays.
+                                                              (line  13)
+* iso_c_binding:                         FFTW MPI Fortran Interface.
+                                                              (line   6)
+* iso_c_binding <1>:                     Overview of Fortran interface.
+                                                              (line  12)
+* iso_c_binding <2>:                     Extended and quadruple precision in Fortran.
+                                                              (line  17)
+* kind (r2r):                            More DFTs of Real Data.
+                                                              (line  51)
+* kind (r2r) <1>:                        Real-to-Real Transform Kinds.
+                                                              (line   6)
+* linking on Unix:                       Usage of Multi-threaded FFTW.
+                                                              (line  16)
+* linking on Unix <1>:                   Linking and Initializing MPI FFTW.
+                                                              (line  11)
+* LISP:                                  Acknowledgments.     (line  47)
+* load balancing:                        Load balancing.      (line   6)
+* load balancing <1>:                    FFTW MPI Performance Tips.
+                                                              (line  14)
+* monadic programming:                   Generating your own code.
+                                                              (line  29)
+* MPI:                                   Distributed-memory FFTW with MPI.
+                                                              (line   6)
+* MPI <1>:                               Installation on Unix.
+                                                              (line  86)
+* MPI communicator:                      Distributed-memory FFTW with MPI.
+                                                              (line  34)
+* MPI communicator <1>:                  Using MPI Plans.     (line  10)
+* MPI communicator <2>:                  MPI Plan Creation.   (line  27)
+* MPI communicator <3>:                  FFTW MPI Fortran Interface.
+                                                              (line  32)
+* MPI I/O:                               2d MPI example.      (line  90)
+* MPI I/O <1>:                           FFTW MPI Wisdom.     (line  10)
+* mpicc:                                 FFTW MPI Installation.
+                                                              (line  23)
+* mpicc <1>:                             Linking and Initializing MPI FFTW.
+                                                              (line  11)
+* new-array execution:                   New-array Execute Functions.
+                                                              (line   6)
+* new-array execution <1>:               Using MPI Plans.     (line  14)
+* new-array execution <2>:               MPI Plan Creation.   (line 190)
+* new-array execution <3>:               FFTW MPI Fortran Interface.
+                                                              (line  50)
+* normalization:                         Complex One-Dimensional DFTs.
+                                                              (line 106)
+* normalization <1>:                     Multi-Dimensional DFTs of Real Data.
+                                                              (line  65)
+* normalization <2>:                     The Halfcomplex-format DFT.
+                                                              (line  23)
+* normalization <3>:                     Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  66)
+* normalization <4>:                     The Discrete Hartley Transform.
+                                                              (line  21)
+* normalization <5>:                     Complex DFTs.        (line  80)
+* normalization <6>:                     Real-data DFTs.      (line  95)
+* normalization <7>:                     Real-to-Real Transform Kinds.
+                                                              (line  18)
+* normalization <8>:                     The 1d Discrete Fourier Transform (DFT).
+                                                              (line  12)
+* normalization <9>:                     The 1d Real-data DFT.
+                                                              (line  31)
+* normalization <10>:                    1d Real-even DFTs (DCTs).
+                                                              (line  68)
+* normalization <11>:                    1d Real-odd DFTs (DSTs).
+                                                              (line  63)
+* normalization <12>:                    1d Discrete Hartley Transforms (DHTs).
+                                                              (line  10)
+* number of threads:                     How Many Threads to Use?.
+                                                              (line   6)
+* OpenMP:                                Installation and Supported Hardware/Software.
+                                                              (line  14)
+* OpenMP <1>:                            Usage of Multi-threaded FFTW.
+                                                              (line  11)
+* OpenMP <2>:                            Usage of Multi-threaded FFTW.
+                                                              (line  48)
+* OpenMP <3>:                            Thread safety.       (line   6)
+* out-of-place:                          Planner Flags.       (line  63)
+* out-of-place <1>:                      Real-data DFT Array Format.
+                                                              (line  27)
+* padding:                               One-Dimensional DFTs of Real Data.
+                                                              (line  17)
+* padding <1>:                           Multi-Dimensional DFTs of Real Data.
+                                                              (line  44)
+* padding <2>:                           Real-data DFTs.      (line  67)
+* padding <3>:                           Real-data DFT Array Format.
+                                                              (line  31)
+* padding <4>:                           Multi-dimensional MPI DFTs of Real Data.
+                                                              (line  22)
+* padding <5>:                           Reversing array dimensions.
+                                                              (line  53)
+* parallel transform:                    Multi-threaded FFTW. (line   6)
+* parallel transform <1>:                Distributed-memory FFTW with MPI.
+                                                              (line   6)
+* partial order:                         Complex Multi-Dimensional DFTs.
+                                                              (line  56)
+* plan:                                  Introduction.        (line  41)
+* plan <1>:                              Complex One-Dimensional DFTs.
+                                                              (line  44)
+* planner:                               Introduction.        (line  40)
+* portability:                           SIMD alignment and fftw_malloc.
+                                                              (line  21)
+* portability <1>:                       Caveats in Using Wisdom.
+                                                              (line   9)
+* portability <2>:                       Complex numbers.     (line  35)
+* portability <3>:                       Installation and Supported Hardware/Software.
+                                                              (line  14)
+* portability <4>:                       Calling FFTW from Modern Fortran.
+                                                              (line  14)
+* portability <5>:                       FFTW Fortran type reference.
+                                                              (line  68)
+* portability <6>:                       Fortran-interface routines.
+                                                              (line  21)
+* portability <7>:                       Fortran-interface routines.
+                                                              (line  66)
+* portability <8>:                       Wisdom of Fortran?.  (line  11)
+* portability <9>:                       Installation and Customization.
+                                                              (line  16)
+* precision:                             Complex One-Dimensional DFTs.
+                                                              (line 118)
+* precision <1>:                         One-Dimensional DFTs of Real Data.
+                                                              (line  41)
+* precision <2>:                         SIMD alignment and fftw_malloc.
+                                                              (line  12)
+* precision <3>:                         Precision.           (line   6)
+* precision <4>:                         Memory Allocation.   (line  36)
+* precision <5>:                         Linking and Initializing MPI FFTW.
+                                                              (line  11)
+* precision <6>:                         MPI Files and Data Types.
+                                                              (line  18)
+* precision <7>:                         Extended and quadruple precision in Fortran.
+                                                              (line   6)
+* precision <8>:                         FFTW Fortran type reference.
+                                                              (line  12)
+* precision <9>:                         Installation on Unix.
+                                                              (line  45)
+* precision <10>:                        Installation on Unix.
+                                                              (line  49)
+* precision <11>:                        Installation on Unix.
+                                                              (line  55)
+* r2c:                                   One-Dimensional DFTs of Real Data.
+                                                              (line  37)
+* r2c <1>:                               The Halfcomplex-format DFT.
+                                                              (line   6)
+* r2c <2>:                               Real-data DFTs.      (line  18)
+* r2c <3>:                               Multi-dimensional Transforms.
+                                                              (line  14)
+* r2c <4>:                               MPI Plan Creation.   (line  81)
+* r2c/c2r multi-dimensional array format: Multi-Dimensional DFTs of Real Data.
+                                                              (line  26)
+* r2c/c2r multi-dimensional array format <1>: Real-data DFT Array Format.
+                                                              (line   6)
+* r2c/c2r multi-dimensional array format <2>: Reversing array dimensions.
+                                                              (line  37)
+* r2c/c2r multi-dimensional array format <3>: Fortran Examples.
+                                                              (line  99)
+* r2hc:                                  The Halfcomplex-format DFT.
+                                                              (line   6)
+* r2r:                                   More DFTs of Real Data.
+                                                              (line  13)
+* r2r <1>:                               Real-to-Real Transforms.
+                                                              (line   6)
+* r2r <2>:                               The 1d Real-data DFT.
+                                                              (line  21)
+* r2r <3>:                               Other Multi-dimensional Real-data MPI Transforms.
+                                                              (line   6)
+* r2r <4>:                               MPI Plan Creation.   (line 143)
+* rank:                                  Complex Multi-Dimensional DFTs.
+                                                              (line  31)
+* real-even DFT:                         Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  15)
+* real-even DFT <1>:                     1d Real-even DFTs (DCTs).
+                                                              (line   9)
+* real-odd DFT:                          Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  15)
+* real-odd DFT <1>:                      1d Real-odd DFTs (DSTs).
+                                                              (line   9)
+* REDFT:                                 Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  15)
+* REDFT <1>:                             1d Real-even DFTs (DCTs).
+                                                              (line   9)
+* REDFT <2>:                             Generating your own code.
+                                                              (line  20)
+* RODFT:                                 Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  15)
+* RODFT <1>:                             1d Real-odd DFTs (DSTs).
+                                                              (line   9)
+* row-major:                             Row-major Format.    (line   6)
+* row-major <1>:                         Complex DFTs.        (line  47)
+* row-major <2>:                         Real-to-Real Transforms.
+                                                              (line  46)
+* row-major <3>:                         Guru vector and transform sizes.
+                                                              (line  50)
+* row-major <4>:                         Basic and advanced distribution interfaces.
+                                                              (line  32)
+* row-major <5>:                         Multi-dimensional MPI DFTs of Real Data.
+                                                              (line  83)
+* row-major <6>:                         Reversing array dimensions.
+                                                              (line   6)
+* saving plans to disk:                  Words of Wisdom-Saving Plans.
+                                                              (line   6)
+* saving plans to disk <1>:              Wisdom.              (line   6)
+* saving plans to disk <2>:              FFTW MPI Wisdom.     (line   6)
+* saving plans to disk <3>:              Accessing the wisdom API from Fortran.
+                                                              (line   6)
+* shared-memory:                         Multi-threaded FFTW. (line  24)
+* SIMD:                                  Complex One-Dimensional DFTs.
+                                                              (line  38)
+* SIMD <1>:                              SIMD alignment and fftw_malloc.
+                                                              (line  12)
+* SIMD <2>:                              Overview of Fortran interface.
+                                                              (line  50)
+* split format:                          Interleaved and split arrays.
+                                                              (line  16)
+* SSE:                                   SIMD alignment and fftw_malloc.
+                                                              (line  12)
+* SSE2:                                  SIMD alignment and fftw_malloc.
+                                                              (line  12)
+* stride:                                Row-major Format.    (line  31)
+* stride <1>:                            Advanced Complex DFTs.
+                                                              (line  47)
+* stride <2>:                            Guru vector and transform sizes.
+                                                              (line  28)
+* stride <3>:                            MPI Plan Creation.   (line  43)
+* thread safety:                         Usage of Multi-threaded FFTW.
+                                                              (line  54)
+* thread safety <1>:                     Thread safety.       (line   6)
+* thread safety <2>:                     Combining MPI and Threads.
+                                                              (line  53)
+* threads:                               Multi-threaded FFTW. (line  24)
+* threads <1>:                           Thread safety.       (line   6)
+* threads <2>:                           Combining MPI and Threads.
+                                                              (line   6)
+* threads <3>:                           Installation on Unix.
+                                                              (line  63)
+* transpose:                             Transposed distributions.
+                                                              (line  15)
+* transpose <1>:                         Multi-dimensional MPI DFTs of Real Data.
+                                                              (line  90)
+* transpose <2>:                         FFTW MPI Transposes. (line   6)
+* transpose <3>:                         FFTW MPI Performance Tips.
+                                                              (line  19)
+* transpose <4>:                         Combining MPI and Threads.
+                                                              (line  75)
+* transpose <5>:                         MPI Plan Creation.   (line 178)
+* vector:                                Guru Interface.      (line  10)
+* VSX:                                   SIMD alignment and fftw_malloc.
+                                                              (line  12)
+* wisdom:                                Words of Wisdom-Saving Plans.
+                                                              (line   6)
+* wisdom <1>:                            Wisdom.              (line   6)
+* wisdom <2>:                            FFTW MPI Wisdom.     (line   6)
+* wisdom <3>:                            Accessing the wisdom API from Fortran.
+                                                              (line   6)
+* wisdom, problems with:                 Caveats in Using Wisdom.
+                                                              (line   6)
+* wisdom, system-wide:                   Caveats in Using Wisdom.
+                                                              (line  33)
+* wisdom, system-wide <1>:               Wisdom Import.       (line  37)
+
+
+File: fftw3.info,  Node: Library Index,  Prev: Concept Index,  Up: Top
+
+14 Library Index
+****************
+
+ [index ]
+* Menu:
+
+* c_associated:                          Wisdom String Export/Import from Fortran.
+                                                              (line  36)
+* C_DOUBLE:                              Overview of Fortran interface.
+                                                              (line  34)
+* C_DOUBLE <1>:                          FFTW Fortran type reference.
+                                                              (line  12)
+* C_DOUBLE_COMPLEX:                      Overview of Fortran interface.
+                                                              (line  34)
+* C_DOUBLE_COMPLEX <1>:                  FFTW Fortran type reference.
+                                                              (line  12)
+* c_f_pointer:                           Reversing array dimensions.
+                                                              (line  63)
+* c_f_pointer <1>:                       FFTW Fortran type reference.
+                                                              (line  48)
+* c_f_pointer <2>:                       Allocating aligned memory in Fortran.
+                                                              (line  37)
+* c_f_pointer <3>:                       Wisdom String Export/Import from Fortran.
+                                                              (line  36)
+* c_f_pointer <4>:                       Wisdom Generic Export/Import from Fortran.
+                                                              (line  27)
+* C_FFTW_R2R_KIND:                       FFTW Fortran type reference.
+                                                              (line  32)
+* C_FLOAT:                               FFTW Fortran type reference.
+                                                              (line  12)
+* C_FLOAT_COMPLEX:                       FFTW Fortran type reference.
+                                                              (line  12)
+* c_funloc:                              Wisdom Generic Export/Import from Fortran.
+                                                              (line  25)
+* C_FUNPTR:                              FFTW Fortran type reference.
+                                                              (line  61)
+* C_INT:                                 Overview of Fortran interface.
+                                                              (line  34)
+* C_INT <1>:                             FFTW Fortran type reference.
+                                                              (line  27)
+* C_INTPTR_T:                            FFTW Fortran type reference.
+                                                              (line  27)
+* c_loc:                                 Wisdom Generic Export/Import from Fortran.
+                                                              (line  27)
+* C_LONG_DOUBLE:                         FFTW Fortran type reference.
+                                                              (line  12)
+* C_LONG_DOUBLE_COMPLEX:                 FFTW Fortran type reference.
+                                                              (line  12)
+* C_PTR:                                 Overview of Fortran interface.
+                                                              (line  34)
+* C_SIZE_T:                              FFTW Fortran type reference.
+                                                              (line  27)
+* dfftw_destroy_plan:                    Fortran Examples.    (line  25)
+* dfftw_execute:                         FFTW Execution in Fortran.
+                                                              (line  11)
+* dfftw_execute_dft:                     FFTW Execution in Fortran.
+                                                              (line  28)
+* dfftw_execute_dft <1>:                 Fortran Examples.    (line  25)
+* dfftw_execute_dft_r2c:                 Fortran Examples.    (line  81)
+* dfftw_export_wisdom:                   Wisdom of Fortran?.  (line  17)
+* dfftw_forget_wisdom:                   Wisdom of Fortran?.  (line  17)
+* dfftw_import_system_wisdom:            Wisdom of Fortran?.  (line  17)
+* dfftw_import_wisdom:                   Wisdom of Fortran?.  (line  17)
+* dfftw_init_threads:                    Fortran Examples.    (line  36)
+* dfftw_plan_dft_1d:                     Fortran Examples.    (line  25)
+* dfftw_plan_dft_3d:                     Fortran Examples.    (line  66)
+* dfftw_plan_dft_r2c_1d:                 Fortran Examples.    (line  81)
+* dfftw_plan_dft_r2c_2d:                 Fortran Examples.    (line  94)
+* dfftw_plan_with_nthreads:              Fortran Examples.    (line  36)
+* dfftw_planner_nthreads:                Fortran Examples.    (line  45)
+* fftw_alignment_of:                     Planner Flags.       (line  75)
+* fftw_alignment_of <1>:                 New-array Execute Functions.
+                                                              (line  45)
+* fftw_alloc_complex:                    Complex One-Dimensional DFTs.
+                                                              (line  38)
+* fftw_alloc_complex <1>:                SIMD alignment and fftw_malloc.
+                                                              (line  34)
+* fftw_alloc_complex <2>:                Memory Allocation.   (line  33)
+* fftw_alloc_complex <3>:                Basic and advanced distribution interfaces.
+                                                              (line  42)
+* fftw_alloc_complex <4>:                Reversing array dimensions.
+                                                              (line  63)
+* fftw_alloc_complex <5>:                Allocating aligned memory in Fortran.
+                                                              (line   6)
+* fftw_alloc_real:                       SIMD alignment and fftw_malloc.
+                                                              (line  34)
+* fftw_alloc_real <1>:                   Memory Allocation.   (line  33)
+* fftw_alloc_real <2>:                   Multi-dimensional MPI DFTs of Real Data.
+                                                              (line  83)
+* fftw_alloc_real <3>:                   Other Multi-dimensional Real-data MPI Transforms.
+                                                              (line  44)
+* fftw_alloc_real <4>:                   FFTW Fortran type reference.
+                                                              (line  48)
+* fftw_alloc_real <5>:                   Allocating aligned memory in Fortran.
+                                                              (line   6)
+* FFTW_BACKWARD:                         Complex One-Dimensional DFTs.
+                                                              (line  61)
+* FFTW_BACKWARD <1>:                     One-Dimensional DFTs of Real Data.
+                                                              (line  39)
+* FFTW_BACKWARD <2>:                     Complex DFTs.        (line  70)
+* fftw_cleanup:                          Using Plans.         (line  47)
+* fftw_cleanup <1>:                      MPI Initialization.  (line  21)
+* fftw_cleanup_threads:                  Usage of Multi-threaded FFTW.
+                                                              (line  66)
+* fftw_complex:                          Complex One-Dimensional DFTs.
+                                                              (line  42)
+* fftw_complex <1>:                      Complex numbers.     (line  11)
+* fftw_complex <2>:                      Overview of Fortran interface.
+                                                              (line  34)
+* fftw_complex <3>:                      FFTW Fortran type reference.
+                                                              (line  12)
+* fftw_copy_plan:                        Using Plans.         (line  33)
+* fftw_cost:                             Using Plans.         (line  72)
+* FFTW_DESTROY_INPUT:                    Planner Flags.       (line  61)
+* FFTW_DESTROY_INPUT <1>:                FFTW MPI Performance Tips.
+                                                              (line  24)
+* FFTW_DESTROY_INPUT <2>:                FFTW Fortran type reference.
+                                                              (line  37)
+* fftw_destroy_plan:                     Complex One-Dimensional DFTs.
+                                                              (line 100)
+* fftw_destroy_plan <1>:                 Using Plans.         (line  27)
+* fftw_destroy_plan <2>:                 Avoiding MPI Deadlocks.
+                                                              (line  19)
+* fftw_destroy_plan <3>:                 Overview of Fortran interface.
+                                                              (line  24)
+* FFTW_DHT:                              The Discrete Hartley Transform.
+                                                              (line  17)
+* FFTW_DHT <1>:                          Real-to-Real Transform Kinds.
+                                                              (line  28)
+* FFTW_ESTIMATE:                         Complex One-Dimensional DFTs.
+                                                              (line  71)
+* FFTW_ESTIMATE <1>:                     Words of Wisdom-Saving Plans.
+                                                              (line  22)
+* FFTW_ESTIMATE <2>:                     Planner Flags.       (line  28)
+* FFTW_ESTIMATE <3>:                     Cycle Counters.      (line  18)
+* fftw_execute:                          Complex One-Dimensional DFTs.
+                                                              (line  85)
+* fftw_execute <1>:                      Using Plans.         (line  13)
+* fftw_execute <2>:                      New-array Execute Functions.
+                                                              (line   8)
+* fftw_execute <3>:                      Basic distributed-transpose interface.
+                                                              (line  17)
+* fftw_execute <4>:                      Avoiding MPI Deadlocks.
+                                                              (line  19)
+* fftw_execute <5>:                      Overview of Fortran interface.
+                                                              (line  57)
+* fftw_execute <6>:                      Plan execution in Fortran.
+                                                              (line  11)
+* fftw_execute_dft:                      New-array Execute Functions.
+                                                              (line  89)
+* fftw_execute_dft <1>:                  FFTW MPI Fortran Interface.
+                                                              (line  50)
+* fftw_execute_dft <2>:                  Overview of Fortran interface.
+                                                              (line  24)
+* fftw_execute_dft <3>:                  Plan execution in Fortran.
+                                                              (line  28)
+* fftw_execute_dft_c2r:                  New-array Execute Functions.
+                                                              (line  89)
+* fftw_execute_dft_c2r <1>:              Plan execution in Fortran.
+                                                              (line  31)
+* fftw_execute_dft_r2c:                  New-array Execute Functions.
+                                                              (line  89)
+* fftw_execute_dft_r2c <1>:              Reversing array dimensions.
+                                                              (line  46)
+* fftw_execute_dft_r2c <2>:              Plan execution in Fortran.
+                                                              (line  31)
+* fftw_execute_r2r:                      New-array Execute Functions.
+                                                              (line  89)
+* fftw_execute_r2r <1>:                  Plan execution in Fortran.
+                                                              (line  31)
+* fftw_execute_split_dft:                New-array Execute Functions.
+                                                              (line  89)
+* fftw_execute_split_dft_c2r:            New-array Execute Functions.
+                                                              (line  89)
+* fftw_execute_split_dft_r2c:            New-array Execute Functions.
+                                                              (line  89)
+* FFTW_EXHAUSTIVE:                       Words of Wisdom-Saving Plans.
+                                                              (line  22)
+* FFTW_EXHAUSTIVE <1>:                   Planner Flags.       (line  43)
+* fftw_export_wisdom:                    Wisdom Export.       (line  10)
+* fftw_export_wisdom <1>:                Wisdom Generic Export/Import from Fortran.
+                                                              (line  12)
+* fftw_export_wisdom_to_file:            Wisdom Export.       (line  10)
+* fftw_export_wisdom_to_filename:        Words of Wisdom-Saving Plans.
+                                                              (line  29)
+* fftw_export_wisdom_to_filename <1>:    Wisdom Export.       (line  10)
+* fftw_export_wisdom_to_filename <2>:    Wisdom File Export/Import from Fortran.
+                                                              (line   6)
+* fftw_export_wisdom_to_string:          Wisdom Export.       (line  10)
+* fftw_export_wisdom_to_string <1>:      Wisdom String Export/Import from Fortran.
+                                                              (line   6)
+* fftw_flops:                            Using Plans.         (line  78)
+* fftw_flops <1>:                        Avoiding MPI Deadlocks.
+                                                              (line  19)
+* fftw_flops <2>:                        FFTW Fortran type reference.
+                                                              (line  37)
+* fftw_forget_wisdom:                    Words of Wisdom-Saving Plans.
+                                                              (line  48)
+* fftw_forget_wisdom <1>:                Forgetting Wisdom.   (line   7)
+* FFTW_FORWARD:                          Complex One-Dimensional DFTs.
+                                                              (line  61)
+* FFTW_FORWARD <1>:                      One-Dimensional DFTs of Real Data.
+                                                              (line  39)
+* FFTW_FORWARD <2>:                      Complex DFTs.        (line  70)
+* fftw_fprint_plan:                      Using Plans.         (line  93)
+* fftw_free:                             Complex One-Dimensional DFTs.
+                                                              (line 101)
+* fftw_free <1>:                         SIMD alignment and fftw_malloc.
+                                                              (line  24)
+* fftw_free <2>:                         Memory Allocation.   (line   8)
+* FFTW_HC2R:                             The Halfcomplex-format DFT.
+                                                              (line   9)
+* FFTW_HC2R <1>:                         Real-to-Real Transform Kinds.
+                                                              (line  25)
+* fftw_import wisdom_from_filename:      Wisdom File Export/Import from Fortran.
+                                                              (line   6)
+* fftw_import_system_wisdom:             Caveats in Using Wisdom.
+                                                              (line  36)
+* fftw_import_system_wisdom <1>:         Wisdom Import.       (line  10)
+* fftw_import_wisdom:                    Wisdom Import.       (line  10)
+* fftw_import_wisdom <1>:                Wisdom Generic Export/Import from Fortran.
+                                                              (line  37)
+* fftw_import_wisdom_from_file:          Wisdom Import.       (line  10)
+* fftw_import_wisdom_from_filename:      Words of Wisdom-Saving Plans.
+                                                              (line  35)
+* fftw_import_wisdom_from_filename <1>:  Wisdom Import.       (line  10)
+* fftw_import_wisdom_from_string:        Wisdom Import.       (line  10)
+* fftw_import_wisdom_from_string <1>:    Wisdom String Export/Import from Fortran.
+                                                              (line  44)
+* fftw_init_threads:                     Usage of Multi-threaded FFTW.
+                                                              (line  22)
+* fftw_init_threads <1>:                 Linking and Initializing MPI FFTW.
+                                                              (line  13)
+* fftw_init_threads <2>:                 Combining MPI and Threads.
+                                                              (line  35)
+* fftw_init_threads <3>:                 MPI Initialization.  (line  11)
+* fftw_iodim:                            Guru vector and transform sizes.
+                                                              (line  15)
+* fftw_iodim <1>:                        FFTW Fortran type reference.
+                                                              (line  53)
+* fftw_iodim <2>:                        Fortran-interface routines.
+                                                              (line  43)
+* fftw_iodim64:                          64-bit Guru Interface.
+                                                              (line  46)
+* fftw_iodim64 <1>:                      FFTW Fortran type reference.
+                                                              (line  53)
+* fftw_make_planner_thread_safe:         Thread safety.       (line  51)
+* fftw_malloc:                           Complex One-Dimensional DFTs.
+                                                              (line  34)
+* fftw_malloc <1>:                       SIMD alignment and fftw_malloc.
+                                                              (line  24)
+* fftw_malloc <2>:                       Dynamic Arrays in C. (line  15)
+* fftw_malloc <3>:                       Memory Allocation.   (line   8)
+* fftw_malloc <4>:                       Planner Flags.       (line  75)
+* fftw_malloc <5>:                       Basic and advanced distribution interfaces.
+                                                              (line  42)
+* fftw_malloc <6>:                       Using MPI Plans.     (line  24)
+* fftw_malloc <7>:                       FFTW Fortran type reference.
+                                                              (line  27)
+* FFTW_MEASURE:                          Complex One-Dimensional DFTs.
+                                                              (line  66)
+* FFTW_MEASURE <1>:                      Words of Wisdom-Saving Plans.
+                                                              (line  22)
+* FFTW_MEASURE <2>:                      Planner Flags.       (line  33)
+* FFTW_MEASURE <3>:                      An improved replacement for MPI_Alltoall.
+                                                              (line  43)
+* fftw_mpi_broadcast_wisdom:             FFTW MPI Wisdom.     (line  29)
+* fftw_mpi_broadcast_wisdom <1>:         MPI Wisdom Communication.
+                                                              (line   9)
+* fftw_mpi_cleanup:                      Linking and Initializing MPI FFTW.
+                                                              (line  24)
+* fftw_mpi_cleanup <1>:                  MPI Initialization.  (line  19)
+* FFTW_MPI_DEFAULT_BLOCK:                Basic and advanced distribution interfaces.
+                                                              (line  71)
+* FFTW_MPI_DEFAULT_BLOCK <1>:            Advanced distributed-transpose interface.
+                                                              (line  23)
+* FFTW_MPI_DEFAULT_BLOCK <2>:            MPI Plan Creation.   (line  43)
+* fftw_mpi_execute_dft:                  Using MPI Plans.     (line  19)
+* fftw_mpi_execute_dft <1>:              FFTW MPI Fortran Interface.
+                                                              (line  50)
+* fftw_mpi_execute_dft_c2r:              Using MPI Plans.     (line  19)
+* fftw_mpi_execute_dft_r2c:              Using MPI Plans.     (line  19)
+* fftw_mpi_execute_r2r:                  Using MPI Plans.     (line  19)
+* fftw_mpi_execute_r2r <1>:              MPI Plan Creation.   (line 190)
+* fftw_mpi_gather_wisdom:                FFTW MPI Wisdom.     (line  29)
+* fftw_mpi_gather_wisdom <1>:            MPI Wisdom Communication.
+                                                              (line   9)
+* fftw_mpi_init:                         Linking and Initializing MPI FFTW.
+                                                              (line  18)
+* fftw_mpi_init <1>:                     2d MPI example.      (line  50)
+* fftw_mpi_init <2>:                     FFTW MPI Wisdom.     (line  55)
+* fftw_mpi_init <3>:                     Combining MPI and Threads.
+                                                              (line  35)
+* fftw_mpi_init <4>:                     MPI Initialization.  (line   9)
+* fftw_mpi_local_size:                   MPI Data Distribution Functions.
+                                                              (line  16)
+* fftw_mpi_local_size_1d:                One-dimensional distributions.
+                                                              (line  18)
+* fftw_mpi_local_size_1d <1>:            MPI Data Distribution Functions.
+                                                              (line  66)
+* fftw_mpi_local_size_2d:                2d MPI example.      (line  81)
+* fftw_mpi_local_size_2d <1>:            Basic and advanced distribution interfaces.
+                                                              (line  19)
+* fftw_mpi_local_size_2d <2>:            MPI Data Distribution Functions.
+                                                              (line  16)
+* fftw_mpi_local_size_2d_transposed:     Basic distributed-transpose interface.
+                                                              (line  39)
+* fftw_mpi_local_size_2d_transposed <1>: MPI Data Distribution Functions.
+                                                              (line  16)
+* fftw_mpi_local_size_3d:                MPI Data Distribution Functions.
+                                                              (line  16)
+* fftw_mpi_local_size_3d_transposed:     Transposed distributions.
+                                                              (line  52)
+* fftw_mpi_local_size_3d_transposed <1>: MPI Data Distribution Functions.
+                                                              (line  16)
+* fftw_mpi_local_size_many:              Basic and advanced distribution interfaces.
+                                                              (line  54)
+* fftw_mpi_local_size_many <1>:          MPI Data Distribution Functions.
+                                                              (line  47)
+* fftw_mpi_local_size_many_1d:           MPI Data Distribution Functions.
+                                                              (line  66)
+* fftw_mpi_local_size_many_transposed:   Advanced distributed-transpose interface.
+                                                              (line  23)
+* fftw_mpi_local_size_many_transposed <1>: MPI Data Distribution Functions.
+                                                              (line  47)
+* fftw_mpi_local_size_transposed:        MPI Data Distribution Functions.
+                                                              (line  16)
+* fftw_mpi_plan_dft:                     MPI Plan Creation.   (line  11)
+* fftw_mpi_plan_dft_1d:                  MPI Plan Creation.   (line  11)
+* fftw_mpi_plan_dft_2d:                  2d MPI example.      (line  61)
+* fftw_mpi_plan_dft_2d <1>:              MPI Plan Creation.   (line  11)
+* fftw_mpi_plan_dft_3d:                  MPI Plan Creation.   (line  11)
+* fftw_mpi_plan_dft_c2r:                 MPI Plan Creation.   (line  84)
+* fftw_mpi_plan_dft_c2r_2d:              MPI Plan Creation.   (line  84)
+* fftw_mpi_plan_dft_c2r_2d <1>:          MPI Plan Creation.   (line  84)
+* fftw_mpi_plan_dft_c2r_3d:              MPI Plan Creation.   (line  84)
+* fftw_mpi_plan_dft_r2c:                 MPI Plan Creation.   (line  84)
+* fftw_mpi_plan_dft_r2c_2d:              MPI Plan Creation.   (line  84)
+* fftw_mpi_plan_dft_r2c_2d <1>:          MPI Plan Creation.   (line  84)
+* fftw_mpi_plan_dft_r2c_3d:              MPI Plan Creation.   (line  84)
+* fftw_mpi_plan_many_dft:                MPI Plan Creation.   (line  11)
+* fftw_mpi_plan_many_dft_c2r:            MPI Plan Creation.   (line 129)
+* fftw_mpi_plan_many_dft_r2c:            MPI Plan Creation.   (line 129)
+* fftw_mpi_plan_many_transpose:          Advanced distributed-transpose interface.
+                                                              (line  15)
+* fftw_mpi_plan_many_transpose <1>:      MPI Plan Creation.   (line 182)
+* fftw_mpi_plan_transpose:               Basic distributed-transpose interface.
+                                                              (line  14)
+* fftw_mpi_plan_transpose <1>:           MPI Plan Creation.   (line 182)
+* FFTW_MPI_SCRAMBLED_IN:                 One-dimensional distributions.
+                                                              (line  43)
+* FFTW_MPI_SCRAMBLED_IN <1>:             MPI Data Distribution Functions.
+                                                              (line  76)
+* FFTW_MPI_SCRAMBLED_IN <2>:             MPI Plan Creation.   (line  65)
+* FFTW_MPI_SCRAMBLED_OUT:                One-dimensional distributions.
+                                                              (line  43)
+* FFTW_MPI_SCRAMBLED_OUT <1>:            MPI Data Distribution Functions.
+                                                              (line  76)
+* FFTW_MPI_SCRAMBLED_OUT <2>:            MPI Plan Creation.   (line  65)
+* FFTW_MPI_TRANSPOSED_IN:                Transposed distributions.
+                                                              (line  26)
+* FFTW_MPI_TRANSPOSED_IN <1>:            Basic distributed-transpose interface.
+                                                              (line  28)
+* FFTW_MPI_TRANSPOSED_IN <2>:            MPI Plan Creation.   (line  72)
+* FFTW_MPI_TRANSPOSED_OUT:               Transposed distributions.
+                                                              (line  26)
+* FFTW_MPI_TRANSPOSED_OUT <1>:           Basic distributed-transpose interface.
+                                                              (line  28)
+* FFTW_MPI_TRANSPOSED_OUT <2>:           MPI Plan Creation.   (line  72)
+* FFTW_NO_TIMELIMIT:                     Planner Flags.       (line  95)
+* FFTW_PATIENT:                          Complex One-Dimensional DFTs.
+                                                              (line 122)
+* FFTW_PATIENT <1>:                      Words of Wisdom-Saving Plans.
+                                                              (line  22)
+* FFTW_PATIENT <2>:                      Planner Flags.       (line  38)
+* FFTW_PATIENT <3>:                      How Many Threads to Use?.
+                                                              (line  20)
+* FFTW_PATIENT <4>:                      An improved replacement for MPI_Alltoall.
+                                                              (line  43)
+* fftw_plan:                             Complex One-Dimensional DFTs.
+                                                              (line  50)
+* fftw_plan <1>:                         Using Plans.         (line   8)
+* fftw_plan <2>:                         FFTW Fortran type reference.
+                                                              (line   9)
+* fftw_plan_dft:                         Complex Multi-Dimensional DFTs.
+                                                              (line  39)
+* fftw_plan_dft <1>:                     Complex DFTs.        (line  18)
+* fftw_plan_dft_1d:                      Complex One-Dimensional DFTs.
+                                                              (line  50)
+* fftw_plan_dft_1d <1>:                  Complex DFTs.        (line  18)
+* fftw_plan_dft_2d:                      Complex Multi-Dimensional DFTs.
+                                                              (line  21)
+* fftw_plan_dft_2d <1>:                  Complex DFTs.        (line  18)
+* fftw_plan_dft_2d <2>:                  Overview of Fortran interface.
+                                                              (line  24)
+* fftw_plan_dft_3d:                      Complex Multi-Dimensional DFTs.
+                                                              (line  21)
+* fftw_plan_dft_3d <1>:                  Complex DFTs.        (line  18)
+* fftw_plan_dft_3d <2>:                  Reversing array dimensions.
+                                                              (line  22)
+* fftw_plan_dft_c2r:                     Real-data DFTs.      (line  88)
+* fftw_plan_dft_c2r_1d:                  One-Dimensional DFTs of Real Data.
+                                                              (line  35)
+* fftw_plan_dft_c2r_1d <1>:              Real-data DFTs.      (line  88)
+* fftw_plan_dft_c2r_2d:                  Real-data DFTs.      (line  88)
+* fftw_plan_dft_c2r_3d:                  Real-data DFTs.      (line  88)
+* fftw_plan_dft_r2c:                     Multi-Dimensional DFTs of Real Data.
+                                                              (line  17)
+* fftw_plan_dft_r2c <1>:                 Real-data DFTs.      (line  18)
+* fftw_plan_dft_r2c_1d:                  One-Dimensional DFTs of Real Data.
+                                                              (line  35)
+* fftw_plan_dft_r2c_1d <1>:              Real-data DFTs.      (line  18)
+* fftw_plan_dft_r2c_2d:                  Multi-Dimensional DFTs of Real Data.
+                                                              (line  17)
+* fftw_plan_dft_r2c_2d <1>:              Real-data DFTs.      (line  18)
+* fftw_plan_dft_r2c_3d:                  Multi-Dimensional DFTs of Real Data.
+                                                              (line  17)
+* fftw_plan_dft_r2c_3d <1>:              Real-data DFTs.      (line  18)
+* fftw_plan_dft_r2c_3d <2>:              Reversing array dimensions.
+                                                              (line  46)
+* fftw_plan_guru_dft:                    Guru Complex DFTs.   (line  17)
+* fftw_plan_guru_dft_c2r:                Guru Real-data DFTs. (line  29)
+* fftw_plan_guru_dft_r2c:                Guru Real-data DFTs. (line  29)
+* fftw_plan_guru_r2r:                    Guru Real-to-real Transforms.
+                                                              (line  12)
+* fftw_plan_guru_split_dft:              Guru Complex DFTs.   (line  17)
+* fftw_plan_guru_split_dft_c2r:          Guru Real-data DFTs. (line  29)
+* fftw_plan_guru_split_dft_r2c:          Guru Real-data DFTs. (line  29)
+* fftw_plan_guru64_dft:                  64-bit Guru Interface.
+                                                              (line  36)
+* fftw_plan_many_dft:                    Advanced Complex DFTs.
+                                                              (line  12)
+* fftw_plan_many_dft_c2r:                Advanced Real-data DFTs.
+                                                              (line  18)
+* fftw_plan_many_dft_r2c:                Advanced Real-data DFTs.
+                                                              (line  18)
+* fftw_plan_many_r2r:                    Advanced Real-to-real Transforms.
+                                                              (line  12)
+* fftw_plan_r2r:                         More DFTs of Real Data.
+                                                              (line  39)
+* fftw_plan_r2r <1>:                     Real-to-Real Transforms.
+                                                              (line  19)
+* fftw_plan_r2r_1d:                      More DFTs of Real Data.
+                                                              (line  39)
+* fftw_plan_r2r_1d <1>:                  Real-to-Real Transforms.
+                                                              (line  19)
+* fftw_plan_r2r_2d:                      More DFTs of Real Data.
+                                                              (line  39)
+* fftw_plan_r2r_2d <1>:                  Real-to-Real Transforms.
+                                                              (line  19)
+* fftw_plan_r2r_3d:                      More DFTs of Real Data.
+                                                              (line  39)
+* fftw_plan_r2r_3d <1>:                  Real-to-Real Transforms.
+                                                              (line  19)
+* fftw_plan_with_nthreads:               Usage of Multi-threaded FFTW.
+                                                              (line  32)
+* fftw_plan_with_nthreads <1>:           Combining MPI and Threads.
+                                                              (line  35)
+* fftw_planner_nthreads:                 Usage of Multi-threaded FFTW.
+                                                              (line  47)
+* FFTW_PRESERVE_INPUT:                   One-Dimensional DFTs of Real Data.
+                                                              (line  61)
+* FFTW_PRESERVE_INPUT <1>:               Planner Flags.       (line  65)
+* fftw_print_plan:                       Using Plans.         (line  93)
+* FFTW_R2HC:                             The Halfcomplex-format DFT.
+                                                              (line   6)
+* FFTW_R2HC <1>:                         Real-to-Real Transform Kinds.
+                                                              (line  20)
+* fftw_r2r_kind:                         More DFTs of Real Data.
+                                                              (line  51)
+* fftw_r2r_kind <1>:                     Other Multi-dimensional Real-data MPI Transforms.
+                                                              (line  12)
+* fftw_r2r_kind <2>:                     FFTW Fortran type reference.
+                                                              (line  32)
+* FFTW_REDFT00:                          Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  34)
+* FFTW_REDFT00 <1>:                      Real-to-Real Transforms.
+                                                              (line  32)
+* FFTW_REDFT00 <2>:                      Real-to-Real Transform Kinds.
+                                                              (line  31)
+* FFTW_REDFT01:                          Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  40)
+* FFTW_REDFT01 <1>:                      Real-to-Real Transform Kinds.
+                                                              (line  38)
+* FFTW_REDFT10:                          Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  37)
+* FFTW_REDFT10 <1>:                      Real-to-Real Transform Kinds.
+                                                              (line  34)
+* FFTW_REDFT11:                          Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  43)
+* FFTW_REDFT11 <1>:                      Real-to-Real Transform Kinds.
+                                                              (line  42)
+* FFTW_RODFT00:                          Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  44)
+* FFTW_RODFT00 <1>:                      Real-to-Real Transform Kinds.
+                                                              (line  45)
+* FFTW_RODFT01:                          Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  48)
+* FFTW_RODFT01 <1>:                      Real-to-Real Transform Kinds.
+                                                              (line  51)
+* FFTW_RODFT10:                          Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  47)
+* FFTW_RODFT10 <1>:                      Real-to-Real Transform Kinds.
+                                                              (line  48)
+* FFTW_RODFT11:                          Real even/odd DFTs (cosine/sine transforms).
+                                                              (line  51)
+* FFTW_RODFT11 <1>:                      Real-to-Real Transform Kinds.
+                                                              (line  54)
+* fftw_set_timelimit:                    Planner Flags.       (line  89)
+* fftw_threads_set_callback:             Usage of Multi-threaded FFTW.
+                                                              (line  82)
+* FFTW_TRANSPOSED_IN:                    Multi-dimensional MPI DFTs of Real Data.
+                                                              (line  90)
+* FFTW_TRANSPOSED_OUT:                   Multi-dimensional MPI DFTs of Real Data.
+                                                              (line  90)
+* FFTW_UNALIGNED:                        Planner Flags.       (line  75)
+* FFTW_UNALIGNED <1>:                    New-array Execute Functions.
+                                                              (line  27)
+* FFTW_UNALIGNED <2>:                    Plan execution in Fortran.
+                                                              (line  53)
+* FFTW_UNALIGNED <3>:                    FFTW Execution in Fortran.
+                                                              (line  52)
+* FFTW_WISDOM_ONLY:                      Planner Flags.       (line  48)
+* MPI_Alltoall:                          An improved replacement for MPI_Alltoall.
+                                                              (line   9)
+* MPI_Barrier:                           Avoiding MPI Deadlocks.
+                                                              (line  12)
+* MPI_COMM_WORLD:                        Distributed-memory FFTW with MPI.
+                                                              (line  34)
+* MPI_COMM_WORLD <1>:                    2d MPI example.      (line  61)
+* MPI_Init:                              2d MPI example.      (line  50)
+* ptrdiff_t:                             64-bit Guru Interface.
+                                                              (line  23)
+* ptrdiff_t <1>:                         2d MPI example.      (line  69)
+* ptrdiff_t <2>:                         FFTW Fortran type reference.
+                                                              (line  27)
+* R2HC:                                  The 1d Real-data DFT.
+                                                              (line  21)
+* REDFT00:                               1d Real-even DFTs (DCTs).
+                                                              (line  11)
+* REDFT00 <1>:                           1d Real-even DFTs (DCTs).
+                                                              (line  32)
+* REDFT01:                               1d Real-even DFTs (DCTs).
+                                                              (line  47)
+* REDFT10:                               1d Real-even DFTs (DCTs).
+                                                              (line  40)
+* REDFT11:                               1d Real-even DFTs (DCTs).
+                                                              (line  56)
+* RODFT00:                               1d Real-odd DFTs (DSTs).
+                                                              (line  11)
+* RODFT00 <1>:                           1d Real-odd DFTs (DSTs).
+                                                              (line  32)
+* RODFT01:                               1d Real-odd DFTs (DSTs).
+                                                              (line  44)
+* RODFT10:                               1d Real-odd DFTs (DSTs).
+                                                              (line  38)
+* RODFT11:                               1d Real-odd DFTs (DSTs).
+                                                              (line  51)
+

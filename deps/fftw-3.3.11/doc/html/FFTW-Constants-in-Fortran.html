@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>FFTW Constants in Fortran (FFTW 3.3.11)</title>
+
+<meta name="description" content="FFTW Constants in Fortran (FFTW 3.3.11)">
+<meta name="keywords" content="FFTW Constants in Fortran (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Calling-FFTW-from-Legacy-Fortran.html" rel="up" title="Calling FFTW from Legacy Fortran">
+<link href="FFTW-Execution-in-Fortran.html" rel="next" title="FFTW Execution in Fortran">
+<link href="Fortran_002dinterface-routines.html" rel="prev" title="Fortran-interface routines">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="FFTW-Constants-in-Fortran">
+<div class="nav-panel">
+<p>
+Next: <a href="FFTW-Execution-in-Fortran.html" accesskey="n" rel="next">FFTW Execution in Fortran</a>, Previous: <a href="Fortran_002dinterface-routines.html" accesskey="p" rel="prev">Fortran-interface routines</a>, Up: <a href="Calling-FFTW-from-Legacy-Fortran.html" accesskey="u" rel="up">Calling FFTW from Legacy Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="FFTW-Constants-in-Fortran-1"><span>8.2 FFTW Constants in Fortran<a class="copiable-link" href="#FFTW-Constants-in-Fortran-1"> &para;</a></span></h3>
+
+<p>When creating plans in FFTW, a number of constants are used to specify
+options, such as <code class="code">FFTW_MEASURE</code> or <code class="code">FFTW_ESTIMATE</code>.  The
+same constants must be used with the wrapper routines, but of course the
+C header files where the constants are defined can&rsquo;t be incorporated
+directly into Fortran code.
+</p>
+<p>Instead, we have placed Fortran equivalents of the FFTW constant
+definitions in the file <code class="code">fftw3.f</code>, which can be found in the same
+directory as <code class="code">fftw3.h</code>.  If your Fortran compiler supports a
+preprocessor of some sort, you should be able to <code class="code">include</code> or
+<code class="code">#include</code> this file; otherwise, you can paste it directly into
+your code.
+</p>
+<a class="index-entry-id" id="index-flags-9"></a>
+<p>In C, you combine different flags (like <code class="code">FFTW_PRESERVE_INPUT</code> and
+<code class="code">FFTW_MEASURE</code>) using the &lsquo;<samp class="samp"><code class="code">|</code></samp>&rsquo; operator; in Fortran
+you should just use &lsquo;<samp class="samp"><code class="code">+</code></samp>&rsquo;.  (Take care not to add in the
+same flag more than once, though.  Alternatively, you can use the
+<code class="code">ior</code> intrinsic function standardized in Fortran 95.)
+</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Guru vector and transform sizes (FFTW 3.3.11)</title>
+
+<meta name="description" content="Guru vector and transform sizes (FFTW 3.3.11)">
+<meta name="keywords" content="Guru vector and transform sizes (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Guru-Interface.html" rel="up" title="Guru Interface">
+<link href="Guru-Complex-DFTs.html" rel="next" title="Guru Complex DFTs">
+<link href="Interleaved-and-split-arrays.html" rel="prev" title="Interleaved and split arrays">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Guru-vector-and-transform-sizes">
+<div class="nav-panel">
+<p>
+Next: <a href="Guru-Complex-DFTs.html" accesskey="n" rel="next">Guru Complex DFTs</a>, Previous: <a href="Interleaved-and-split-arrays.html" accesskey="p" rel="prev">Interleaved and split arrays</a>, Up: <a href="Guru-Interface.html" accesskey="u" rel="up">Guru Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Guru-vector-and-transform-sizes-1"><span>4.5.2 Guru vector and transform sizes<a class="copiable-link" href="#Guru-vector-and-transform-sizes-1"> &para;</a></span></h4>
+
+<p>The guru interface introduces one basic new data structure,
+<code class="code">fftw_iodim</code>, that is used to specify sizes and strides for
+multi-dimensional transforms and vectors:
+</p>
+<div class="example">
+<pre class="example-preformatted">typedef struct {
+     int n;
+     int is;
+     int os;
+} fftw_iodim;
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fiodim"></a>
+
+<p>Here, <code class="code">n</code> is the size of the dimension, and <code class="code">is</code> and <code class="code">os</code>
+are the strides of that dimension for the input and output arrays.  (The
+stride is the separation of consecutive elements along this dimension.)
+</p>
+<p>The meaning of the stride parameter depends on the type of the array
+that the stride refers to.  <em class="emph">If the array is interleaved complex,
+strides are expressed in units of complex numbers
+(<code class="code">fftw_complex</code>).  If the array is split complex or real, strides
+are expressed in units of real numbers (<code class="code">double</code>).</em>  This
+convention is consistent with the usual pointer arithmetic in the C
+language.  An interleaved array is denoted by a pointer <code class="code">p</code> to
+<code class="code">fftw_complex</code>, so that <code class="code">p+1</code> points to the next complex
+number.  Split arrays are denoted by pointers to <code class="code">double</code>, in
+which case pointer arithmetic operates in units of
+<code class="code">sizeof(double)</code>.
+<a class="index-entry-id" id="index-stride-2"></a>
+</p>
+
+<p>The guru planner interfaces all take a (<code class="code">rank</code>, <code class="code">dims[rank]</code>)
+pair describing the transform size, and a (<code class="code">howmany_rank</code>,
+<code class="code">howmany_dims[howmany_rank]</code>) pair describing the &ldquo;vector&rdquo; size (a
+multi-dimensional loop of transforms to perform), where <code class="code">dims</code> and
+<code class="code">howmany_dims</code> are arrays of <code class="code">fftw_iodim</code>.  Each <code class="code">n</code> field must
+be positive for <code class="code">dims</code> and nonnegative for <code class="code">howmany_dims</code>, while both
+<code class="code">rank</code> and <code class="code">howmany_rank</code> must be nonnegative.
+</p>
+<p>For example, the <code class="code">howmany</code> parameter in the advanced complex-DFT
+interface corresponds to <code class="code">howmany_rank</code> = 1,
+<code class="code">howmany_dims[0].n</code> = <code class="code">howmany</code>, <code class="code">howmany_dims[0].is</code> =
+<code class="code">idist</code>, and <code class="code">howmany_dims[0].os</code> = <code class="code">odist</code>.
+<a class="index-entry-id" id="index-howmany-loop"></a>
+<a class="index-entry-id" id="index-dist-1"></a>
+(To compute a single transform, you can just use <code class="code">howmany_rank</code> = 0.)
+</p>
+
+<p>A row-major multidimensional array with dimensions <code class="code">n[rank]</code>
+(see <a class="pxref" href="Row_002dmajor-Format.html">Row-major Format</a>) corresponds to <code class="code">dims[i].n</code> =
+<code class="code">n[i]</code> and the recurrence <code class="code">dims[i].is</code> = <code class="code">n[i+1] *
+dims[i+1].is</code> (similarly for <code class="code">os</code>).  The stride of the last
+(<code class="code">i=rank-1</code>) dimension is the overall stride of the array,
+e.g. to be equivalent to the advanced complex-DFT interface, you would
+have <code class="code">dims[rank-1].is</code> = <code class="code">istride</code> and
+<code class="code">dims[rank-1].os</code> = <code class="code">ostride</code>.
+<a class="index-entry-id" id="index-row_002dmajor-3"></a>
+</p>
+
+<p>In general, we only guarantee FFTW to return a non-<code class="code">NULL</code> plan if
+the vector and transform dimensions correspond to a set of distinct
+indices, and for in-place transforms the input/output strides should
+be the same.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Guru-Complex-DFTs.html">Guru Complex DFTs</a>, Previous: <a href="Interleaved-and-split-arrays.html">Interleaved and split arrays</a>, Up: <a href="Guru-Interface.html">Guru Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

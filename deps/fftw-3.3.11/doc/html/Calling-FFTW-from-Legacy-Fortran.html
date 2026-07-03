@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Calling FFTW from Legacy Fortran (FFTW 3.3.11)</title>
+
+<meta name="description" content="Calling FFTW from Legacy Fortran (FFTW 3.3.11)">
+<meta name="keywords" content="Calling FFTW from Legacy Fortran (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="Upgrading-from-FFTW-version-2.html" rel="next" title="Upgrading from FFTW version 2">
+<link href="Calling-FFTW-from-Modern-Fortran.html" rel="prev" title="Calling FFTW from Modern Fortran">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="chapter-level-extent" id="Calling-FFTW-from-Legacy-Fortran">
+<div class="nav-panel">
+<p>
+Next: <a href="Upgrading-from-FFTW-version-2.html" accesskey="n" rel="next">Upgrading from FFTW version 2</a>, Previous: <a href="Calling-FFTW-from-Modern-Fortran.html" accesskey="p" rel="prev">Calling FFTW from Modern Fortran</a>, Up: <a href="index.html" accesskey="u" rel="up">FFTW User Manual</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h2 class="chapter" id="Calling-FFTW-from-Legacy-Fortran-1"><span>8 Calling FFTW from Legacy Fortran<a class="copiable-link" href="#Calling-FFTW-from-Legacy-Fortran-1"> &para;</a></span></h2>
+<a class="index-entry-id" id="index-Fortran-interface-3"></a>
+
+<p>This chapter describes the interface to FFTW callable by Fortran code
+in older compilers not supporting the Fortran 2003 C interoperability
+features (see <a class="pxref" href="Calling-FFTW-from-Modern-Fortran.html">Calling FFTW from Modern Fortran</a>).  This interface
+has the major disadvantage that it is not type-checked, so if you
+mistake the argument types or ordering then your program will not have
+any compiler errors, and will likely crash at runtime.  So, greater
+care is needed.  Also, technically interfacing older Fortran versions
+to C is nonstandard, but in practice we have found that the techniques
+used in this chapter have worked with all known Fortran compilers for
+many years.
+</p>
+<p>The legacy Fortran interface differs from the C interface only in the
+prefix (&lsquo;<samp class="samp">dfftw_</samp>&rsquo; instead of &lsquo;<samp class="samp">fftw_</samp>&rsquo; in double precision) and
+a few other minor details.  This Fortran interface is included in the
+FFTW libraries by default, unless a Fortran compiler isn&rsquo;t found on
+your system or <code class="code">--disable-fortran</code> is included in the
+<code class="code">configure</code> flags.  We assume here that the reader is already
+familiar with the usage of FFTW in C, as described elsewhere in this
+manual.
+</p>
+<p>The MPI parallel interface to FFTW is <em class="emph">not</em> currently available
+to legacy Fortran.
+</p>
+
+<ul class="mini-toc">
+<li><a href="Fortran_002dinterface-routines.html" accesskey="1">Fortran-interface routines</a></li>
+<li><a href="FFTW-Constants-in-Fortran.html" accesskey="2">FFTW Constants in Fortran</a></li>
+<li><a href="FFTW-Execution-in-Fortran.html" accesskey="3">FFTW Execution in Fortran</a></li>
+<li><a href="Fortran-Examples.html" accesskey="4">Fortran Examples</a></li>
+<li><a href="Wisdom-of-Fortran_003f.html" accesskey="5">Wisdom of Fortran?</a></li>
+</ul>
+</div>
+
+
+
+</body>
+</html>

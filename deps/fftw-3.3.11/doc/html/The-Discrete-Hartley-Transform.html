@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>The Discrete Hartley Transform (FFTW 3.3.11)</title>
+
+<meta name="description" content="The Discrete Hartley Transform (FFTW 3.3.11)">
+<meta name="keywords" content="The Discrete Hartley Transform (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="More-DFTs-of-Real-Data.html" rel="up" title="More DFTs of Real Data">
+<link href="Real-even_002fodd-DFTs-_0028cosine_002fsine-transforms_0029.html" rel="prev" title="Real even/odd DFTs (cosine/sine transforms)">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="The-Discrete-Hartley-Transform">
+<div class="nav-panel">
+<p>
+Previous: <a href="Real-even_002fodd-DFTs-_0028cosine_002fsine-transforms_0029.html" accesskey="p" rel="prev">Real even/odd DFTs (cosine/sine transforms)</a>, Up: <a href="More-DFTs-of-Real-Data.html" accesskey="u" rel="up">More DFTs of Real Data</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="The-Discrete-Hartley-Transform-1"><span>2.5.3 The Discrete Hartley Transform<a class="copiable-link" href="#The-Discrete-Hartley-Transform-1"> &para;</a></span></h4>
+
+<p>If you are planning to use the DHT because you&rsquo;ve heard that it is
+&ldquo;faster&rdquo; than the DFT (FFT), <strong class="strong">stop here</strong>.  The DHT is not
+faster than the DFT.  That story is an old but enduring misconception
+that was debunked in 1987.
+</p>
+<p>The discrete Hartley transform (DHT) is an invertible linear transform
+closely related to the DFT.  In the DFT, one multiplies each input by
+<em class="math">cos - i * sin</em> (a complex exponential), whereas in the DHT each
+input is multiplied by simply <em class="math">cos + sin</em>.  Thus, the DHT
+transforms <code class="code">n</code> real numbers to <code class="code">n</code> real numbers, and has the
+convenient property of being its own inverse.  In FFTW, a DHT (of any
+positive <code class="code">n</code>) can be specified by an r2r kind of <code class="code">FFTW_DHT</code>.
+<a class="index-entry-id" id="index-FFTW_005fDHT"></a>
+<a class="index-entry-id" id="index-discrete-Hartley-transform"></a>
+<a class="index-entry-id" id="index-DHT"></a>
+</p>
+<p>Like the DFT, in FFTW the DHT is unnormalized, so computing a DHT of
+size <code class="code">n</code> followed by another DHT of the same size will result in
+the original array multiplied by <code class="code">n</code>.
+<a class="index-entry-id" id="index-normalization-4"></a>
+</p>
+<p>The DHT was originally proposed as a more efficient alternative to the
+DFT for real data, but it was subsequently shown that a specialized DFT
+(such as FFTW&rsquo;s r2hc or r2c transforms) could be just as fast.  In FFTW,
+the DHT is actually computed by post-processing an r2hc transform, so
+there is ordinarily no reason to prefer it from a performance
+perspective.<a class="footnote" id="DOCF5" href="#FOOT5"><sup>5</sup></a>
+However, we have heard rumors that the DHT might be the most appropriate
+transform in its own right for certain applications, and we would be
+very interested to hear from anyone who finds it useful.
+</p>
+<p>If <code class="code">FFTW_DHT</code> is specified for multiple dimensions of a
+multi-dimensional transform, FFTW computes the separable product of 1d
+DHTs along each dimension.  Unfortunately, this is not quite the same
+thing as a true multi-dimensional DHT; you can compute the latter, if
+necessary, with at most <code class="code">rank-1</code> post-processing passes
+[see e.g. H. Hao and R. N. Bracewell, <i class="i">Proc. IEEE</i> <b class="b">75</b>, 264&ndash;266 (1987)].
+</p>
+<p>For the precise mathematical definition of the DHT as used by FFTW, see
+<a class="ref" href="What-FFTW-Really-Computes.html">What FFTW Really Computes</a>.
+</p>
+</div>
+<div class="footnotes-segment">
+<hr>
+<h4 class="footnotes-heading">Footnotes</h4>
+
+<h5 class="footnote-body-heading"><a id="FOOT5" href="#DOCF5">(5)</a></h5>
+<p>We provide the DHT mainly as a byproduct of some
+internal algorithms. FFTW computes a real input/output DFT of
+<em class="emph">prime</em> size by re-expressing it as a DHT plus post/pre-processing
+and then using Rader&rsquo;s prime-DFT algorithm adapted to the DHT.</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Previous: <a href="Real-even_002fodd-DFTs-_0028cosine_002fsine-transforms_0029.html">Real even/odd DFTs (cosine/sine transforms)</a>, Up: <a href="More-DFTs-of-Real-Data.html">More DFTs of Real Data</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

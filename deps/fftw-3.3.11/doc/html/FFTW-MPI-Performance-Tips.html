@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>FFTW MPI Performance Tips (FFTW 3.3.11)</title>
+
+<meta name="description" content="FFTW MPI Performance Tips (FFTW 3.3.11)">
+<meta name="keywords" content="FFTW MPI Performance Tips (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Distributed_002dmemory-FFTW-with-MPI.html" rel="up" title="Distributed-memory FFTW with MPI">
+<link href="Combining-MPI-and-Threads.html" rel="next" title="Combining MPI and Threads">
+<link href="Avoiding-MPI-Deadlocks.html" rel="prev" title="Avoiding MPI Deadlocks">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="FFTW-MPI-Performance-Tips">
+<div class="nav-panel">
+<p>
+Next: <a href="Combining-MPI-and-Threads.html" accesskey="n" rel="next">Combining MPI and Threads</a>, Previous: <a href="Avoiding-MPI-Deadlocks.html" accesskey="p" rel="prev">Avoiding MPI Deadlocks</a>, Up: <a href="Distributed_002dmemory-FFTW-with-MPI.html" accesskey="u" rel="up">Distributed-memory FFTW with MPI</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="FFTW-MPI-Performance-Tips-1"><span>6.10 FFTW MPI Performance Tips<a class="copiable-link" href="#FFTW-MPI-Performance-Tips-1"> &para;</a></span></h3>
+
+<p>In this section, we collect a few tips on getting the best performance
+out of FFTW&rsquo;s MPI transforms.
+</p>
+<p>First, because of the 1d block distribution, FFTW&rsquo;s parallelization is
+currently limited by the size of the first dimension.
+(Multidimensional block distributions may be supported by a future
+version.) More generally, you should ideally arrange the dimensions so
+that FFTW can divide them equally among the processes. See <a class="xref" href="Load-balancing.html">Load balancing</a>.
+<a class="index-entry-id" id="index-block-distribution-2"></a>
+<a class="index-entry-id" id="index-load-balancing-1"></a>
+</p>
+
+<p>Second, if it is not too inconvenient, you should consider working
+with transposed output for multidimensional plans, as this saves a
+considerable amount of communications.  See <a class="xref" href="Transposed-distributions.html">Transposed distributions</a>.
+<a class="index-entry-id" id="index-transpose-3"></a>
+</p>
+
+<p>Third, the fastest choices are generally either an in-place transform
+or an out-of-place transform with the <code class="code">FFTW_DESTROY_INPUT</code> flag
+(which allows the input array to be used as scratch space).  In-place
+is especially beneficial if the amount of data per process is large.
+<a class="index-entry-id" id="index-FFTW_005fDESTROY_005fINPUT-1"></a>
+</p>
+
+<p>Fourth, if you have multiple arrays to transform at once, rather than
+calling FFTW&rsquo;s MPI transforms several times it usually seems to be
+faster to interleave the data and use the advanced interface.  (This
+groups the communications together instead of requiring separate
+messages for each transform.)
+</p>
+</div>
+
+
+
+</body>
+</html>

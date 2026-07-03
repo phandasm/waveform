@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Calling FFTW from Modern Fortran (FFTW 3.3.11)</title>
+
+<meta name="description" content="Calling FFTW from Modern Fortran (FFTW 3.3.11)">
+<meta name="keywords" content="Calling FFTW from Modern Fortran (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="Calling-FFTW-from-Legacy-Fortran.html" rel="next" title="Calling FFTW from Legacy Fortran">
+<link href="Distributed_002dmemory-FFTW-with-MPI.html" rel="prev" title="Distributed-memory FFTW with MPI">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="chapter-level-extent" id="Calling-FFTW-from-Modern-Fortran">
+<div class="nav-panel">
+<p>
+Next: <a href="Calling-FFTW-from-Legacy-Fortran.html" accesskey="n" rel="next">Calling FFTW from Legacy Fortran</a>, Previous: <a href="Distributed_002dmemory-FFTW-with-MPI.html" accesskey="p" rel="prev">Distributed-memory FFTW with MPI</a>, Up: <a href="index.html" accesskey="u" rel="up">FFTW User Manual</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h2 class="chapter" id="Calling-FFTW-from-Modern-Fortran-1"><span>7 Calling FFTW from Modern Fortran<a class="copiable-link" href="#Calling-FFTW-from-Modern-Fortran-1"> &para;</a></span></h2>
+<a class="index-entry-id" id="index-Fortran-interface-2"></a>
+
+<p>Fortran 2003 standardized ways for Fortran code to call C libraries,
+and this allows us to support a direct translation of the FFTW C API
+into Fortran.  Compared to the legacy Fortran 77 interface
+(see <a class="pxref" href="Calling-FFTW-from-Legacy-Fortran.html">Calling FFTW from Legacy Fortran</a>), this direct interface
+offers many advantages, especially compile-time type-checking and
+aligned memory allocation.  As of this writing, support for these C
+interoperability features seems widespread, having been implemented in
+nearly all major Fortran compilers (e.g. GNU, Intel, IBM,
+Oracle/Solaris, Portland Group, NAG).
+<a class="index-entry-id" id="index-portability-4"></a>
+</p>
+<p>This chapter documents that interface.  For the most part, since this
+interface allows Fortran to call the C interface directly, the usage
+is identical to C translated to Fortran syntax.  However, there are a
+few subtle points such as memory allocation, wisdom, and data types
+that deserve closer attention.
+</p>
+
+<ul class="mini-toc">
+<li><a href="Overview-of-Fortran-interface.html" accesskey="1">Overview of Fortran interface</a></li>
+<li><a href="Reversing-array-dimensions.html" accesskey="2">Reversing array dimensions</a></li>
+<li><a href="FFTW-Fortran-type-reference.html" accesskey="3">FFTW Fortran type reference</a></li>
+<li><a href="Plan-execution-in-Fortran.html" accesskey="4">Plan execution in Fortran</a></li>
+<li><a href="Allocating-aligned-memory-in-Fortran.html" accesskey="5">Allocating aligned memory in Fortran</a></li>
+<li><a href="Accessing-the-wisdom-API-from-Fortran.html" accesskey="6">Accessing the wisdom API from Fortran</a></li>
+<li><a href="Defining-an-FFTW-module.html" accesskey="7">Defining an FFTW module</a></li>
+</ul>
+</div>
+
+
+
+</body>
+</html>

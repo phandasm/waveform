@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Installation and Customization (FFTW 3.3.11)</title>
+
+<meta name="description" content="Installation and Customization (FFTW 3.3.11)">
+<meta name="keywords" content="Installation and Customization (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="Acknowledgments.html" rel="next" title="Acknowledgments">
+<link href="Upgrading-from-FFTW-version-2.html" rel="prev" title="Upgrading from FFTW version 2">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="chapter-level-extent" id="Installation-and-Customization">
+<div class="nav-panel">
+<p>
+Next: <a href="Acknowledgments.html" accesskey="n" rel="next">Acknowledgments</a>, Previous: <a href="Upgrading-from-FFTW-version-2.html" accesskey="p" rel="prev">Upgrading from FFTW version 2</a>, Up: <a href="index.html" accesskey="u" rel="up">FFTW User Manual</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h2 class="chapter" id="Installation-and-Customization-1"><span>10 Installation and Customization<a class="copiable-link" href="#Installation-and-Customization-1"> &para;</a></span></h2>
+<a class="index-entry-id" id="index-installation"></a>
+
+<p>This chapter describes the installation and customization of FFTW, the
+latest version of which may be downloaded from
+<a class="uref" href="http://www.fftw.org">the FFTW home page</a>.
+</p>
+<p>In principle, FFTW should work on any system with an ANSI C compiler
+(<code class="code">gcc</code> is fine).  However, planner time is drastically reduced if
+FFTW can exploit a hardware cycle counter; FFTW comes with cycle-counter
+support for all modern general-purpose CPUs, but you may need to add a
+couple of lines of code if your compiler is not yet supported
+(see <a class="pxref" href="Cycle-Counters.html">Cycle Counters</a>).  (On Unix, there will be a warning at the end
+of the <code class="code">configure</code> output if no cycle counter is found.)
+<a class="index-entry-id" id="index-cycle-counter"></a>
+<a class="index-entry-id" id="index-compiler-1"></a>
+<a class="index-entry-id" id="index-portability-9"></a>
+</p>
+
+<p>Installation of FFTW is simplest if you have a Unix or a GNU system,
+such as GNU/Linux, and we describe this case in the first section below,
+including the use of special configuration options to e.g. install
+different precisions or exploit optimizations for particular
+architectures (e.g. SIMD).  Compilation on non-Unix systems is a more
+manual process, but we outline the procedure in the second section.  It
+is also likely that pre-compiled binaries will be available for popular
+systems.
+</p>
+<p>Finally, we describe how you can customize FFTW for particular needs by
+generating <em class="emph">codelets</em> for fast transforms of sizes not supported
+efficiently by the standard FFTW distribution.
+<a class="index-entry-id" id="index-codelet-1"></a>
+</p>
+
+
+<ul class="mini-toc">
+<li><a href="Installation-on-Unix.html" accesskey="1">Installation on Unix</a></li>
+<li><a href="Installation-on-non_002dUnix-systems.html" accesskey="2">Installation on non-Unix systems</a></li>
+<li><a href="Cycle-Counters.html" accesskey="3">Cycle Counters</a></li>
+<li><a href="Generating-your-own-code.html" accesskey="4">Generating your own code</a></li>
+</ul>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Acknowledgments.html">Acknowledgments</a>, Previous: <a href="Upgrading-from-FFTW-version-2.html">Upgrading from FFTW version 2</a>, Up: <a href="index.html">FFTW User Manual</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

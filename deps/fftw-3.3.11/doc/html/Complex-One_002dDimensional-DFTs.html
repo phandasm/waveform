@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Complex One-Dimensional DFTs (FFTW 3.3.11)</title>
+
+<meta name="description" content="Complex One-Dimensional DFTs (FFTW 3.3.11)">
+<meta name="keywords" content="Complex One-Dimensional DFTs (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Tutorial.html" rel="up" title="Tutorial">
+<link href="Complex-Multi_002dDimensional-DFTs.html" rel="next" title="Complex Multi-Dimensional DFTs">
+<link href="Tutorial.html" rel="prev" title="Tutorial">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span.r {font-family: initial; font-weight: normal; font-style: normal}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Complex-One_002dDimensional-DFTs">
+<div class="nav-panel">
+<p>
+Next: <a href="Complex-Multi_002dDimensional-DFTs.html" accesskey="n" rel="next">Complex Multi-Dimensional DFTs</a>, Previous: <a href="Tutorial.html" accesskey="p" rel="prev">Tutorial</a>, Up: <a href="Tutorial.html" accesskey="u" rel="up">Tutorial</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Complex-One_002dDimensional-DFTs-1"><span>2.1 Complex One-Dimensional DFTs<a class="copiable-link" href="#Complex-One_002dDimensional-DFTs-1"> &para;</a></span></h3>
+
+<blockquote class="quotation">
+<p>Plan: To bother about the best method of accomplishing an accidental result.
+[Ambrose Bierce, <cite class="cite">The Enlarged Devil&rsquo;s Dictionary</cite>.]
+<a class="index-entry-id" id="index-Devil"></a>
+</p></blockquote>
+
+
+<p>The basic usage of FFTW to compute a one-dimensional DFT of size
+<code class="code">N</code> is simple, and it typically looks something like this code:
+</p>
+<div class="example">
+<pre class="example-preformatted">#include &lt;fftw3.h&gt;
+...
+{
+    fftw_complex *in, *out;
+    fftw_plan p;
+    ...
+    in = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+    out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+    p = fftw_plan_dft_1d(N, in, out, FFTW_FORWARD, FFTW_ESTIMATE);
+    ...
+    fftw_execute(p); /* <span class="r">repeat as needed</span> */
+    ...
+    fftw_destroy_plan(p);
+    fftw_free(in); fftw_free(out);
+}
+</pre></div>
+
+<p>You must link this code with the <code class="code">fftw3</code> library.  On Unix systems,
+link with <code class="code">-lfftw3 -lm</code>.
+</p>
+<p>The example code first allocates the input and output arrays.  You can
+allocate them in any way that you like, but we recommend using
+<code class="code">fftw_malloc</code>, which behaves like
+<a class="index-entry-id" id="index-fftw_005fmalloc"></a>
+<code class="code">malloc</code> except that it properly aligns the array when SIMD
+instructions (such as SSE and Altivec) are available (see <a class="pxref" href="SIMD-alignment-and-fftw_005fmalloc.html">SIMD alignment and fftw_malloc</a>). [Alternatively, we provide a convenient wrapper function <code class="code">fftw_alloc_complex(N)</code> which has the same effect.]
+<a class="index-entry-id" id="index-fftw_005falloc_005fcomplex"></a>
+<a class="index-entry-id" id="index-SIMD"></a>
+</p>
+
+<p>The data is an array of type <code class="code">fftw_complex</code>, which is by default a
+<code class="code">double[2]</code> composed of the real (<code class="code">in[i][0]</code>) and imaginary
+(<code class="code">in[i][1]</code>) parts of a complex number.
+<a class="index-entry-id" id="index-fftw_005fcomplex"></a>
+</p>
+<p>The next step is to create a <em class="dfn">plan</em>, which is an object
+<a class="index-entry-id" id="index-plan-1"></a>
+that contains all the data that FFTW needs to compute the FFT. 
+This function creates the plan:
+</p>
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_plan_dft_1d(int n, fftw_complex *in, fftw_complex *out,
+                           int sign, unsigned flags);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fplan_005fdft_005f1d"></a>
+<a class="index-entry-id" id="index-fftw_005fplan"></a>
+
+<p>The first argument, <code class="code">n</code>, is the size of the transform you are
+trying to compute.  The size <code class="code">n</code> can be any positive integer, but
+sizes that are products of small factors are transformed most
+efficiently (although prime sizes still use an <i>O</i>(<i>n</i>&nbsp;log&nbsp;<i>n</i>)
+ algorithm).
+</p>
+<p>The next two arguments are pointers to the input and output arrays of
+the transform.  These pointers can be equal, indicating an
+<em class="dfn">in-place</em> transform.
+<a class="index-entry-id" id="index-in_002dplace"></a>
+</p>
+
+<p>The fourth argument, <code class="code">sign</code>, can be either <code class="code">FFTW_FORWARD</code>
+(<code class="code">-1</code>) or <code class="code">FFTW_BACKWARD</code> (<code class="code">+1</code>),
+<a class="index-entry-id" id="index-FFTW_005fFORWARD"></a>
+<a class="index-entry-id" id="index-FFTW_005fBACKWARD"></a>
+and indicates the direction of the transform you are interested in;
+technically, it is the sign of the exponent in the transform.  
+</p>
+<p>The <code class="code">flags</code> argument is usually either <code class="code">FFTW_MEASURE</code> or
+<a class="index-entry-id" id="index-flags"></a>
+<code class="code">FFTW_ESTIMATE</code>.  <code class="code">FFTW_MEASURE</code> instructs FFTW to run
+<a class="index-entry-id" id="index-FFTW_005fMEASURE"></a>
+and measure the execution time of several FFTs in order to find the
+best way to compute the transform of size <code class="code">n</code>.  This process takes
+some time (usually a few seconds), depending on your machine and on
+the size of the transform.  <code class="code">FFTW_ESTIMATE</code>, on the contrary,
+does not run any computation and just builds a
+<a class="index-entry-id" id="index-FFTW_005fESTIMATE"></a>
+reasonable plan that is probably sub-optimal.  In short, if your
+program performs many transforms of the same size and initialization
+time is not important, use <code class="code">FFTW_MEASURE</code>; otherwise use the
+estimate.  
+</p>
+<p><em class="emph">You must create the plan before initializing the input</em>, because
+<code class="code">FFTW_MEASURE</code> overwrites the <code class="code">in</code>/<code class="code">out</code> arrays.
+(Technically, <code class="code">FFTW_ESTIMATE</code> does not touch your arrays, but you
+should always create plans first just to be sure.)
+</p>
+<p>Once the plan has been created, you can use it as many times as you
+like for transforms on the specified <code class="code">in</code>/<code class="code">out</code> arrays,
+computing the actual transforms via <code class="code">fftw_execute(plan)</code>:
+</p><div class="example">
+<pre class="example-preformatted">void fftw_execute(const fftw_plan plan);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fexecute"></a>
+
+<p>The DFT results are stored in-order in the array <code class="code">out</code>, with the
+zero-frequency (DC) component in <code class="code">out[0]</code>.
+<a class="index-entry-id" id="index-frequency"></a>
+If <code class="code">in != out</code>, the transform is <em class="dfn">out-of-place</em> and the input
+array <code class="code">in</code> is not modified.  Otherwise, the input array is
+overwritten with the transform.
+</p>
+<a class="index-entry-id" id="index-execute-1"></a>
+<p>If you want to transform a <em class="emph">different</em> array of the same size, you
+can create a new plan with <code class="code">fftw_plan_dft_1d</code> and FFTW
+automatically reuses the information from the previous plan, if
+possible.  Alternatively, with the &ldquo;guru&rdquo; interface you can apply a
+given plan to a different array, if you are careful.
+See <a class="xref" href="FFTW-Reference.html">FFTW Reference</a>.
+</p>
+<p>When you are done with the plan, you deallocate it by calling
+<code class="code">fftw_destroy_plan(plan)</code>:
+</p><div class="example">
+<pre class="example-preformatted">void fftw_destroy_plan(fftw_plan plan);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fdestroy_005fplan"></a>
+<p>If you allocate an array with <code class="code">fftw_malloc()</code> you must deallocate
+it with <code class="code">fftw_free()</code>.  Do not use <code class="code">free()</code> or, heaven
+forbid, <code class="code">delete</code>.
+<a class="index-entry-id" id="index-fftw_005ffree"></a>
+</p>
+<p>FFTW computes an <em class="emph">unnormalized</em> DFT.  Thus, computing a forward
+followed by a backward transform (or vice versa) results in the original
+array scaled by <code class="code">n</code>.  For the definition of the DFT, see <a class="ref" href="What-FFTW-Really-Computes.html">What FFTW Really Computes</a>.
+<a class="index-entry-id" id="index-DFT-1"></a>
+<a class="index-entry-id" id="index-normalization"></a>
+</p>
+
+<p>If you have a C compiler, such as <code class="code">gcc</code>, that supports the
+C99 standard, and you <code class="code">#include &lt;complex.h&gt;</code> <em class="emph">before</em>
+<code class="code">&lt;fftw3.h&gt;</code>, then <code class="code">fftw_complex</code> is the native
+double-precision complex type and you can manipulate it with ordinary
+arithmetic.  Otherwise, FFTW defines its own complex type, which is
+bit-compatible with the C99 complex type. See <a class="xref" href="Complex-numbers.html">Complex numbers</a>.
+(The C++ <code class="code">&lt;complex&gt;</code> template class may also be usable via a
+typecast.)
+<a class="index-entry-id" id="index-C_002b_002b"></a>
+</p>
+<p>To use single or long-double precision versions of FFTW, replace the
+<code class="code">fftw_</code> prefix by <code class="code">fftwf_</code> or <code class="code">fftwl_</code> and link with
+<code class="code">-lfftw3f</code> or <code class="code">-lfftw3l</code>, but use the <em class="emph">same</em>
+<code class="code">&lt;fftw3.h&gt;</code> header file.
+<a class="index-entry-id" id="index-precision"></a>
+</p>
+
+<p>Many more flags exist besides <code class="code">FFTW_MEASURE</code> and
+<code class="code">FFTW_ESTIMATE</code>.  For example, use <code class="code">FFTW_PATIENT</code> if you&rsquo;re
+willing to wait even longer for a possibly even faster plan (see <a class="pxref" href="FFTW-Reference.html">FFTW Reference</a>).
+<a class="index-entry-id" id="index-FFTW_005fPATIENT"></a>
+You can also save plans for future use, as described by <a class="ref" href="Words-of-Wisdom_002dSaving-Plans.html">Words of Wisdom&mdash;Saving Plans</a>.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Complex-Multi_002dDimensional-DFTs.html">Complex Multi-Dimensional DFTs</a>, Previous: <a href="Tutorial.html">Tutorial</a>, Up: <a href="Tutorial.html">Tutorial</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

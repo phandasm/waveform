@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Usage of Multi-threaded FFTW (FFTW 3.3.11)</title>
+
+<meta name="description" content="Usage of Multi-threaded FFTW (FFTW 3.3.11)">
+<meta name="keywords" content="Usage of Multi-threaded FFTW (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Multi_002dthreaded-FFTW.html" rel="up" title="Multi-threaded FFTW">
+<link href="How-Many-Threads-to-Use_003f.html" rel="next" title="How Many Threads to Use?">
+<link href="Installation-and-Supported-Hardware_002fSoftware.html" rel="prev" title="Installation and Supported Hardware/Software">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Usage-of-Multi_002dthreaded-FFTW">
+<div class="nav-panel">
+<p>
+Next: <a href="How-Many-Threads-to-Use_003f.html" accesskey="n" rel="next">How Many Threads to Use?</a>, Previous: <a href="Installation-and-Supported-Hardware_002fSoftware.html" accesskey="p" rel="prev">Installation and Supported Hardware/Software</a>, Up: <a href="Multi_002dthreaded-FFTW.html" accesskey="u" rel="up">Multi-threaded FFTW</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Usage-of-Multi_002dthreaded-FFTW-1"><span>5.2 Usage of Multi-threaded FFTW<a class="copiable-link" href="#Usage-of-Multi_002dthreaded-FFTW-1"> &para;</a></span></h3>
+
+<p>Here, it is assumed that the reader is already familiar with the usage
+of the uniprocessor FFTW routines, described elsewhere in this manual.
+We only describe what one has to change in order to use the
+multi-threaded routines.
+</p>
+<a class="index-entry-id" id="index-OpenMP-1"></a>
+<p>First, programs using the parallel complex transforms should be linked
+with <code class="code">-lfftw3_threads -lfftw3 -lm</code> on Unix, or <code class="code">-lfftw3_omp
+-lfftw3 -lm</code> if you compiled with OpenMP. You will also need to link
+with whatever library is responsible for threads on your system
+(e.g. <code class="code">-lpthread</code> on GNU/Linux) or include whatever compiler flag
+enables OpenMP (e.g. <code class="code">-fopenmp</code> with gcc).
+<a class="index-entry-id" id="index-linking-on-Unix"></a>
+</p>
+
+<p>Second, before calling <em class="emph">any</em> FFTW routines, you should call the
+function:
+</p>
+<div class="example">
+<pre class="example-preformatted">int fftw_init_threads(void);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005finit_005fthreads"></a>
+
+<p>This function, which need only be called once, performs any one-time
+initialization required to use threads on your system.  It returns zero
+if there was some error (which should not happen under normal
+circumstances) and a non-zero value otherwise.
+</p>
+<p>Third, before creating a plan that you want to parallelize, you should
+call:
+</p>
+<div class="example">
+<pre class="example-preformatted">void fftw_plan_with_nthreads(int nthreads);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fplan_005fwith_005fnthreads"></a>
+
+<p>The <code class="code">nthreads</code> argument indicates the number of threads you want
+FFTW to use (or actually, the maximum number).  All plans subsequently
+created with any planner routine will use that many threads.  You can
+call <code class="code">fftw_plan_with_nthreads</code>, create some plans, call
+<code class="code">fftw_plan_with_nthreads</code> again with a different argument, and
+create some more plans for a new number of threads.  Plans already created
+before a call to <code class="code">fftw_plan_with_nthreads</code> are unaffected.  If you
+pass an <code class="code">nthreads</code> argument of <code class="code">1</code> (the default), threads are
+disabled for subsequent plans.
+</p>
+<p>You can determine the current number of threads that the planner can
+use by calling:
+</p>
+<div class="example">
+<pre class="example-preformatted">int fftw_planner_nthreads(void);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fplanner_005fnthreads"></a>
+
+<a class="index-entry-id" id="index-OpenMP-2"></a>
+<p>With OpenMP, to configure FFTW to use all of the currently running
+OpenMP threads (set by <code class="code">omp_set_num_threads(nthreads)</code> or by the
+<code class="code">OMP_NUM_THREADS</code> environment variable), you can do:
+<code class="code">fftw_plan_with_nthreads(omp_get_max_threads())</code>. (The &lsquo;<samp class="samp">omp_</samp>&rsquo;
+OpenMP functions are declared via <code class="code">#include &lt;omp.h&gt;</code>.)
+</p>
+<a class="index-entry-id" id="index-thread-safety"></a>
+<p>Given a plan, you then execute it as usual with
+<code class="code">fftw_execute(plan)</code>, and the execution will use the number of
+threads specified when the plan was created.  When done, you destroy
+it as usual with <code class="code">fftw_destroy_plan</code>.  As described in
+<a class="ref" href="Thread-safety.html">Thread safety</a>, plan <em class="emph">execution</em> is thread-safe, but plan
+creation and destruction are <em class="emph">not</em>: you should create/destroy
+plans only from a single thread, but can safely execute multiple plans
+in parallel.
+</p>
+<p>There is one additional routine: if you want to get rid of all memory
+and other resources allocated internally by FFTW, you can call:
+</p>
+<div class="example">
+<pre class="example-preformatted">void fftw_cleanup_threads(void);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fcleanup_005fthreads"></a>
+
+<p>which is much like the <code class="code">fftw_cleanup()</code> function except that it
+also gets rid of threads-related data.  You must <em class="emph">not</em> execute any
+previously created plans after calling this function.
+</p>
+<p>We should also mention one other restriction: if you save wisdom from a
+program using the multi-threaded FFTW, that wisdom <em class="emph">cannot be used</em>
+by a program using only the single-threaded FFTW (i.e. not calling
+<code class="code">fftw_init_threads</code>).  See <a class="xref" href="Words-of-Wisdom_002dSaving-Plans.html">Words of Wisdom&mdash;Saving Plans</a>.
+</p>
+<p>Finally, FFTW provides a optional callback interface that allows you to
+replace its parallel threading backend at runtime:
+</p>
+<div class="example">
+<pre class="example-preformatted">void fftw_threads_set_callback(
+    void (*parallel_loop)(void *(*work)(void *), char *jobdata, size_t elsize, int njobs, void *data),
+    void *data);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fthreads_005fset_005fcallback"></a>
+
+<p>This routine (which is <em class="emph">not</em> threadsafe and should generally be called before creating
+any FFTW plans) allows you to provide a function <code class="code">parallel_loop</code> that executes
+parallel work for FFTW: it should call the function <code class="code">work(jobdata + elsize*i)</code> for
+<code class="code">i</code> from <code class="code">0</code> to <code class="code">njobs-1</code>, possibly in parallel.  (The &lsquo;data&lsquo; pointer
+supplied to <code class="code">fftw_threads_set_callback</code> is passed through to your <code class="code">parallel_loop</code>
+function.)   For example, if you link to an FFTW threads library built to use POSIX threads,
+but you want it to use OpenMP instead (because you are using OpenMP elsewhere in your program
+and want to avoid competing threads), you can call <code class="code">fftw_threads_set_callback</code> with
+the callback function:
+</p>
+<div class="example">
+<pre class="example-preformatted">void parallel_loop(void *(*work)(char *), char *jobdata, size_t elsize, int njobs, void *data)
+{
+#pragma omp parallel for
+    for (int i = 0; i &lt; njobs; ++i)
+        work(jobdata + elsize * i);
+}
+</pre></div>
+
+<p>The same mechanism could be used in order to make FFTW use a threading backend
+implemented via Intel TBB, Apple GCD, or Cilk, for example.
+</p>
+
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="How-Many-Threads-to-Use_003f.html">How Many Threads to Use?</a>, Previous: <a href="Installation-and-Supported-Hardware_002fSoftware.html">Installation and Supported Hardware/Software</a>, Up: <a href="Multi_002dthreaded-FFTW.html">Multi-threaded FFTW</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

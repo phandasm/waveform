@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Interleaved and split arrays (FFTW 3.3.11)</title>
+
+<meta name="description" content="Interleaved and split arrays (FFTW 3.3.11)">
+<meta name="keywords" content="Interleaved and split arrays (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Guru-Interface.html" rel="up" title="Guru Interface">
+<link href="Guru-vector-and-transform-sizes.html" rel="next" title="Guru vector and transform sizes">
+<link href="Guru-Interface.html" rel="prev" title="Guru Interface">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Interleaved-and-split-arrays">
+<div class="nav-panel">
+<p>
+Next: <a href="Guru-vector-and-transform-sizes.html" accesskey="n" rel="next">Guru vector and transform sizes</a>, Previous: <a href="Guru-Interface.html" accesskey="p" rel="prev">Guru Interface</a>, Up: <a href="Guru-Interface.html" accesskey="u" rel="up">Guru Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Interleaved-and-split-arrays-1"><span>4.5.1 Interleaved and split arrays<a class="copiable-link" href="#Interleaved-and-split-arrays-1"> &para;</a></span></h4>
+
+<p>The guru interface supports two representations of complex numbers,
+which we call the interleaved and the split format.
+</p>
+<p>The <em class="dfn">interleaved</em> format is the same one used by the basic and
+advanced interfaces, and it is documented in <a class="ref" href="Complex-numbers.html">Complex numbers</a>.
+In the interleaved format, you provide pointers to the real part of a
+complex number, and the imaginary part understood to be stored in the
+next memory location.
+<a class="index-entry-id" id="index-interleaved-format"></a>
+</p>
+
+<p>The <em class="dfn">split</em> format allows separate pointers to the real and
+imaginary parts of a complex array.
+<a class="index-entry-id" id="index-split-format"></a>
+</p>
+
+<p>Technically, the interleaved format is redundant, because you can
+always express an interleaved array in terms of a split array with
+appropriate pointers and strides.  On the other hand, the interleaved
+format is simpler to use, and it is common in practice.  Hence, FFTW
+supports it as a special case.
+</p>
+</div>
+
+
+
+</body>
+</html>

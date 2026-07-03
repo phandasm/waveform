@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>MPI Files and Data Types (FFTW 3.3.11)</title>
+
+<meta name="description" content="MPI Files and Data Types (FFTW 3.3.11)">
+<meta name="keywords" content="MPI Files and Data Types (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="FFTW-MPI-Reference.html" rel="up" title="FFTW MPI Reference">
+<link href="MPI-Initialization.html" rel="next" title="MPI Initialization">
+<link href="FFTW-MPI-Reference.html" rel="prev" title="FFTW MPI Reference">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="MPI-Files-and-Data-Types">
+<div class="nav-panel">
+<p>
+Next: <a href="MPI-Initialization.html" accesskey="n" rel="next">MPI Initialization</a>, Previous: <a href="FFTW-MPI-Reference.html" accesskey="p" rel="prev">FFTW MPI Reference</a>, Up: <a href="FFTW-MPI-Reference.html" accesskey="u" rel="up">FFTW MPI Reference</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="MPI-Files-and-Data-Types-1"><span>6.12.1 MPI Files and Data Types<a class="copiable-link" href="#MPI-Files-and-Data-Types-1"> &para;</a></span></h4>
+
+<p>All programs using FFTW&rsquo;s MPI support should include its header file:
+</p>
+<div class="example">
+<pre class="example-preformatted">#include &lt;fftw3-mpi.h&gt;
+</pre></div>
+
+<p>Note that this header file includes the serial-FFTW <code class="code">fftw3.h</code>
+header file, and also the <code class="code">mpi.h</code> header file for MPI, so you
+need not include those files separately.
+</p>
+<p>You must also link to <em class="emph">both</em> the FFTW MPI library and to the
+serial FFTW library.  On Unix, this means adding <code class="code">-lfftw3_mpi
+-lfftw3 -lm</code> at the end of the link command.
+</p>
+<a class="index-entry-id" id="index-precision-6"></a>
+<p>Different precisions are handled as in the serial interface:
+See <a class="xref" href="Precision.html">Precision</a>.  That is, &lsquo;<samp class="samp">fftw_</samp>&rsquo; functions become
+<code class="code">fftwf_</code> (in single precision) etcetera, and the libraries become
+<code class="code">-lfftw3f_mpi -lfftw3f -lm</code> etcetera on Unix.  Long-double
+precision is supported in MPI, but quad precision (&lsquo;<samp class="samp">fftwq_</samp>&rsquo;) is
+not due to the lack of MPI support for this type.
+</p>
+</div>
+
+
+
+</body>
+</html>

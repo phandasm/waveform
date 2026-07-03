@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Wisdom of Fortran? (FFTW 3.3.11)</title>
+
+<meta name="description" content="Wisdom of Fortran? (FFTW 3.3.11)">
+<meta name="keywords" content="Wisdom of Fortran? (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Calling-FFTW-from-Legacy-Fortran.html" rel="up" title="Calling FFTW from Legacy Fortran">
+<link href="Fortran-Examples.html" rel="prev" title="Fortran Examples">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Wisdom-of-Fortran_003f">
+<div class="nav-panel">
+<p>
+Previous: <a href="Fortran-Examples.html" accesskey="p" rel="prev">Fortran Examples</a>, Up: <a href="Calling-FFTW-from-Legacy-Fortran.html" accesskey="u" rel="up">Calling FFTW from Legacy Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Wisdom-of-Fortran_003f-1"><span>8.5 Wisdom of Fortran?<a class="copiable-link" href="#Wisdom-of-Fortran_003f-1"> &para;</a></span></h3>
+
+<p>In this section, we discuss how one can import/export FFTW wisdom
+(saved plans) to/from a Fortran program; we assume that the reader is
+already familiar with wisdom, as described in <a class="ref" href="Words-of-Wisdom_002dSaving-Plans.html">Words of Wisdom&mdash;Saving Plans</a>.
+</p>
+<a class="index-entry-id" id="index-portability-8"></a>
+<p>The basic problem is that is difficult to (portably) pass files and
+strings between Fortran and C, so we cannot provide a direct Fortran
+equivalent to the <code class="code">fftw_export_wisdom_to_file</code>, etcetera,
+functions.  Fortran interfaces <em class="emph">are</em> provided for the functions
+that do not take file/string arguments, however:
+<code class="code">dfftw_import_system_wisdom</code>, <code class="code">dfftw_import_wisdom</code>,
+<code class="code">dfftw_export_wisdom</code>, and <code class="code">dfftw_forget_wisdom</code>.
+<a class="index-entry-id" id="index-dfftw_005fimport_005fsystem_005fwisdom"></a>
+<a class="index-entry-id" id="index-dfftw_005fimport_005fwisdom"></a>
+<a class="index-entry-id" id="index-dfftw_005fexport_005fwisdom"></a>
+<a class="index-entry-id" id="index-dfftw_005fforget_005fwisdom"></a>
+</p>
+
+<p>So, for example, to import the system-wide wisdom, you would do:
+</p>
+<div class="example">
+<pre class="example-preformatted">        integer isuccess
+        call dfftw_import_system_wisdom(isuccess)
+</pre></div>
+
+<p>As usual, the C return value is turned into a first parameter;
+<code class="code">isuccess</code> is non-zero on success and zero on failure (e.g. if
+there is no system wisdom installed).
+</p>
+<p>If you want to import/export wisdom from/to an arbitrary file or
+elsewhere, you can employ the generic <code class="code">dfftw_import_wisdom</code> and
+<code class="code">dfftw_export_wisdom</code> functions, for which you must supply a
+subroutine to read/write one character at a time.  The FFTW package
+contains an example file <code class="code">doc/f77_wisdom.f</code> demonstrating how to
+implement <code class="code">import_wisdom_from_file</code> and
+<code class="code">export_wisdom_to_file</code> subroutines in this way.  (These routines
+cannot be compiled into the FFTW library itself, lest all FFTW-using
+programs be required to link with the Fortran I/O library.)
+</p></div>
+
+
+
+</body>
+</html>

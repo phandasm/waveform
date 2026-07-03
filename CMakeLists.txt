@@ -86,19 +86,6 @@ if(MSVC)
         set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:DebugDLL>") # requires CMake 3.15+
     endif()
 
-    # build fftw
-    # fftw's CMakeLists mishandles MSVC arch flags
-    # so we will skip the autodetection and clear the flags
-    # since they are not needed nor desired for a multiarch binary
-    set(HAVE_SSE TRUE)
-    set(SSE_FLAG "")
-    set(HAVE_SSE2 TRUE)
-    set(SSE2_FLAG "")
-    set(HAVE_AVX TRUE)
-    set(AVX_FLAG "")
-    set(HAVE_AVX2 TRUE)
-    set(AVX2_FLAG "")
-
     set(BUILTIN_FFTW TRUE)
 endif()
 
@@ -108,14 +95,15 @@ if(BUILTIN_FFTW)
         option(WITH_COMBINED_THREADS "Merge thread library" ON)
     endif()
     option(ENABLE_FLOAT "single-precision" ON)
-    if(NOT MSVC AND ENABLE_X86_SIMD)
+    if(ENABLE_X86_SIMD)
         option(ENABLE_SSE "Compile with SSE instruction set support" ON)
         option(ENABLE_SSE2 "Compile with SSE2 instruction set support" ON)
-        #option(ENABLE_AVX "Compile with AVX instruction set support" ON) # i think this results in global VEX when building with CMake
+        option(ENABLE_AVX "Compile with AVX instruction set support" ON)
+        option(ENABLE_AVX2 "Compile with AVX2 instruction set support" ON)
     endif()
-    add_subdirectory("deps/fftw-3.3.10" EXCLUDE_FROM_ALL)
+    add_subdirectory("deps/fftw-3.3.11" EXCLUDE_FROM_ALL)
     set(FFTW_LIBRARIES fftw3f)
-    set(FFTW_INCLUDE_DIRS "deps/fftw-3.3.10/api")
+    set(FFTW_INCLUDE_DIRS "deps/fftw-3.3.11/api")
 else()
     find_path(FFTW_INCLUDE_DIRS fftw3.h)
     if(STATIC_FFTW)

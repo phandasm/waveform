@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>MPI Plan Creation (FFTW 3.3.11)</title>
+
+<meta name="description" content="MPI Plan Creation (FFTW 3.3.11)">
+<meta name="keywords" content="MPI Plan Creation (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="FFTW-MPI-Reference.html" rel="up" title="FFTW MPI Reference">
+<link href="MPI-Wisdom-Communication.html" rel="next" title="MPI Wisdom Communication">
+<link href="MPI-Data-Distribution-Functions.html" rel="prev" title="MPI Data Distribution Functions">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+ul.mark-bullet {list-style-type: disc}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="MPI-Plan-Creation">
+<div class="nav-panel">
+<p>
+Next: <a href="MPI-Wisdom-Communication.html" accesskey="n" rel="next">MPI Wisdom Communication</a>, Previous: <a href="MPI-Data-Distribution-Functions.html" accesskey="p" rel="prev">MPI Data Distribution Functions</a>, Up: <a href="FFTW-MPI-Reference.html" accesskey="u" rel="up">FFTW MPI Reference</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="MPI-Plan-Creation-1"><span>6.12.5 MPI Plan Creation<a class="copiable-link" href="#MPI-Plan-Creation-1"> &para;</a></span></h4>
+
+<h4 class="subsubheading" id="Complex_002ddata-MPI-DFTs"><span>Complex-data MPI DFTs<a class="copiable-link" href="#Complex_002ddata-MPI-DFTs"> &para;</a></span></h4>
+
+<p>Plans for complex-data DFTs (see <a class="pxref" href="2d-MPI-example.html">2d MPI example</a>) are created by:
+</p>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005f1d"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005f2d-1"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005f3d"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fmany_005fdft"></a>
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_mpi_plan_dft_1d(ptrdiff_t n0, fftw_complex *in, fftw_complex *out,
+                               MPI_Comm comm, int sign, unsigned flags);
+fftw_plan fftw_mpi_plan_dft_2d(ptrdiff_t n0, ptrdiff_t n1,
+                               fftw_complex *in, fftw_complex *out,
+                               MPI_Comm comm, int sign, unsigned flags);
+fftw_plan fftw_mpi_plan_dft_3d(ptrdiff_t n0, ptrdiff_t n1, ptrdiff_t n2,
+                               fftw_complex *in, fftw_complex *out,
+                               MPI_Comm comm, int sign, unsigned flags);
+fftw_plan fftw_mpi_plan_dft(int rnk, const ptrdiff_t *n, 
+                            fftw_complex *in, fftw_complex *out,
+                            MPI_Comm comm, int sign, unsigned flags);
+fftw_plan fftw_mpi_plan_many_dft(int rnk, const ptrdiff_t *n,
+                                 ptrdiff_t howmany, ptrdiff_t block, ptrdiff_t tblock,
+                                 fftw_complex *in, fftw_complex *out,
+                                 MPI_Comm comm, int sign, unsigned flags);
+</pre></div>
+
+<a class="index-entry-id" id="index-MPI-communicator-2"></a>
+<a class="index-entry-id" id="index-collective-function-4"></a>
+<p>These are similar to their serial counterparts (see <a class="pxref" href="Complex-DFTs.html">Complex DFTs</a>)
+in specifying the dimensions, sign, and flags of the transform.  The
+<code class="code">comm</code> argument gives an MPI communicator that specifies the set
+of processes to participate in the transform; plan creation is a
+collective function that must be called for all processes in the
+communicator.  The <code class="code">in</code> and <code class="code">out</code> pointers refer only to a
+portion of the overall transform data (see <a class="pxref" href="MPI-Data-Distribution.html">MPI Data Distribution</a>)
+as specified by the &lsquo;<samp class="samp">local_size</samp>&rsquo; functions in the previous
+section.  Unless <code class="code">flags</code> contains <code class="code">FFTW_ESTIMATE</code>, these
+arrays are overwritten during plan creation as for the serial
+interface.  For multi-dimensional transforms, any dimensions <code class="code">&gt;
+1</code> are supported; for one-dimensional transforms, only composite
+(non-prime) <code class="code">n0</code> are currently supported (unlike the serial
+FFTW).  Requesting an unsupported transform size will yield a
+<code class="code">NULL</code> plan.  (As in the serial interface, highly composite sizes
+generally yield the best performance.)
+</p>
+<a class="index-entry-id" id="index-advanced-interface-6"></a>
+<a class="index-entry-id" id="index-FFTW_005fMPI_005fDEFAULT_005fBLOCK-2"></a>
+<a class="index-entry-id" id="index-stride-3"></a>
+<p>The advanced-interface <code class="code">fftw_mpi_plan_many_dft</code> additionally
+allows you to specify the block sizes for the first dimension
+(<code class="code">block</code>) of the n<sub>0</sub>&nbsp;&times;&nbsp;n<sub>1</sub>&nbsp;&times;&nbsp;n<sub>2</sub>&nbsp;&times;&nbsp;&hellip;&nbsp;&times;&nbsp;n<sub>d-1</sub>
+ input data and the first dimension
+(<code class="code">tblock</code>) of the n<sub>1</sub>&nbsp;&times;&nbsp;n<sub>0</sub>&nbsp;&times;&nbsp;n<sub>2</sub>&nbsp;&times;&hellip;&times;&nbsp;n<sub>d-1</sub>
+ transposed data (at intermediate
+steps of the transform, and for the output if
+<code class="code">FFTW_TRANSPOSED_OUT</code> is specified in <code class="code">flags</code>).  These must
+be the same block sizes as were passed to the corresponding
+&lsquo;<samp class="samp">local_size</samp>&rsquo; function; you can pass <code class="code">FFTW_MPI_DEFAULT_BLOCK</code>
+to use FFTW&rsquo;s default block size as in the basic interface.  Also, the
+<code class="code">howmany</code> parameter specifies that the transform is of contiguous
+<code class="code">howmany</code>-tuples rather than individual complex numbers; this
+corresponds to the same parameter in the serial advanced interface
+(see <a class="pxref" href="Advanced-Complex-DFTs.html">Advanced Complex DFTs</a>) with <code class="code">stride = howmany</code> and
+<code class="code">dist = 1</code>.
+</p>
+<h4 class="subsubheading" id="MPI-flags"><span>MPI flags<a class="copiable-link" href="#MPI-flags"> &para;</a></span></h4>
+
+<p>The <code class="code">flags</code> can be any of those for the serial FFTW
+(see <a class="pxref" href="Planner-Flags.html">Planner Flags</a>), and in addition may include one or more of
+the following MPI-specific flags, which improve performance at the
+cost of changing the output or input data formats.
+</p>
+<ul class="itemize mark-bullet">
+<li><a class="index-entry-id" id="index-FFTW_005fMPI_005fSCRAMBLED_005fOUT-2"></a>
+<a class="index-entry-id" id="index-FFTW_005fMPI_005fSCRAMBLED_005fIN-2"></a>
+<code class="code">FFTW_MPI_SCRAMBLED_OUT</code>, <code class="code">FFTW_MPI_SCRAMBLED_IN</code>: valid for
+1d transforms only, these flags indicate that the output/input of the
+transform are in an undocumented &ldquo;scrambled&rdquo; order.  A forward
+<code class="code">FFTW_MPI_SCRAMBLED_OUT</code> transform can be inverted by a backward
+<code class="code">FFTW_MPI_SCRAMBLED_IN</code> (times the usual 1/<i class="i">N</i> normalization).
+See <a class="xref" href="One_002ddimensional-distributions.html">One-dimensional distributions</a>.
+
+</li><li><a class="index-entry-id" id="index-FFTW_005fMPI_005fTRANSPOSED_005fOUT-2"></a>
+<a class="index-entry-id" id="index-FFTW_005fMPI_005fTRANSPOSED_005fIN-2"></a>
+<code class="code">FFTW_MPI_TRANSPOSED_OUT</code>, <code class="code">FFTW_MPI_TRANSPOSED_IN</code>: valid
+for multidimensional (<code class="code">rnk &gt; 1</code>) transforms only, these flags
+specify that the output or input of an n<sub>0</sub>&nbsp;&times;&nbsp;n<sub>1</sub>&nbsp;&times;&nbsp;n<sub>2</sub>&nbsp;&times;&nbsp;&hellip;&nbsp;&times;&nbsp;n<sub>d-1</sub>
+ transform is
+transposed to n<sub>1</sub>&nbsp;&times;&nbsp;n<sub>0</sub>&nbsp;&times;&nbsp;n<sub>2</sub>&nbsp;&times;&hellip;&times;&nbsp;n<sub>d-1</sub>
+.  See <a class="xref" href="Transposed-distributions.html">Transposed distributions</a>.
+
+</li></ul>
+
+<h4 class="subsubheading" id="Real_002ddata-MPI-DFTs"><span>Real-data MPI DFTs<a class="copiable-link" href="#Real_002ddata-MPI-DFTs"> &para;</a></span></h4>
+
+<a class="index-entry-id" id="index-r2c-4"></a>
+<p>Plans for real-input/output (r2c/c2r) DFTs (see <a class="pxref" href="Multi_002ddimensional-MPI-DFTs-of-Real-Data.html">Multi-dimensional MPI DFTs of Real Data</a>) are created by:
+</p>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005fr2c_005f2d"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005fr2c_005f2d-1"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005fr2c_005f3d"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005fr2c"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005fc2r_005f2d"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005fc2r_005f2d-1"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005fc2r_005f3d"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fdft_005fc2r"></a>
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_mpi_plan_dft_r2c_2d(ptrdiff_t n0, ptrdiff_t n1, 
+                                   double *in, fftw_complex *out,
+                                   MPI_Comm comm, unsigned flags);
+fftw_plan fftw_mpi_plan_dft_r2c_2d(ptrdiff_t n0, ptrdiff_t n1, 
+                                   double *in, fftw_complex *out,
+                                   MPI_Comm comm, unsigned flags);
+fftw_plan fftw_mpi_plan_dft_r2c_3d(ptrdiff_t n0, ptrdiff_t n1, ptrdiff_t n2,
+                                   double *in, fftw_complex *out,
+                                   MPI_Comm comm, unsigned flags);
+fftw_plan fftw_mpi_plan_dft_r2c(int rnk, const ptrdiff_t *n,
+                                double *in, fftw_complex *out,
+                                MPI_Comm comm, unsigned flags);
+fftw_plan fftw_mpi_plan_dft_c2r_2d(ptrdiff_t n0, ptrdiff_t n1, 
+                                   fftw_complex *in, double *out,
+                                   MPI_Comm comm, unsigned flags);
+fftw_plan fftw_mpi_plan_dft_c2r_2d(ptrdiff_t n0, ptrdiff_t n1, 
+                                   fftw_complex *in, double *out,
+                                   MPI_Comm comm, unsigned flags);
+fftw_plan fftw_mpi_plan_dft_c2r_3d(ptrdiff_t n0, ptrdiff_t n1, ptrdiff_t n2,
+                                   fftw_complex *in, double *out,
+                                   MPI_Comm comm, unsigned flags);
+fftw_plan fftw_mpi_plan_dft_c2r(int rnk, const ptrdiff_t *n,
+                                fftw_complex *in, double *out,
+                                MPI_Comm comm, unsigned flags);
+</pre></div>
+
+<p>Similar to the serial interface (see <a class="pxref" href="Real_002ddata-DFTs.html">Real-data DFTs</a>), these
+transform logically n<sub>0</sub>&nbsp;&times;&nbsp;n<sub>1</sub>&nbsp;&times;&nbsp;n<sub>2</sub>&nbsp;&times;&nbsp;&hellip;&nbsp;&times;&nbsp;n<sub>d-1</sub>
+ real data to/from n<sub>0</sub>&nbsp;&times;&nbsp;n<sub>1</sub>&nbsp;&times;&nbsp;n<sub>2</sub>&nbsp;&times;&nbsp;&hellip;&nbsp;&times;&nbsp;(n<sub>d-1</sub>/2 + 1)
+ complex
+data, representing the non-redundant half of the conjugate-symmetry
+output of a real-input DFT (see <a class="pxref" href="Multi_002ddimensional-Transforms.html">Multi-dimensional Transforms</a>).
+However, the real array must be stored within a padded n<sub>0</sub>&nbsp;&times;&nbsp;n<sub>1</sub>&nbsp;&times;&nbsp;n<sub>2</sub>&nbsp;&times;&nbsp;&hellip;&nbsp;&times;&nbsp;[2&nbsp;(n<sub>d-1</sub>/2 + 1)]
+
+array (much like the in-place serial r2c transforms, but here for
+out-of-place transforms as well). Currently, only multi-dimensional
+(<code class="code">rnk &gt; 1</code>) r2c/c2r transforms are supported (requesting a plan
+for <code class="code">rnk = 1</code> will yield <code class="code">NULL</code>).  As explained above
+(see <a class="pxref" href="Multi_002ddimensional-MPI-DFTs-of-Real-Data.html">Multi-dimensional MPI DFTs of Real Data</a>), the data
+distribution of both the real and complex arrays is given by the
+&lsquo;<samp class="samp">local_size</samp>&rsquo; function called for the dimensions of the
+<em class="emph">complex</em> array.  Similar to the other planning functions, the
+input and output arrays are overwritten when the plan is created
+except in <code class="code">FFTW_ESTIMATE</code> mode.
+</p>
+<p>As for the complex DFTs above, there is an advance interface that
+allows you to manually specify block sizes and to transform contiguous
+<code class="code">howmany</code>-tuples of real/complex numbers:
+</p>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fmany_005fdft_005fr2c"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fmany_005fdft_005fc2r"></a>
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_mpi_plan_many_dft_r2c
+              (int rnk, const ptrdiff_t *n, ptrdiff_t howmany,
+               ptrdiff_t iblock, ptrdiff_t oblock,
+               double *in, fftw_complex *out,
+               MPI_Comm comm, unsigned flags);
+fftw_plan fftw_mpi_plan_many_dft_c2r
+              (int rnk, const ptrdiff_t *n, ptrdiff_t howmany,
+               ptrdiff_t iblock, ptrdiff_t oblock,
+               fftw_complex *in, double *out,
+               MPI_Comm comm, unsigned flags);               
+</pre></div>
+
+<h4 class="subsubheading" id="MPI-r2r-transforms"><span>MPI r2r transforms<a class="copiable-link" href="#MPI-r2r-transforms"> &para;</a></span></h4>
+
+<a class="index-entry-id" id="index-r2r-4"></a>
+<p>There are corresponding plan-creation routines for r2r
+transforms (see <a class="pxref" href="More-DFTs-of-Real-Data.html">More DFTs of Real Data</a>), currently supporting
+multidimensional (<code class="code">rnk &gt; 1</code>) transforms only (<code class="code">rnk = 1</code> will
+yield a <code class="code">NULL</code> plan):
+</p>
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_mpi_plan_r2r_2d(ptrdiff_t n0, ptrdiff_t n1,
+                               double *in, double *out,
+                               MPI_Comm comm,
+                               fftw_r2r_kind kind0, fftw_r2r_kind kind1,
+                               unsigned flags);
+fftw_plan fftw_mpi_plan_r2r_3d(ptrdiff_t n0, ptrdiff_t n1, ptrdiff_t n2,
+                               double *in, double *out,
+                               MPI_Comm comm,
+                               fftw_r2r_kind kind0, fftw_r2r_kind kind1, fftw_r2r_kind kind2,
+                               unsigned flags);
+fftw_plan fftw_mpi_plan_r2r(int rnk, const ptrdiff_t *n,
+                            double *in, double *out,
+                            MPI_Comm comm, const fftw_r2r_kind *kind, 
+                            unsigned flags);
+fftw_plan fftw_mpi_plan_many_r2r(int rnk, const ptrdiff_t *n,
+                                 ptrdiff_t iblock, ptrdiff_t oblock,
+                                 double *in, double *out,
+                                 MPI_Comm comm, const fftw_r2r_kind *kind, 
+                                 unsigned flags);
+</pre></div>
+
+<p>The parameters are much the same as for the complex DFTs above, except
+that the arrays are of real numbers (and hence the outputs of the
+&lsquo;<samp class="samp">local_size</samp>&rsquo; data-distribution functions should be interpreted as
+counts of real rather than complex numbers).  Also, the <code class="code">kind</code>
+parameters specify the r2r kinds along each dimension as for the
+serial interface (see <a class="pxref" href="Real_002dto_002dReal-Transform-Kinds.html">Real-to-Real Transform Kinds</a>).  See <a class="xref" href="Other-Multi_002ddimensional-Real_002ddata-MPI-Transforms.html">Other multi-dimensional Real-Data MPI Transforms</a>.
+</p>
+<h4 class="subsubheading" id="MPI-transposition"><span>MPI transposition<a class="copiable-link" href="#MPI-transposition"> &para;</a></span></h4>
+<a class="index-entry-id" id="index-transpose-5"></a>
+
+<p>FFTW also provides routines to plan a transpose of a distributed
+<code class="code">n0</code> by <code class="code">n1</code> array of real numbers, or an array of
+<code class="code">howmany</code>-tuples of real numbers with specified block sizes
+(see <a class="pxref" href="FFTW-MPI-Transposes.html">FFTW MPI Transposes</a>):
+</p>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005ftranspose-1"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fmany_005ftranspose-1"></a>
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_mpi_plan_transpose(ptrdiff_t n0, ptrdiff_t n1,
+                                  double *in, double *out,
+                                  MPI_Comm comm, unsigned flags);
+fftw_plan fftw_mpi_plan_many_transpose
+                (ptrdiff_t n0, ptrdiff_t n1, ptrdiff_t howmany,
+                 ptrdiff_t block0, ptrdiff_t block1,
+                 double *in, double *out, MPI_Comm comm, unsigned flags);
+</pre></div>
+
+<a class="index-entry-id" id="index-new_002darray-execution-2"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fexecute_005fr2r-1"></a>
+<p>These plans are used with the <code class="code">fftw_mpi_execute_r2r</code> new-array
+execute function (see <a class="pxref" href="Using-MPI-Plans.html">Using MPI Plans</a>), since they count as (rank
+zero) r2r plans from FFTW&rsquo;s perspective.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="MPI-Wisdom-Communication.html">MPI Wisdom Communication</a>, Previous: <a href="MPI-Data-Distribution-Functions.html">MPI Data Distribution Functions</a>, Up: <a href="FFTW-MPI-Reference.html">FFTW MPI Reference</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

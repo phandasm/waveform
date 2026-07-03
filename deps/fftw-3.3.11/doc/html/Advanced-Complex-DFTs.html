@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Advanced Complex DFTs (FFTW 3.3.11)</title>
+
+<meta name="description" content="Advanced Complex DFTs (FFTW 3.3.11)">
+<meta name="keywords" content="Advanced Complex DFTs (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Advanced-Interface.html" rel="up" title="Advanced Interface">
+<link href="Advanced-Real_002ddata-DFTs.html" rel="next" title="Advanced Real-data DFTs">
+<link href="Advanced-Interface.html" rel="prev" title="Advanced Interface">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Advanced-Complex-DFTs">
+<div class="nav-panel">
+<p>
+Next: <a href="Advanced-Real_002ddata-DFTs.html" accesskey="n" rel="next">Advanced Real-data DFTs</a>, Previous: <a href="Advanced-Interface.html" accesskey="p" rel="prev">Advanced Interface</a>, Up: <a href="Advanced-Interface.html" accesskey="u" rel="up">Advanced Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Advanced-Complex-DFTs-1"><span>4.4.1 Advanced Complex DFTs<a class="copiable-link" href="#Advanced-Complex-DFTs-1"> &para;</a></span></h4>
+
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_plan_many_dft(int rank, const int *n, int howmany,
+                             fftw_complex *in, const int *inembed,
+                             int istride, int idist,
+                             fftw_complex *out, const int *onembed,
+                             int ostride, int odist,
+                             int sign, unsigned flags);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fplan_005fmany_005fdft"></a>
+
+<p>This routine plans multiple multidimensional complex DFTs, and it
+extends the <code class="code">fftw_plan_dft</code> routine (see <a class="pxref" href="Complex-DFTs.html">Complex DFTs</a>) to
+compute <code class="code">howmany</code> transforms, each having rank <code class="code">rank</code> and size
+<code class="code">n</code>.  In addition, the transform data need not be contiguous, but
+it may be laid out in memory with an arbitrary stride.  To account for
+these possibilities, <code class="code">fftw_plan_many_dft</code> adds the new parameters
+<code class="code">howmany</code>, {<code class="code">i</code>,<code class="code">o</code>}<code class="code">nembed</code>,
+{<code class="code">i</code>,<code class="code">o</code>}<code class="code">stride</code>, and
+{<code class="code">i</code>,<code class="code">o</code>}<code class="code">dist</code>.  The FFTW basic interface
+(see <a class="pxref" href="Complex-DFTs.html">Complex DFTs</a>) provides routines specialized for ranks 1, 2,
+and&nbsp;3, but the advanced interface handles only the general-rank
+case.
+</p>
+<p><code class="code">howmany</code> is the (nonnegative) number of transforms to compute.  The resulting
+plan computes <code class="code">howmany</code> transforms, where the input of the
+<code class="code">k</code>-th transform is at location <code class="code">in+k*idist</code> (in C pointer
+arithmetic), and its output is at location <code class="code">out+k*odist</code>.  Plans
+obtained in this way can often be faster than calling FFTW multiple
+times for the individual transforms.  The basic <code class="code">fftw_plan_dft</code>
+interface corresponds to <code class="code">howmany=1</code> (in which case the <code class="code">dist</code>
+parameters are ignored).
+<a class="index-entry-id" id="index-howmany-parameter"></a>
+<a class="index-entry-id" id="index-dist"></a>
+</p>
+
+<p>Each of the <code class="code">howmany</code> transforms has rank <code class="code">rank</code> and size
+<code class="code">n</code>, as in the basic interface.  In addition, the advanced
+interface allows the input and output arrays of each transform to be
+row-major subarrays of larger rank-<code class="code">rank</code> arrays, described by
+<code class="code">inembed</code> and <code class="code">onembed</code> parameters, respectively.
+{<code class="code">i</code>,<code class="code">o</code>}<code class="code">nembed</code> must be arrays of length <code class="code">rank</code>,
+and <code class="code">n</code> should be elementwise less than or equal to
+{<code class="code">i</code>,<code class="code">o</code>}<code class="code">nembed</code>.  Passing <code class="code">NULL</code> for an
+<code class="code">nembed</code> parameter is equivalent to passing <code class="code">n</code> (i.e. same
+physical and logical dimensions, as in the basic interface).
+</p>
+<p>The <code class="code">stride</code> parameters indicate that the <code class="code">j</code>-th element of
+the input or output arrays is located at <code class="code">j*istride</code> or
+<code class="code">j*ostride</code>, respectively.  (For a multi-dimensional array,
+<code class="code">j</code> is the ordinary row-major index.)  When combined with the
+<code class="code">k</code>-th transform in a <code class="code">howmany</code> loop, from above, this means
+that the (<code class="code">j</code>,<code class="code">k</code>)-th element is at <code class="code">j*stride+k*dist</code>.
+(The basic <code class="code">fftw_plan_dft</code> interface corresponds to a stride of 1.)
+<a class="index-entry-id" id="index-stride-1"></a>
+</p>
+
+<p>For in-place transforms, the input and output <code class="code">stride</code> and
+<code class="code">dist</code> parameters should be the same; otherwise, the planner may
+return <code class="code">NULL</code>.
+</p>
+<p>Arrays <code class="code">n</code>, <code class="code">inembed</code>, and <code class="code">onembed</code> are not used after
+this function returns.  You can safely free or reuse them.
+</p>
+<p><strong class="strong">Examples</strong>:
+One transform of one 5 by 6 array contiguous in memory:
+</p><div class="example">
+<pre class="example-preformatted">   int rank = 2;
+   int n[] = {5, 6};
+   int howmany = 1;
+   int idist = odist = 0; /* unused because howmany = 1 */
+   int istride = ostride = 1; /* array is contiguous in memory */
+   int *inembed = n, *onembed = n;
+</pre></div>
+
+<p>Transform of three 5 by 6 arrays, each contiguous in memory,
+stored in memory one after another:
+</p><div class="example">
+<pre class="example-preformatted">   int rank = 2;
+   int n[] = {5, 6};
+   int howmany = 3;
+   int idist = odist = n[0]*n[1]; /* = 30, the distance in memory
+                                     between the first element
+                                     of the first array and the
+                                     first element of the second array */
+   int istride = ostride = 1; /* array is contiguous in memory */
+   int *inembed = n, *onembed = n;
+</pre></div>
+
+<p>Transform each column of a 2d array with 10 rows and 3 columns:
+</p><div class="example">
+<pre class="example-preformatted">   int rank = 1; /* not 2: we are computing 1d transforms */
+   int n[] = {10}; /* 1d transforms of length 10 */
+   int howmany = 3;
+   int idist = odist = 1;
+   int istride = ostride = 3; /* distance between two elements in
+                                 the same column */
+   int *inembed = n, *onembed = n;
+</pre></div>
+
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Advanced-Real_002ddata-DFTs.html">Advanced Real-data DFTs</a>, Previous: <a href="Advanced-Interface.html">Advanced Interface</a>, Up: <a href="Advanced-Interface.html">Advanced Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

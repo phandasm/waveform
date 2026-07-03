@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Wisdom Import (FFTW 3.3.11)</title>
+
+<meta name="description" content="Wisdom Import (FFTW 3.3.11)">
+<meta name="keywords" content="Wisdom Import (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Wisdom.html" rel="up" title="Wisdom">
+<link href="Forgetting-Wisdom.html" rel="next" title="Forgetting Wisdom">
+<link href="Wisdom-Export.html" rel="prev" title="Wisdom Export">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Wisdom-Import">
+<div class="nav-panel">
+<p>
+Next: <a href="Forgetting-Wisdom.html" accesskey="n" rel="next">Forgetting Wisdom</a>, Previous: <a href="Wisdom-Export.html" accesskey="p" rel="prev">Wisdom Export</a>, Up: <a href="Wisdom.html" accesskey="u" rel="up">Wisdom</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Wisdom-Import-1"><span>4.7.2 Wisdom Import<a class="copiable-link" href="#Wisdom-Import-1"> &para;</a></span></h4>
+
+<div class="example">
+<pre class="example-preformatted">int fftw_import_system_wisdom(void);
+int fftw_import_wisdom_from_filename(const char *filename);
+int fftw_import_wisdom_from_string(const char *input_string);
+int fftw_import_wisdom(int (*read_char)(void *), void *data);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fimport_005fwisdom"></a>
+<a class="index-entry-id" id="index-fftw_005fimport_005fsystem_005fwisdom-1"></a>
+<a class="index-entry-id" id="index-fftw_005fimport_005fwisdom_005ffrom_005ffilename-1"></a>
+<a class="index-entry-id" id="index-fftw_005fimport_005fwisdom_005ffrom_005ffile"></a>
+<a class="index-entry-id" id="index-fftw_005fimport_005fwisdom_005ffrom_005fstring"></a>
+
+<p>These functions import wisdom into a program from data stored by the
+<code class="code">fftw_export_wisdom</code> functions above. (See <a class="xref" href="Words-of-Wisdom_002dSaving-Plans.html">Words of Wisdom&mdash;Saving Plans</a>.)  The imported wisdom replaces any wisdom
+already accumulated by the running program.
+</p>
+<p><code class="code">fftw_import_wisdom</code> imports wisdom from any input medium, as
+specified by the callback function <code class="code">read_char</code>. <code class="code">read_char</code> is
+a <code class="code">getc</code>-like function that returns the next character in the
+input; its parameter is the <code class="code">data</code> pointer passed to
+<code class="code">fftw_import_wisdom</code>. If the end of the input data is reached
+(which should never happen for valid data), <code class="code">read_char</code> should
+return <code class="code">EOF</code> (as defined in <code class="code">&lt;stdio.h&gt;</code>).  For convenience,
+the following three &ldquo;wrapper&rdquo; routines are provided:
+</p>
+<p><code class="code">fftw_import_wisdom_from_filename</code> reads wisdom from a file named
+<code class="code">filename</code>.  A lower-level function, which requires you to open
+and close the file yourself (e.g. if you want to read wisdom from a
+portion of a larger file), is <code class="code">fftw_import_wisdom_from_file</code>. This
+reads wisdom from the current position in <code class="code">input_file</code> (which
+should be open with read permission); upon exit, the file remains
+open, but the position of the read pointer is unspecified.
+</p>
+<p><code class="code">fftw_import_wisdom_from_string</code> reads wisdom from the
+<code class="code">NULL</code>-terminated string <code class="code">input_string</code>.
+</p>
+<p><code class="code">fftw_import_system_wisdom</code> reads wisdom from an
+implementation-defined standard file (<code class="code">/etc/fftw/wisdom</code> on Unix
+and GNU systems).
+<a class="index-entry-id" id="index-wisdom_002c-system_002dwide-1"></a>
+</p>
+
+<p>The return value of these import routines is <code class="code">1</code> if the wisdom was
+read successfully and <code class="code">0</code> otherwise. Note that, in all of these
+functions, any data in the input stream past the end of the wisdom data
+is simply ignored.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Forgetting-Wisdom.html">Forgetting Wisdom</a>, Previous: <a href="Wisdom-Export.html">Wisdom Export</a>, Up: <a href="Wisdom.html">Wisdom</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

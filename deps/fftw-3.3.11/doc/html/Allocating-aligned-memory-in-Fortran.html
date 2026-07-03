@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Allocating aligned memory in Fortran (FFTW 3.3.11)</title>
+
+<meta name="description" content="Allocating aligned memory in Fortran (FFTW 3.3.11)">
+<meta name="keywords" content="Allocating aligned memory in Fortran (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Calling-FFTW-from-Modern-Fortran.html" rel="up" title="Calling FFTW from Modern Fortran">
+<link href="Accessing-the-wisdom-API-from-Fortran.html" rel="next" title="Accessing the wisdom API from Fortran">
+<link href="Plan-execution-in-Fortran.html" rel="prev" title="Plan execution in Fortran">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Allocating-aligned-memory-in-Fortran">
+<div class="nav-panel">
+<p>
+Next: <a href="Accessing-the-wisdom-API-from-Fortran.html" accesskey="n" rel="next">Accessing the wisdom API from Fortran</a>, Previous: <a href="Plan-execution-in-Fortran.html" accesskey="p" rel="prev">Plan execution in Fortran</a>, Up: <a href="Calling-FFTW-from-Modern-Fortran.html" accesskey="u" rel="up">Calling FFTW from Modern Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Allocating-aligned-memory-in-Fortran-1"><span>7.5 Allocating aligned memory in Fortran<a class="copiable-link" href="#Allocating-aligned-memory-in-Fortran-1"> &para;</a></span></h3>
+
+<a class="index-entry-id" id="index-alignment-5"></a>
+<a class="index-entry-id" id="index-fftw_005falloc_005freal-5"></a>
+<a class="index-entry-id" id="index-fftw_005falloc_005fcomplex-5"></a>
+<p>In order to obtain maximum performance in FFTW, you should store your
+data in arrays that have been specially aligned in memory (see <a class="pxref" href="SIMD-alignment-and-fftw_005fmalloc.html">SIMD alignment and fftw_malloc</a>).  Enforcing alignment also permits you to
+safely use the new-array execute functions (see <a class="pxref" href="New_002darray-Execute-Functions.html">New-array Execute Functions</a>) to apply a given plan to more than one pair of in/out
+arrays.  Unfortunately, standard Fortran arrays do <em class="emph">not</em> provide
+any alignment guarantees.  The <em class="emph">only</em> way to allocate aligned
+memory in standard Fortran is to allocate it with an external C
+function, like the <code class="code">fftw_alloc_real</code> and
+<code class="code">fftw_alloc_complex</code> functions.  Fortunately, Fortran 2003 provides
+a simple way to associate such allocated memory with a standard Fortran
+array pointer that you can then use normally.
+</p>
+<p>We therefore recommend allocating all your input/output arrays using
+the following technique:
+</p>
+<ol class="enumerate">
+<li> Declare a <code class="code">pointer</code>, <code class="code">arr</code>, to your array of the desired type
+and dimensions.  For example, <code class="code">real(C_DOUBLE), pointer :: a(:,:)</code>
+for a 2d real array, or <code class="code">complex(C_DOUBLE_COMPLEX), pointer ::
+a(:,:,:)</code> for a 3d complex array.
+
+</li><li> The number of elements to allocate must be an
+<code class="code">integer(C_SIZE_T)</code>.  You can either declare a variable of this
+type, e.g. <code class="code">integer(C_SIZE_T) :: sz</code>, to store the number of
+elements to allocate, or you can use the <code class="code">int(..., C_SIZE_T)</code>
+intrinsic function. e.g. set <code class="code">sz = L * M * N</code> or use
+<code class="code">int(L * M * N, C_SIZE_T)</code> for an L&nbsp;&times;&nbsp;M&nbsp;&times;&nbsp;N
+ array.
+
+</li><li> Declare a <code class="code">type(C_PTR) :: p</code> to hold the return value from
+FFTW&rsquo;s allocation routine.  Set <code class="code">p = fftw_alloc_real(sz)</code> for a real array, or <code class="code">p = fftw_alloc_complex(sz)</code> for a complex array.
+
+</li><li> <a class="index-entry-id" id="index-c_005ff_005fpointer-2"></a>
+Associate your pointer <code class="code">arr</code> with the allocated memory <code class="code">p</code>
+using the standard <code class="code">c_f_pointer</code> subroutine: <code class="code">call
+c_f_pointer(p, arr, [...dimensions...])</code>, where
+<code class="code">[...dimensions...])</code> are an array of the dimensions of the array
+(in the usual Fortran order). e.g. <code class="code">call c_f_pointer(p, arr,
+[L,M,N])</code> for an L&nbsp;&times;&nbsp;M&nbsp;&times;&nbsp;N
+ array.  (Alternatively, you can
+omit the dimensions argument if you specified the shape explicitly
+when declaring <code class="code">arr</code>.)  You can now use <code class="code">arr</code> as a usual
+multidimensional array.
+
+</li><li> When you are done using the array, deallocate the memory by <code class="code">call
+fftw_free(p)</code> on <code class="code">p</code>.
+
+</li></ol>
+
+<p>For example, here is how we would allocate an L&nbsp;&times;&nbsp;M
+ 2d real array:
+</p>
+<div class="example">
+<pre class="example-preformatted">  real(C_DOUBLE), pointer :: arr(:,:)
+  type(C_PTR) :: p
+  p = fftw_alloc_real(int(L * M, C_SIZE_T))
+  call c_f_pointer(p, arr, [L,M])
+  <em class="emph">...use arr and arr(i,j) as usual...</em>
+  call fftw_free(p)
+</pre></div>
+
+<p>and here is an L&nbsp;&times;&nbsp;M&nbsp;&times;&nbsp;N
+ 3d complex array:
+</p>
+<div class="example">
+<pre class="example-preformatted">  complex(C_DOUBLE_COMPLEX), pointer :: arr(:,:,:)
+  type(C_PTR) :: p
+  p = fftw_alloc_complex(int(L * M * N, C_SIZE_T))
+  call c_f_pointer(p, arr, [L,M,N])
+  <em class="emph">...use arr and arr(i,j,k) as usual...</em>
+  call fftw_free(p)
+</pre></div>
+
+<p>See <a class="ref" href="Reversing-array-dimensions.html">Reversing array dimensions</a> for an example allocating a
+single array and associating both real and complex array pointers with
+it, for in-place real-to-complex transforms.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Accessing-the-wisdom-API-from-Fortran.html">Accessing the wisdom API from Fortran</a>, Previous: <a href="Plan-execution-in-Fortran.html">Plan execution in Fortran</a>, Up: <a href="Calling-FFTW-from-Modern-Fortran.html">Calling FFTW from Modern Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

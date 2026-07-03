@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Real-to-Real Transforms (FFTW 3.3.11)</title>
+
+<meta name="description" content="Real-to-Real Transforms (FFTW 3.3.11)">
+<meta name="keywords" content="Real-to-Real Transforms (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Basic-Interface.html" rel="up" title="Basic Interface">
+<link href="Real_002dto_002dReal-Transform-Kinds.html" rel="next" title="Real-to-Real Transform Kinds">
+<link href="Real_002ddata-DFT-Array-Format.html" rel="prev" title="Real-data DFT Array Format">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+ul.mark-bullet {list-style-type: disc}
+ul.mark-minus {list-style-type: "\2212"}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Real_002dto_002dReal-Transforms">
+<div class="nav-panel">
+<p>
+Next: <a href="Real_002dto_002dReal-Transform-Kinds.html" accesskey="n" rel="next">Real-to-Real Transform Kinds</a>, Previous: <a href="Real_002ddata-DFT-Array-Format.html" accesskey="p" rel="prev">Real-data DFT Array Format</a>, Up: <a href="Basic-Interface.html" accesskey="u" rel="up">Basic Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Real_002dto_002dReal-Transforms-1"><span>4.3.5 Real-to-Real Transforms<a class="copiable-link" href="#Real_002dto_002dReal-Transforms-1"> &para;</a></span></h4>
+<a class="index-entry-id" id="index-r2r-1"></a>
+
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_plan_r2r_1d(int n, double *in, double *out,
+                           fftw_r2r_kind kind, unsigned flags);
+fftw_plan fftw_plan_r2r_2d(int n0, int n1, double *in, double *out,
+                           fftw_r2r_kind kind0, fftw_r2r_kind kind1,
+                           unsigned flags);
+fftw_plan fftw_plan_r2r_3d(int n0, int n1, int n2,
+                           double *in, double *out,
+                           fftw_r2r_kind kind0,
+                           fftw_r2r_kind kind1,
+                           fftw_r2r_kind kind2,
+                           unsigned flags);
+fftw_plan fftw_plan_r2r(int rank, const int *n, double *in, double *out,
+                        const fftw_r2r_kind *kind, unsigned flags);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fplan_005fr2r_005f1d-1"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fr2r_005f2d-1"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fr2r_005f3d-1"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fr2r-1"></a>
+
+<p>Plan a real input/output (r2r) transform of various kinds in zero or
+more dimensions, returning an <code class="code">fftw_plan</code> (see <a class="pxref" href="Using-Plans.html">Using Plans</a>).
+</p>
+<p>Once you have created a plan for a certain transform type and
+parameters, then creating another plan of the same type and parameters,
+but for different arrays, is fast and shares constant data with the
+first plan (if it still exists).
+</p>
+<p>The planner returns <code class="code">NULL</code> if the plan cannot be created.  A
+non-<code class="code">NULL</code> plan is always returned by the basic interface unless
+you are using a customized FFTW configuration supporting a restricted
+set of transforms, or for size-1 <code class="code">FFTW_REDFT00</code> kinds (which are
+not defined).
+<a class="index-entry-id" id="index-FFTW_005fREDFT00-1"></a>
+</p>
+<h4 class="subsubheading" id="Arguments-2"><span>Arguments<a class="copiable-link" href="#Arguments-2"> &para;</a></span></h4>
+<ul class="itemize mark-bullet">
+<li><code class="code">rank</code> is the dimensionality of the transform (it should be the
+size of the arrays <code class="code">*n</code> and <code class="code">*kind</code>), and can be any
+non-negative integer.  The &lsquo;<samp class="samp">_1d</samp>&rsquo;, &lsquo;<samp class="samp">_2d</samp>&rsquo;, and &lsquo;<samp class="samp">_3d</samp>&rsquo;
+planners correspond to a <code class="code">rank</code> of <code class="code">1</code>, <code class="code">2</code>, and
+<code class="code">3</code>, respectively.  A <code class="code">rank</code> of zero is equivalent to a copy
+of one number from input to output.
+
+</li><li><code class="code">n</code>, or <code class="code">n0</code>/<code class="code">n1</code>/<code class="code">n2</code>, or <code class="code">n[rank]</code>,
+respectively, gives the (physical) size of the transform dimensions.
+They can be any positive integer.
+
+<ul class="itemize mark-minus">
+<li><a class="index-entry-id" id="index-row_002dmajor-2"></a>
+Multi-dimensional arrays are stored in row-major order with dimensions:
+<code class="code">n0</code> x <code class="code">n1</code>; or <code class="code">n0</code> x <code class="code">n1</code> x <code class="code">n2</code>; or
+<code class="code">n[0]</code> x <code class="code">n[1]</code> x ... x <code class="code">n[rank-1]</code>.
+See <a class="xref" href="Multi_002ddimensional-Array-Format.html">Multi-dimensional Array Format</a>.
+</li><li>FFTW is generally best at handling sizes of the form
+2<sup>a</sup> 3<sup>b</sup> 5<sup>c</sup> 7<sup>d</sup>
+        11<sup>e</sup> 13<sup>f</sup>,
+where <em class="math">e+f</em> is either <em class="math">0</em> or <em class="math">1</em>, and the other exponents
+are arbitrary.  Other sizes are computed by means of a slow,
+general-purpose algorithm (which nevertheless retains <i>O</i>(<i>n</i>&nbsp;log&nbsp;<i>n</i>)
+ performance even for prime sizes).  (It is possible to customize FFTW
+for different array sizes; see <a class="ref" href="Installation-and-Customization.html">Installation and Customization</a>.)
+Transforms whose sizes are powers of <em class="math">2</em> are especially fast.
+</li><li>For a <code class="code">REDFT00</code> or <code class="code">RODFT00</code> transform kind in a dimension of
+size <em class="math">n</em>, it is <em class="math">n-1</em> or <em class="math">n+1</em>, respectively, that
+should be factorizable in the above form.
+</li></ul>
+
+</li><li><code class="code">in</code> and <code class="code">out</code> point to the input and output arrays of the
+transform, which may be the same (yielding an in-place transform).
+<a class="index-entry-id" id="index-in_002dplace-5"></a>
+These arrays are overwritten during planning, unless
+<code class="code">FFTW_ESTIMATE</code> is used in the flags.  (The arrays need not be
+initialized, but they must be allocated.)
+
+</li><li><code class="code">kind</code>, or <code class="code">kind0</code>/<code class="code">kind1</code>/<code class="code">kind2</code>, or
+<code class="code">kind[rank]</code>, is the kind of r2r transform used for the
+corresponding dimension.  The valid kind constants are described in
+<a class="ref" href="Real_002dto_002dReal-Transform-Kinds.html">Real-to-Real Transform Kinds</a>.  In a multi-dimensional transform,
+what is computed is the separable product formed by taking each
+transform kind along the corresponding dimension, one dimension after
+another.
+
+</li><li><a class="index-entry-id" id="index-flags-4"></a>
+<code class="code">flags</code> is a bitwise OR (&lsquo;<samp class="samp">|</samp>&rsquo;) of zero or more planner flags,
+as defined in <a class="ref" href="Planner-Flags.html">Planner Flags</a>.
+
+</li></ul>
+
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Real_002dto_002dReal-Transform-Kinds.html">Real-to-Real Transform Kinds</a>, Previous: <a href="Real_002ddata-DFT-Array-Format.html">Real-data DFT Array Format</a>, Up: <a href="Basic-Interface.html">Basic Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>FFTW MPI Transposes (FFTW 3.3.11)</title>
+
+<meta name="description" content="FFTW MPI Transposes (FFTW 3.3.11)">
+<meta name="keywords" content="FFTW MPI Transposes (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Distributed_002dmemory-FFTW-with-MPI.html" rel="up" title="Distributed-memory FFTW with MPI">
+<link href="FFTW-MPI-Wisdom.html" rel="next" title="FFTW MPI Wisdom">
+<link href="Other-Multi_002ddimensional-Real_002ddata-MPI-Transforms.html" rel="prev" title="Other Multi-dimensional Real-data MPI Transforms">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="FFTW-MPI-Transposes">
+<div class="nav-panel">
+<p>
+Next: <a href="FFTW-MPI-Wisdom.html" accesskey="n" rel="next">FFTW MPI Wisdom</a>, Previous: <a href="Other-Multi_002ddimensional-Real_002ddata-MPI-Transforms.html" accesskey="p" rel="prev">Other multi-dimensional Real-Data MPI Transforms</a>, Up: <a href="Distributed_002dmemory-FFTW-with-MPI.html" accesskey="u" rel="up">Distributed-memory FFTW with MPI</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="FFTW-MPI-Transposes-1"><span>6.7 FFTW MPI Transposes<a class="copiable-link" href="#FFTW-MPI-Transposes-1"> &para;</a></span></h3>
+<a class="index-entry-id" id="index-transpose-2"></a>
+
+<p>The FFTW&rsquo;s MPI Fourier transforms rely on one or more <em class="emph">global
+transposition</em> step for their communications.  For example, the
+multidimensional transforms work by transforming along some
+dimensions, then transposing to make the first dimension local and
+transforming that, then transposing back.  Because global
+transposition of a block-distributed matrix has many other potential
+uses besides FFTs, FFTW&rsquo;s transpose routines can be called directly,
+as documented in this section. 
+</p>
+
+<ul class="mini-toc">
+<li><a href="Basic-distributed_002dtranspose-interface.html" accesskey="1">Basic distributed-transpose interface</a></li>
+<li><a href="Advanced-distributed_002dtranspose-interface.html" accesskey="2">Advanced distributed-transpose interface</a></li>
+<li><a href="An-improved-replacement-for-MPI_005fAlltoall.html" accesskey="3">An improved replacement for MPI_Alltoall</a></li>
+</ul>
+</div>
+
+
+
+</body>
+</html>

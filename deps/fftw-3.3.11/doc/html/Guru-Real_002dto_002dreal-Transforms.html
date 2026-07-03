@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Guru Real-to-real Transforms (FFTW 3.3.11)</title>
+
+<meta name="description" content="Guru Real-to-real Transforms (FFTW 3.3.11)">
+<meta name="keywords" content="Guru Real-to-real Transforms (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Guru-Interface.html" rel="up" title="Guru Interface">
+<link href="64_002dbit-Guru-Interface.html" rel="next" title="64-bit Guru Interface">
+<link href="Guru-Real_002ddata-DFTs.html" rel="prev" title="Guru Real-data DFTs">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Guru-Real_002dto_002dreal-Transforms">
+<div class="nav-panel">
+<p>
+Next: <a href="64_002dbit-Guru-Interface.html" accesskey="n" rel="next">64-bit Guru Interface</a>, Previous: <a href="Guru-Real_002ddata-DFTs.html" accesskey="p" rel="prev">Guru Real-data DFTs</a>, Up: <a href="Guru-Interface.html" accesskey="u" rel="up">Guru Interface</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Guru-Real_002dto_002dreal-Transforms-1"><span>4.5.5 Guru Real-to-real Transforms<a class="copiable-link" href="#Guru-Real_002dto_002dreal-Transforms-1"> &para;</a></span></h4>
+
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_plan_guru_r2r(int rank, const fftw_iodim *dims,
+                             int howmany_rank,
+                             const fftw_iodim *howmany_dims,
+                             double *in, double *out,
+                             const fftw_r2r_kind *kind,
+                             unsigned flags);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fplan_005fguru_005fr2r"></a>
+
+<p>Plan a real-to-real (r2r) multi-dimensional <code class="code">FFTW_FORWARD</code>
+transform with transform dimensions given by (<code class="code">rank</code>, <code class="code">dims</code>)
+over a multi-dimensional vector (loop) of dimensions
+(<code class="code">howmany_rank</code>, <code class="code">howmany_dims</code>).  <code class="code">dims</code> and
+<code class="code">howmany_dims</code> should point to <code class="code">fftw_iodim</code> arrays of length
+<code class="code">rank</code> and <code class="code">howmany_rank</code>, respectively.
+</p>
+<p>The transform kind of each dimension is given by the <code class="code">kind</code>
+parameter, which should point to an array of length <code class="code">rank</code>.  Valid
+<code class="code">fftw_r2r_kind</code> constants are given in <a class="ref" href="Real_002dto_002dReal-Transform-Kinds.html">Real-to-Real Transform Kinds</a>.
+</p>
+<p><code class="code">in</code> and <code class="code">out</code> point to the real input and output arrays; they
+may be the same, indicating an in-place transform.
+</p>
+<a class="index-entry-id" id="index-flags-7"></a>
+<p><code class="code">flags</code> is a bitwise OR (&lsquo;<samp class="samp">|</samp>&rsquo;) of zero or more planner flags,
+as defined in <a class="ref" href="Planner-Flags.html">Planner Flags</a>.
+</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Advanced distributed-transpose interface (FFTW 3.3.11)</title>
+
+<meta name="description" content="Advanced distributed-transpose interface (FFTW 3.3.11)">
+<meta name="keywords" content="Advanced distributed-transpose interface (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="FFTW-MPI-Transposes.html" rel="up" title="FFTW MPI Transposes">
+<link href="An-improved-replacement-for-MPI_005fAlltoall.html" rel="next" title="An improved replacement for MPI_Alltoall">
+<link href="Basic-distributed_002dtranspose-interface.html" rel="prev" title="Basic distributed-transpose interface">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Advanced-distributed_002dtranspose-interface">
+<div class="nav-panel">
+<p>
+Next: <a href="An-improved-replacement-for-MPI_005fAlltoall.html" accesskey="n" rel="next">An improved replacement for MPI_Alltoall</a>, Previous: <a href="Basic-distributed_002dtranspose-interface.html" accesskey="p" rel="prev">Basic distributed-transpose interface</a>, Up: <a href="FFTW-MPI-Transposes.html" accesskey="u" rel="up">FFTW MPI Transposes</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Advanced-distributed_002dtranspose-interface-1"><span>6.7.2 Advanced distributed-transpose interface<a class="copiable-link" href="#Advanced-distributed_002dtranspose-interface-1"> &para;</a></span></h4>
+
+<p>The above routines are for a transpose of a matrix of numbers (of type
+<code class="code">double</code>), using FFTW&rsquo;s default block sizes.  More generally, one
+can perform transposes of <em class="emph">tuples</em> of numbers, with
+user-specified block sizes for the input and output:
+</p>
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_mpi_plan_many_transpose
+                (ptrdiff_t n0, ptrdiff_t n1, ptrdiff_t howmany,
+                 ptrdiff_t block0, ptrdiff_t block1,
+                 double *in, double *out, MPI_Comm comm, unsigned flags);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fmpi_005fplan_005fmany_005ftranspose"></a>
+
+<p>In this case, one is transposing an <code class="code">n0</code> by <code class="code">n1</code> matrix of
+<code class="code">howmany</code>-tuples (e.g. <code class="code">howmany = 2</code> for complex numbers).
+The input is distributed along the <code class="code">n0</code> dimension with block size
+<code class="code">block0</code>, and the <code class="code">n1</code> by <code class="code">n0</code> output is distributed
+along the <code class="code">n1</code> dimension with block size <code class="code">block1</code>.  If
+<code class="code">FFTW_MPI_DEFAULT_BLOCK</code> (0) is passed for a block size then FFTW
+uses its default block size.  To get the local size of the data on
+each process, you should then call <code class="code">fftw_mpi_local_size_many_transposed</code>.
+<a class="index-entry-id" id="index-FFTW_005fMPI_005fDEFAULT_005fBLOCK-1"></a>
+<a class="index-entry-id" id="index-fftw_005fmpi_005flocal_005fsize_005fmany_005ftransposed"></a>
+</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Cycle Counters (FFTW 3.3.11)</title>
+
+<meta name="description" content="Cycle Counters (FFTW 3.3.11)">
+<meta name="keywords" content="Cycle Counters (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Installation-and-Customization.html" rel="up" title="Installation and Customization">
+<link href="Generating-your-own-code.html" rel="next" title="Generating your own code">
+<link href="Installation-on-non_002dUnix-systems.html" rel="prev" title="Installation on non-Unix systems">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Cycle-Counters">
+<div class="nav-panel">
+<p>
+Next: <a href="Generating-your-own-code.html" accesskey="n" rel="next">Generating your own code</a>, Previous: <a href="Installation-on-non_002dUnix-systems.html" accesskey="p" rel="prev">Installation on non-Unix systems</a>, Up: <a href="Installation-and-Customization.html" accesskey="u" rel="up">Installation and Customization</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Cycle-Counters-1"><span>10.3 Cycle Counters<a class="copiable-link" href="#Cycle-Counters-1"> &para;</a></span></h3>
+<a class="index-entry-id" id="index-cycle-counter-1"></a>
+
+<p>FFTW&rsquo;s planner actually executes and times different possible FFT
+algorithms in order to pick the fastest plan for a given <em class="math">n</em>.  In
+order to do this in as short a time as possible, however, the timer must
+have a very high resolution, and to accomplish this we employ the
+hardware <em class="dfn">cycle counters</em> that are available on most CPUs.
+Currently, FFTW supports the cycle counters on x86, PowerPC/POWER, Alpha,
+UltraSPARC (SPARC v9), IA64, PA-RISC, and MIPS processors.
+</p>
+<a class="index-entry-id" id="index-compiler-3"></a>
+<p>Access to the cycle counters, unfortunately, is a compiler and/or
+operating-system dependent task, often requiring inline assembly
+language, and it may be that your compiler is not supported.  If you are
+<em class="emph">not</em> supported, FFTW will by default fall back on its estimator
+(effectively using <code class="code">FFTW_ESTIMATE</code> for all plans).
+<a class="index-entry-id" id="index-FFTW_005fESTIMATE-3"></a>
+</p>
+<p>You can add support by editing the file <code class="code">kernel/cycle.h</code>; normally,
+this will involve adapting one of the examples already present in order
+to use the inline-assembler syntax for your C compiler, and will only
+require a couple of lines of code.  Anyone adding support for a new
+system to <code class="code">cycle.h</code> is encouraged to email us at <a class="email" href="mailto:fftw@fftw.org">fftw@fftw.org</a>.
+</p>
+<p>If a cycle counter is not available on your system (e.g. some embedded
+processor), and you don&rsquo;t want to use estimated plans, as a last resort
+you can use the <code class="code">--with-slow-timer</code> option to <code class="code">configure</code> (on
+Unix) or <code class="code">#define WITH_SLOW_TIMER</code> in <code class="code">config.h</code> (elsewhere).
+This will use the much lower-resolution <code class="code">gettimeofday</code> function, or even
+<code class="code">clock</code> if the former is unavailable, and planning will be
+extremely slow.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Generating-your-own-code.html">Generating your own code</a>, Previous: <a href="Installation-on-non_002dUnix-systems.html">Installation on non-Unix systems</a>, Up: <a href="Installation-and-Customization.html">Installation and Customization</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

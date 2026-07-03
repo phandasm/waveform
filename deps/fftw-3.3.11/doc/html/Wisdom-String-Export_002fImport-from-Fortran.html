@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Wisdom String Export/Import from Fortran (FFTW 3.3.11)</title>
+
+<meta name="description" content="Wisdom String Export/Import from Fortran (FFTW 3.3.11)">
+<meta name="keywords" content="Wisdom String Export/Import from Fortran (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Accessing-the-wisdom-API-from-Fortran.html" rel="up" title="Accessing the wisdom API from Fortran">
+<link href="Wisdom-Generic-Export_002fImport-from-Fortran.html" rel="next" title="Wisdom Generic Export/Import from Fortran">
+<link href="Wisdom-File-Export_002fImport-from-Fortran.html" rel="prev" title="Wisdom File Export/Import from Fortran">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Wisdom-String-Export_002fImport-from-Fortran">
+<div class="nav-panel">
+<p>
+Next: <a href="Wisdom-Generic-Export_002fImport-from-Fortran.html" accesskey="n" rel="next">Wisdom Generic Export/Import from Fortran</a>, Previous: <a href="Wisdom-File-Export_002fImport-from-Fortran.html" accesskey="p" rel="prev">Wisdom File Export/Import from Fortran</a>, Up: <a href="Accessing-the-wisdom-API-from-Fortran.html" accesskey="u" rel="up">Accessing the wisdom API from Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Wisdom-String-Export_002fImport-from-Fortran-1"><span>7.6.2 Wisdom String Export/Import from Fortran<a class="copiable-link" href="#Wisdom-String-Export_002fImport-from-Fortran-1"> &para;</a></span></h4>
+
+<a class="index-entry-id" id="index-fftw_005fexport_005fwisdom_005fto_005fstring-1"></a>
+<p>Dealing with FFTW&rsquo;s C string export/import is a bit more painful.  In
+particular, the <code class="code">fftw_export_wisdom_to_string</code> function requires
+you to deal with a dynamically allocated C string.  To get its length,
+you must define an interface to the C <code class="code">strlen</code> function, and to
+deallocate it you must define an interface to C <code class="code">free</code>:
+</p>
+<div class="example">
+<pre class="example-preformatted">  use, intrinsic :: iso_c_binding
+  interface
+    integer(C_INT) function strlen(s) bind(C, name='strlen')
+      import
+      type(C_PTR), value :: s
+    end function strlen
+    subroutine free(p) bind(C, name='free')
+      import
+      type(C_PTR), value :: p
+    end subroutine free
+  end interface
+</pre></div>
+
+<p>Given these definitions, you can then export wisdom to a Fortran
+character array:
+</p>
+<div class="example">
+<pre class="example-preformatted">  character(C_CHAR), pointer :: s(:)
+  integer(C_SIZE_T) :: slen
+  type(C_PTR) :: p
+  p = fftw_export_wisdom_to_string()
+  if (.not. c_associated(p)) stop 'error exporting wisdom'
+  slen = strlen(p)
+  call c_f_pointer(p, s, [slen+1])
+  ...
+  call free(p)
+</pre></div>
+<a class="index-entry-id" id="index-c_005fassociated"></a>
+<a class="index-entry-id" id="index-c_005ff_005fpointer-3"></a>
+
+<p>Note that <code class="code">slen</code> is the length of the C string, but the length of
+the array is <code class="code">slen+1</code> because it includes the terminating null
+character.  (You can omit the &lsquo;<samp class="samp">+1</samp>&rsquo; if you don&rsquo;t want Fortran to
+know about the null character.) The standard <code class="code">c_associated</code> function
+checks whether <code class="code">p</code> is a null pointer, which is returned by
+<code class="code">fftw_export_wisdom_to_string</code> if there was an error.
+</p>
+<a class="index-entry-id" id="index-fftw_005fimport_005fwisdom_005ffrom_005fstring-1"></a>
+<p>To import wisdom from a string, use
+<code class="code">fftw_import_wisdom_from_string</code> as usual; note that the argument
+of this function must be a <code class="code">character(C_CHAR)</code> that is terminated
+by the <code class="code">C_NULL_CHAR</code> character, like the <code class="code">s</code> array above.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Wisdom-Generic-Export_002fImport-from-Fortran.html">Wisdom Generic Export/Import from Fortran</a>, Previous: <a href="Wisdom-File-Export_002fImport-from-Fortran.html">Wisdom File Export/Import from Fortran</a>, Up: <a href="Accessing-the-wisdom-API-from-Fortran.html">Accessing the wisdom API from Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

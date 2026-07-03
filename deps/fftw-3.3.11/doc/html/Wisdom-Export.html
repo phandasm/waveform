@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Wisdom Export (FFTW 3.3.11)</title>
+
+<meta name="description" content="Wisdom Export (FFTW 3.3.11)">
+<meta name="keywords" content="Wisdom Export (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Wisdom.html" rel="up" title="Wisdom">
+<link href="Wisdom-Import.html" rel="next" title="Wisdom Import">
+<link href="Wisdom.html" rel="prev" title="Wisdom">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Wisdom-Export">
+<div class="nav-panel">
+<p>
+Next: <a href="Wisdom-Import.html" accesskey="n" rel="next">Wisdom Import</a>, Previous: <a href="Wisdom.html" accesskey="p" rel="prev">Wisdom</a>, Up: <a href="Wisdom.html" accesskey="u" rel="up">Wisdom</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Wisdom-Export-1"><span>4.7.1 Wisdom Export<a class="copiable-link" href="#Wisdom-Export-1"> &para;</a></span></h4>
+
+<div class="example">
+<pre class="example-preformatted">int fftw_export_wisdom_to_filename(const char *filename);
+void fftw_export_wisdom_to_file(FILE *output_file);
+char *fftw_export_wisdom_to_string(void);
+void fftw_export_wisdom(void (*write_char)(char c, void *), void *data);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fexport_005fwisdom"></a>
+<a class="index-entry-id" id="index-fftw_005fexport_005fwisdom_005fto_005ffilename-1"></a>
+<a class="index-entry-id" id="index-fftw_005fexport_005fwisdom_005fto_005ffile"></a>
+<a class="index-entry-id" id="index-fftw_005fexport_005fwisdom_005fto_005fstring"></a>
+
+<p>These functions allow you to export all currently accumulated wisdom
+in a form from which it can be later imported and restored, even
+during a separate run of the program. (See <a class="xref" href="Words-of-Wisdom_002dSaving-Plans.html">Words of Wisdom&mdash;Saving Plans</a>.)  The current store of wisdom is not affected by calling any
+of these routines.
+</p>
+<p><code class="code">fftw_export_wisdom</code> exports the wisdom to any output
+medium, as specified by the callback function
+<code class="code">write_char</code>. <code class="code">write_char</code> is a <code class="code">putc</code>-like function that
+writes the character <code class="code">c</code> to some output; its second parameter is
+the <code class="code">data</code> pointer passed to <code class="code">fftw_export_wisdom</code>.  For
+convenience, the following three &ldquo;wrapper&rdquo; routines are provided:
+</p>
+<p><code class="code">fftw_export_wisdom_to_filename</code> writes wisdom to a file named
+<code class="code">filename</code> (which is created or overwritten), returning <code class="code">1</code>
+on success and <code class="code">0</code> on failure.  A lower-level function, which
+requires you to open and close the file yourself (e.g. if you want to
+write wisdom to a portion of a larger file), is
+<code class="code">fftw_export_wisdom_to_file</code>.  This writes the wisdom to the
+current position in <code class="code">output_file</code>, which should be open with
+write permission; upon exit, the file remains open and is positioned
+at the end of the wisdom data.
+</p>
+<p><code class="code">fftw_export_wisdom_to_string</code> returns a pointer to a
+<code class="code">NULL</code>-terminated string holding the wisdom data. This string is
+dynamically allocated, and it is the responsibility of the caller to
+deallocate it with <code class="code">free</code> when it is no longer needed.
+</p>
+<p>All of these routines export the wisdom in the same format, which we
+will not document here except to say that it is LISP-like ASCII text
+that is insensitive to white space.
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Wisdom-Import.html">Wisdom Import</a>, Previous: <a href="Wisdom.html">Wisdom</a>, Up: <a href="Wisdom.html">Wisdom</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

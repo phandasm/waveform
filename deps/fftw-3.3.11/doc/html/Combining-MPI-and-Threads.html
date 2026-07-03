@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Combining MPI and Threads (FFTW 3.3.11)</title>
+
+<meta name="description" content="Combining MPI and Threads (FFTW 3.3.11)">
+<meta name="keywords" content="Combining MPI and Threads (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Distributed_002dmemory-FFTW-with-MPI.html" rel="up" title="Distributed-memory FFTW with MPI">
+<link href="FFTW-MPI-Reference.html" rel="next" title="FFTW MPI Reference">
+<link href="FFTW-MPI-Performance-Tips.html" rel="prev" title="FFTW MPI Performance Tips">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Combining-MPI-and-Threads">
+<div class="nav-panel">
+<p>
+Next: <a href="FFTW-MPI-Reference.html" accesskey="n" rel="next">FFTW MPI Reference</a>, Previous: <a href="FFTW-MPI-Performance-Tips.html" accesskey="p" rel="prev">FFTW MPI Performance Tips</a>, Up: <a href="Distributed_002dmemory-FFTW-with-MPI.html" accesskey="u" rel="up">Distributed-memory FFTW with MPI</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Combining-MPI-and-Threads-1"><span>6.11 Combining MPI and Threads<a class="copiable-link" href="#Combining-MPI-and-Threads-1"> &para;</a></span></h3>
+<a class="index-entry-id" id="index-threads-2"></a>
+
+<p>In certain cases, it may be advantageous to combine MPI
+(distributed-memory) and threads (shared-memory) parallelization.
+FFTW supports this, with certain caveats.  For example, if you have a
+cluster of 4-processor shared-memory nodes, you may want to use
+threads within the nodes and MPI between the nodes, instead of MPI for
+all parallelization.
+</p>
+<p>In particular, it is possible to seamlessly combine the MPI FFTW
+routines with the multi-threaded FFTW routines (see <a class="pxref" href="Multi_002dthreaded-FFTW.html">Multi-threaded FFTW</a>). However, some care must be taken in the initialization code,
+which should look something like this:
+</p>
+<div class="example">
+<pre class="example-preformatted">int threads_ok;
+
+int main(int argc, char **argv)
+{
+    int provided;
+    MPI_Init_thread(&amp;argc, &amp;argv, MPI_THREAD_FUNNELED, &amp;provided);
+    threads_ok = provided &gt;= MPI_THREAD_FUNNELED;
+
+    if (threads_ok) threads_ok = fftw_init_threads();
+    fftw_mpi_init();
+
+    ...
+    if (threads_ok) fftw_plan_with_nthreads(...);
+    ...
+    
+    MPI_Finalize();
+}
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fmpi_005finit-3"></a>
+<a class="index-entry-id" id="index-fftw_005finit_005fthreads-2"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fwith_005fnthreads-1"></a>
+
+<p>First, note that instead of calling <code class="code">MPI_Init</code>, you should call
+<code class="code">MPI_Init_threads</code>, which is the initialization routine defined
+by the MPI-2 standard to indicate to MPI that your program will be
+multithreaded.  We pass <code class="code">MPI_THREAD_FUNNELED</code>, which indicates
+that we will only call MPI routines from the main thread.  (FFTW will
+launch additional threads internally, but the extra threads will not
+call MPI code.)  (You may also pass <code class="code">MPI_THREAD_SERIALIZED</code> or
+<code class="code">MPI_THREAD_MULTIPLE</code>, which requests additional multithreading
+support from the MPI implementation, but this is not required by
+FFTW.)  The <code class="code">provided</code> parameter returns what level of threads
+support is actually supported by your MPI implementation; this
+<em class="emph">must</em> be at least <code class="code">MPI_THREAD_FUNNELED</code> if you want to call
+the FFTW threads routines, so we define a global variable
+<code class="code">threads_ok</code> to record this.  You should only call
+<code class="code">fftw_init_threads</code> or <code class="code">fftw_plan_with_nthreads</code> if
+<code class="code">threads_ok</code> is true.  For more information on thread safety in
+MPI, see the
+<a class="uref" href="http://www.mpi-forum.org/docs/mpi-20-html/node162.htm">MPI and
+Threads</a> section of the MPI-2 standard.
+<a class="index-entry-id" id="index-thread-safety-2"></a>
+</p>
+
+<p>Second, we must call <code class="code">fftw_init_threads</code> <em class="emph">before</em>
+<code class="code">fftw_mpi_init</code>.  This is critical for technical reasons having
+to do with how FFTW initializes its list of algorithms.
+</p>
+<p>Then, if you call <code class="code">fftw_plan_with_nthreads(N)</code>, <em class="emph">every</em> MPI
+process will launch (up to) <code class="code">N</code> threads to parallelize its transforms.
+</p>
+<p>For example, in the hypothetical cluster of 4-processor nodes, you
+might wish to launch only a single MPI process per node, and then call
+<code class="code">fftw_plan_with_nthreads(4)</code> on each process to use all
+processors in the nodes.
+</p>
+<p>This may or may not be faster than simply using as many MPI processes
+as you have processors, however.  On the one hand, using threads
+within a node eliminates the need for explicit message passing within
+the node.  On the other hand, FFTW&rsquo;s transpose routines are not
+multi-threaded, and this means that the communications that do take
+place will not benefit from parallelization within the node.
+Moreover, many MPI implementations already have optimizations to
+exploit shared memory when it is available, so adding the
+multithreaded FFTW on top of this may be superfluous.
+<a class="index-entry-id" id="index-transpose-4"></a>
+</p>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="FFTW-MPI-Reference.html">FFTW MPI Reference</a>, Previous: <a href="FFTW-MPI-Performance-Tips.html">FFTW MPI Performance Tips</a>, Up: <a href="Distributed_002dmemory-FFTW-with-MPI.html">Distributed-memory FFTW with MPI</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

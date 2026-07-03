@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Wisdom Utilities (FFTW 3.3.11)</title>
+
+<meta name="description" content="Wisdom Utilities (FFTW 3.3.11)">
+<meta name="keywords" content="Wisdom Utilities (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Wisdom.html" rel="up" title="Wisdom">
+<link href="Forgetting-Wisdom.html" rel="prev" title="Forgetting Wisdom">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Wisdom-Utilities">
+<div class="nav-panel">
+<p>
+Previous: <a href="Forgetting-Wisdom.html" accesskey="p" rel="prev">Forgetting Wisdom</a>, Up: <a href="Wisdom.html" accesskey="u" rel="up">Wisdom</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Wisdom-Utilities-1"><span>4.7.4 Wisdom Utilities<a class="copiable-link" href="#Wisdom-Utilities-1"> &para;</a></span></h4>
+
+<p>FFTW includes two standalone utility programs that deal with wisdom.  We
+merely summarize them here, since they come with their own <code class="code">man</code>
+pages for Unix and GNU systems (with HTML versions on our web site).
+</p>
+<p>The first program is <code class="code">fftw-wisdom</code> (or <code class="code">fftwf-wisdom</code> in
+single precision, etc.), which can be used to create a wisdom file
+containing plans for any of the transform sizes and types supported by
+FFTW.  It is preferable to create wisdom directly from your executable
+(see <a class="pxref" href="Caveats-in-Using-Wisdom.html">Caveats in Using Wisdom</a>), but this program is useful for
+creating global wisdom files for <code class="code">fftw_import_system_wisdom</code>.
+<a class="index-entry-id" id="index-fftw_002dwisdom-utility-1"></a>
+</p>
+
+<p>The second program is <code class="code">fftw-wisdom-to-conf</code>, which takes a wisdom
+file as input and produces a <em class="dfn">configuration routine</em> as output.  The
+latter is a C subroutine that you can compile and link into your
+program, replacing a routine of the same name in the FFTW library, that
+determines which parts of FFTW are callable by your program.
+<code class="code">fftw-wisdom-to-conf</code> produces a configuration routine that links
+to only those parts of FFTW needed by the saved plans in the wisdom,
+greatly reducing the size of statically linked executables (which should
+only attempt to create plans corresponding to those in the wisdom,
+however).
+<a class="index-entry-id" id="index-fftw_002dwisdom_002dto_002dconf-utility"></a>
+<a class="index-entry-id" id="index-configuration-routines"></a>
+</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Plan execution in Fortran (FFTW 3.3.11)</title>
+
+<meta name="description" content="Plan execution in Fortran (FFTW 3.3.11)">
+<meta name="keywords" content="Plan execution in Fortran (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Calling-FFTW-from-Modern-Fortran.html" rel="up" title="Calling FFTW from Modern Fortran">
+<link href="Allocating-aligned-memory-in-Fortran.html" rel="next" title="Allocating aligned memory in Fortran">
+<link href="FFTW-Fortran-type-reference.html" rel="prev" title="FFTW Fortran type reference">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+ul.mark-bullet {list-style-type: disc}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="Plan-execution-in-Fortran">
+<div class="nav-panel">
+<p>
+Next: <a href="Allocating-aligned-memory-in-Fortran.html" accesskey="n" rel="next">Allocating aligned memory in Fortran</a>, Previous: <a href="FFTW-Fortran-type-reference.html" accesskey="p" rel="prev">FFTW Fortran type reference</a>, Up: <a href="Calling-FFTW-from-Modern-Fortran.html" accesskey="u" rel="up">Calling FFTW from Modern Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="Plan-execution-in-Fortran-1"><span>7.4 Plan execution in Fortran<a class="copiable-link" href="#Plan-execution-in-Fortran-1"> &para;</a></span></h3>
+
+<p>In C, in order to use a plan, one normally calls <code class="code">fftw_execute</code>,
+which executes the plan to perform the transform on the input/output
+arrays passed when the plan was created (see <a class="pxref" href="Using-Plans.html">Using Plans</a>).  The
+corresponding subroutine call in modern Fortran is:
+</p><div class="example">
+<pre class="example-preformatted"> call fftw_execute(plan)
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fexecute-6"></a>
+
+<p>However, we have had reports that this causes problems with some
+recent optimizing Fortran compilers.  The problem is, because the
+input/output arrays are not passed as explicit arguments to
+<code class="code">fftw_execute</code>, the semantics of Fortran (unlike C) allow the
+compiler to assume that the input/output arrays are not changed by
+<code class="code">fftw_execute</code>.  As a consequence, certain compilers end up
+repositioning the call to <code class="code">fftw_execute</code>, assuming incorrectly
+that it does nothing to the arrays.
+</p>
+<p>There are various workarounds to this, but the safest and simplest
+thing is to not use <code class="code">fftw_execute</code> in Fortran.  Instead, use the
+functions described in <a class="ref" href="New_002darray-Execute-Functions.html">New-array Execute Functions</a>, which take
+the input/output arrays as explicit arguments.  For example, if the
+plan is for a complex-data DFT and was created for the arrays
+<code class="code">in</code> and <code class="code">out</code>, you would do:
+</p><div class="example">
+<pre class="example-preformatted"> call fftw_execute_dft(plan, in, out)
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fexecute_005fdft-3"></a>
+
+<p>There are a few things to be careful of, however:
+</p>
+<ul class="itemize mark-bullet">
+<li><a class="index-entry-id" id="index-fftw_005fexecute_005fdft_005fr2c-2"></a>
+<a class="index-entry-id" id="index-fftw_005fexecute_005fdft_005fc2r-1"></a>
+<a class="index-entry-id" id="index-fftw_005fexecute_005fr2r-1"></a>
+You must use the correct type of execute function, matching the way
+the plan was created.  Complex DFT plans should use
+<code class="code">fftw_execute_dft</code>, Real-input (r2c) DFT plans should use use
+<code class="code">fftw_execute_dft_r2c</code>, and real-output (c2r) DFT plans should
+use <code class="code">fftw_execute_dft_c2r</code>.  The various r2r plans should use
+<code class="code">fftw_execute_r2r</code>.  Fortunately, if you use the wrong one you
+will get a compile-time type-mismatch error (unlike legacy Fortran).
+
+</li><li>You should normally pass the same input/output arrays that were used when
+creating the plan.  This is always safe.
+
+</li><li><em class="emph">If</em> you pass <em class="emph">different</em> input/output arrays compared to
+those used when creating the plan, you must abide by all the
+restrictions of the new-array execute functions (see <a class="pxref" href="New_002darray-Execute-Functions.html">New-array Execute Functions</a>).  The most tricky of these is the
+requirement that the new arrays have the same alignment as the
+original arrays; the best (and possibly only) way to guarantee this
+is to use the &lsquo;<samp class="samp">fftw_alloc</samp>&rsquo; functions to allocate your arrays (see <a class="pxref" href="Allocating-aligned-memory-in-Fortran.html">Allocating aligned memory in Fortran</a>). Alternatively, you can
+use the <code class="code">FFTW_UNALIGNED</code> flag when creating the
+plan, in which case the plan does not depend on the alignment, but
+this may sacrifice substantial performance on architectures (like x86)
+with SIMD instructions (see <a class="pxref" href="SIMD-alignment-and-fftw_005fmalloc.html">SIMD alignment and fftw_malloc</a>).
+<a class="index-entry-id" id="index-FFTW_005fUNALIGNED-2"></a>
+
+</li></ul>
+
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Next: <a href="Allocating-aligned-memory-in-Fortran.html">Allocating aligned memory in Fortran</a>, Previous: <a href="FFTW-Fortran-type-reference.html">FFTW Fortran type reference</a>, Up: <a href="Calling-FFTW-from-Modern-Fortran.html">Calling FFTW from Modern Fortran</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

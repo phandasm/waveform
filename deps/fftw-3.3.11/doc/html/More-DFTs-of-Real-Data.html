@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>More DFTs of Real Data (FFTW 3.3.11)</title>
+
+<meta name="description" content="More DFTs of Real Data (FFTW 3.3.11)">
+<meta name="keywords" content="More DFTs of Real Data (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Tutorial.html" rel="up" title="Tutorial">
+<link href="Multi_002dDimensional-DFTs-of-Real-Data.html" rel="prev" title="Multi-Dimensional DFTs of Real Data">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section-level-extent" id="More-DFTs-of-Real-Data">
+<div class="nav-panel">
+<p>
+Previous: <a href="Multi_002dDimensional-DFTs-of-Real-Data.html" accesskey="p" rel="prev">Multi-Dimensional DFTs of Real Data</a>, Up: <a href="Tutorial.html" accesskey="u" rel="up">Tutorial</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h3 class="section" id="More-DFTs-of-Real-Data-1"><span>2.5 More DFTs of Real Data<a class="copiable-link" href="#More-DFTs-of-Real-Data-1"> &para;</a></span></h3>
+
+<p>FFTW supports several other transform types via a unified <em class="dfn">r2r</em>
+(real-to-real) interface,
+<a class="index-entry-id" id="index-r2r"></a>
+so called because it takes a real (<code class="code">double</code>) array and outputs a
+real array of the same size.  These r2r transforms currently fall into
+three categories: DFTs of real input and complex-Hermitian output in
+halfcomplex format, DFTs of real input with even/odd symmetry
+(a.k.a. discrete cosine/sine transforms, DCTs/DSTs), and discrete
+Hartley transforms (DHTs), all described in more detail by the
+following sections.
+</p>
+<p>The r2r transforms follow the by now familiar interface of creating an
+<code class="code">fftw_plan</code>, executing it with <code class="code">fftw_execute(plan)</code>, and
+destroying it with <code class="code">fftw_destroy_plan(plan)</code>.  Furthermore, all
+r2r transforms share the same planner interface:
+</p>
+<div class="example">
+<pre class="example-preformatted">fftw_plan fftw_plan_r2r_1d(int n, double *in, double *out,
+                           fftw_r2r_kind kind, unsigned flags);
+fftw_plan fftw_plan_r2r_2d(int n0, int n1, double *in, double *out,
+                           fftw_r2r_kind kind0, fftw_r2r_kind kind1,
+                           unsigned flags);
+fftw_plan fftw_plan_r2r_3d(int n0, int n1, int n2,
+                           double *in, double *out,
+                           fftw_r2r_kind kind0,
+                           fftw_r2r_kind kind1,
+                           fftw_r2r_kind kind2,
+                           unsigned flags);
+fftw_plan fftw_plan_r2r(int rank, const int *n, double *in, double *out,
+                        const fftw_r2r_kind *kind, unsigned flags);
+</pre></div>
+<a class="index-entry-id" id="index-fftw_005fplan_005fr2r_005f1d"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fr2r_005f2d"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fr2r_005f3d"></a>
+<a class="index-entry-id" id="index-fftw_005fplan_005fr2r"></a>
+
+<p>Just as for the complex DFT, these plan 1d/2d/3d/multi-dimensional
+transforms for contiguous arrays in row-major order, transforming (real)
+input to output of the same size, where <code class="code">n</code> specifies the
+<em class="emph">physical</em> dimensions of the arrays.  All positive <code class="code">n</code> are
+supported (with the exception of <code class="code">n=1</code> for the <code class="code">FFTW_REDFT00</code>
+kind, noted in the real-even subsection below); products of small
+factors are most efficient (factorizing <code class="code">n-1</code> and <code class="code">n+1</code> for
+<code class="code">FFTW_REDFT00</code> and <code class="code">FFTW_RODFT00</code> kinds, described below), but
+an <i>O</i>(<i>n</i>&nbsp;log&nbsp;<i>n</i>)
+ algorithm is used even for prime sizes.
+</p>
+<p>Each dimension has a <em class="dfn">kind</em> parameter, of type
+<code class="code">fftw_r2r_kind</code>, specifying the kind of r2r transform to be used
+for that dimension.
+<a class="index-entry-id" id="index-kind-_0028r2r_0029"></a>
+<a class="index-entry-id" id="index-fftw_005fr2r_005fkind"></a>
+(In the case of <code class="code">fftw_plan_r2r</code>, this is an array <code class="code">kind[rank]</code>
+where <code class="code">kind[i]</code> is the transform kind for the dimension
+<code class="code">n[i]</code>.)  The kind can be one of a set of predefined constants,
+defined in the following subsections.
+</p>
+<p>In other words, FFTW computes the separable product of the specified
+r2r transforms over each dimension, which can be used e.g. for partial
+differential equations with mixed boundary conditions.  (For some r2r
+kinds, notably the halfcomplex DFT and the DHT, such a separable
+product is somewhat problematic in more than one dimension, however,
+as is described below.)
+</p>
+<p>In the current version of FFTW, all r2r transforms except for the
+halfcomplex type are computed via pre- or post-processing of
+halfcomplex transforms, and they are therefore not as fast as they
+could be.  Since most other general DCT/DST codes employ a similar
+algorithm, however, FFTW&rsquo;s implementation should provide at least
+competitive performance.
+</p>
+<ul class="mini-toc">
+<li><a href="The-Halfcomplex_002dformat-DFT.html" accesskey="1">The Halfcomplex-format DFT</a></li>
+<li><a href="Real-even_002fodd-DFTs-_0028cosine_002fsine-transforms_0029.html" accesskey="2">Real even/odd DFTs (cosine/sine transforms)</a></li>
+<li><a href="The-Discrete-Hartley-Transform.html" accesskey="3">The Discrete Hartley Transform</a></li>
+</ul>
+</div>
+<hr>
+<div class="nav-panel">
+<p>
+Previous: <a href="Multi_002dDimensional-DFTs-of-Real-Data.html">Multi-Dimensional DFTs of Real Data</a>, Up: <a href="Tutorial.html">Tutorial</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

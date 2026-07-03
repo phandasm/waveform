@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<!-- Created by GNU Texinfo 7.1.1, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for FFTW
+(version 3.3.11, 18 April 2026).
+
+Copyright © 2003 Matteo Frigo.
+
+Copyright © 2003 Massachusetts Institute of Technology.
+
+Permission is granted to make and distribute verbatim copies of this
+manual provided the copyright notice and this permission notice are
+preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided that the
+entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions,
+except that this permission notice may be stated in a translation
+approved by the Free Software Foundation. -->
+<title>Dynamic Arrays in C (FFTW 3.3.11)</title>
+
+<meta name="description" content="Dynamic Arrays in C (FFTW 3.3.11)">
+<meta name="keywords" content="Dynamic Arrays in C (FFTW 3.3.11)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="Concept-Index.html" rel="index" title="Concept Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Multi_002ddimensional-Array-Format.html" rel="up" title="Multi-dimensional Array Format">
+<link href="Dynamic-Arrays-in-C_002dThe-Wrong-Way.html" rel="next" title="Dynamic Arrays in C-The Wrong Way">
+<link href="Fixed_002dsize-Arrays-in-C.html" rel="prev" title="Fixed-size Arrays in C">
+<style type="text/css">
+<!--
+a.copiable-link {visibility: hidden; text-decoration: none; line-height: 0em}
+div.example {margin-left: 3.2em}
+span:hover a.copiable-link {visibility: visible}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection-level-extent" id="Dynamic-Arrays-in-C">
+<div class="nav-panel">
+<p>
+Next: <a href="Dynamic-Arrays-in-C_002dThe-Wrong-Way.html" accesskey="n" rel="next">Dynamic Arrays in C&mdash;The Wrong Way</a>, Previous: <a href="Fixed_002dsize-Arrays-in-C.html" accesskey="p" rel="prev">Fixed-size Arrays in C</a>, Up: <a href="Multi_002ddimensional-Array-Format.html" accesskey="u" rel="up">Multi-dimensional Array Format</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="Concept-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<h4 class="subsection" id="Dynamic-Arrays-in-C-1"><span>3.2.4 Dynamic Arrays in C<a class="copiable-link" href="#Dynamic-Arrays-in-C-1"> &para;</a></span></h4>
+
+<p>We recommend allocating most arrays dynamically, with
+<code class="code">fftw_malloc</code>.  This isn&rsquo;t too hard to do, although it is not as
+straightforward for multi-dimensional arrays as it is for
+one-dimensional arrays.
+</p>
+<p>Creating the array is simple: using a dynamic-allocation routine like
+<code class="code">fftw_malloc</code>, allocate an array big enough to store N
+<code class="code">fftw_complex</code> values (for a complex DFT), where N is the product
+of the sizes of the array dimensions (i.e. the total number of complex
+values in the array).  For example, here is code to allocate a
+5&nbsp;&times;&nbsp;12&nbsp;&times;&nbsp;27
+ rank-3 array:
+<a class="index-entry-id" id="index-fftw_005fmalloc-2"></a>
+</p>
+<div class="example">
+<pre class="example-preformatted">fftw_complex *an_array;
+an_array = (fftw_complex*) fftw_malloc(5*12*27 * sizeof(fftw_complex));
+</pre></div>
+
+<p>Accessing the array elements, however, is more tricky&mdash;you can&rsquo;t
+simply use multiple applications of the &lsquo;<samp class="samp">[]</samp>&rsquo; operator like you
+could for fixed-size arrays.  Instead, you have to explicitly compute
+the offset into the array using the formula given earlier for
+row-major arrays.  For example, to reference the <em class="math">(i,j,k)</em>-th
+element of the array allocated above, you would use the expression
+<code class="code">an_array[k + 27 * (j + 12 * i)]</code>.
+</p>
+<p>This pain can be alleviated somewhat by defining appropriate macros,
+or, in C++, creating a class and overloading the &lsquo;<samp class="samp">()</samp>&rsquo; operator.
+The recent C99 standard provides a way to reinterpret the dynamic
+array as a &ldquo;variable-length&rdquo; multi-dimensional array amenable to
+&lsquo;<samp class="samp">[]</samp>&rsquo;, but this feature is not yet widely supported by compilers.
+<a class="index-entry-id" id="index-C99"></a>
+<a class="index-entry-id" id="index-C_002b_002b-2"></a>
+</p>
+</div>
+
+
+
+</body>
+</html>
