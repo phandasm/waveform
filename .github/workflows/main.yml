@@ -1,4 +1,4 @@
-name: 'Mac/Linux CI'
+name: 'Mac/Linux/Windows CI'
 
 on:
   push:
@@ -19,19 +19,14 @@ on:
         type: string
 
 jobs:
-  macosarm64:
-    name: 'MacOS Arm64'
-    runs-on: macos-latest
+  windowsx64:
+    name: 'Windows x64'
+    runs-on: windows-2025-vs2026
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v7
         with:
           submodules: recursive
-      
-      - name: 'Extract obs-deps'
-        run: |
-          mkdir ${{github.workspace}}/deps/obs-deps
-          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/CI/deps/macos-deps-2022-08-02-arm64.tar.xz
       
       - name: 'Checkout obs-studio'
         uses: actions/checkout@v7
@@ -39,38 +34,82 @@ jobs:
           repository: 'obsproject/obs-studio'
           submodules: recursive
           path: 'deps/obs-studio'
-          ref: '28.1.2'
+          ref: '32.2.0-beta3'
       
       - name: 'OBS Cmake'
-        run: cmake -B ${{github.workspace}}/deps/obs-studio/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DENABLE_PLUGINS=OFF -DDISABLE_UI=ON -DENABLE_UI=OFF -DCOMPILE_PYTHON=OFF -DDISABLE_PYTHON=ON -DENABLE_SCRIPTING=OFF -DBUILD_BROWSER=OFF -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/deps/obs-deps" ${{github.workspace}}/deps/obs-studio
+        run: cmake -S ${{github.workspace}}/deps/obs-studio -B ${{github.workspace}}/deps/obs-studio/build -A x64 -G "Visual Studio 18 2026" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_PLUGINS=OFF -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/deps/obs_install"
       
-      - name: 'Build OBS'
+      - name: 'OBS Build'
         run: |
-          cmake --build ${{github.workspace}}/deps/obs-studio/build --config=Release
-          cmake --install ${{github.workspace}}/deps/obs-studio/build --config=Release
+          cmake --build ${{github.workspace}}/deps/obs-studio/build --target obs-frontend-api --config Release
+          cmake --install ${{github.workspace}}/deps/obs-studio/build --component Development --config Release
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DDISABLE_X86_SIMD=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps;${{github.workspace}}/deps/obs-studio/build" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
+        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -A x64 -G "Visual Studio 18 2026" -DSTATIC_RUNTIME=ON -DEXTRA_OPTIMIZATIONS=ON -DCI_BUILD=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-studio/build/libobs;${{github.workspace}}/deps/obs-studio/build/deps/w32-pthreads;${{github.workspace}}/deps/obs_install"
       
       - name: 'Build'
         run: |
-          cmake --build ${{github.workspace}}/build --config=RelWithDebInfo
-          cmake --install ${{github.workspace}}/build --config=RelWithDebInfo
+          cmake --build ${{github.workspace}}/build --config Release
+          cmake --install ${{github.workspace}}/build --config Release
       
       - name: 'Package'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
-        run: cmake --build ${{github.workspace}}/build --config=RelWithDebInfo --target package
+        run: iscc.exe /O"${{github.workspace}}/installer" "${{github.workspace}}/installer/installer.iss"
       
       - name: 'Upload'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
+        with:
+          name: Waveform_${{github.ref_name}}_Windows_x64
+          path: ${{github.workspace}}/installer/Waveform_v*_setup.exe
+
+  macosarm64:
+    name: 'MacOS Arm64'
+    runs-on: macos-26
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      
+      - name: 'Checkout obs-studio'
+        uses: actions/checkout@v7
+        with:
+          repository: 'obsproject/obs-studio'
+          submodules: recursive
+          path: 'deps/obs-studio'
+          ref: '32.2.0-beta3'
+      
+      - name: 'OBS Cmake'
+        run: cmake -S ${{github.workspace}}/deps/obs-studio -B ${{github.workspace}}/deps/obs-studio/build -G Xcode -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_PLUGINS=OFF -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/deps/obs_install"
+      
+      - name: 'OBS Build'
+        run: |
+          cmake --build ${{github.workspace}}/deps/obs-studio/build --target obs-frontend-api --config Release
+          cmake --install ${{github.workspace}}/deps/obs-studio/build --component Development --config Release
+      
+      - name: 'Cmake'
+        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCI_BUILD=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DENABLE_X86_SIMD=OFF -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs_install;${{github.workspace}}/deps/obs-studio/build/libobs" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
+      
+      - name: 'Build'
+        run: |
+          cmake --build ${{github.workspace}}/build --config RelWithDebInfo
+          cmake --install ${{github.workspace}}/build --config RelWithDebInfo
+      
+      - name: 'Package'
+        if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
+        run: cmake --build ${{github.workspace}}/build --config RelWithDebInfo --target package
+      
+      - name: 'Upload'
+        if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v7
         with:
           name: Waveform_${{github.ref_name}}_MacOS_arm64
           path: ${{github.workspace}}/build/*.pkg
 
   macos64:
     name: 'MacOS x64'
-    runs-on: macos-latest
+    runs-on: macos-26
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v7
@@ -88,31 +127,31 @@ jobs:
           repository: 'obsproject/obs-studio'
           submodules: recursive
           path: 'deps/obs-studio'
-          ref: '28.1.2'
+          ref: '32.2.0-beta3'
       
       - name: 'OBS Cmake'
-        run: cmake -B ${{github.workspace}}/deps/obs-studio/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DENABLE_PLUGINS=OFF -DDISABLE_UI=ON -DENABLE_UI=OFF -DCOMPILE_PYTHON=OFF -DDISABLE_PYTHON=ON -DENABLE_SCRIPTING=OFF -DBUILD_BROWSER=OFF -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/deps/obs-deps" ${{github.workspace}}/deps/obs-studio
+        run: cmake -S ${{github.workspace}}/deps/obs-studio -B ${{github.workspace}}/deps/obs-studio/build -G Xcode -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_PLUGINS=OFF -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/deps/obs_install"
       
-      - name: 'Build OBS'
+      - name: 'OBS Build'
         run: |
-          cmake --build ${{github.workspace}}/deps/obs-studio/build --config=Release
-          cmake --install ${{github.workspace}}/deps/obs-studio/build --config=Release
+          cmake --build ${{github.workspace}}/deps/obs-studio/build --target obs-frontend-api --config Release
+          cmake --install ${{github.workspace}}/deps/obs-studio/build --component Development --config Release
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DMAKE_BUNDLE=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs-deps;${{github.workspace}}/deps/obs-studio/build" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
+        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCI_BUILD=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DMAKE_BUNDLE=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs_install;${{github.workspace}}/deps/obs-studio/build/libobs" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
       
       - name: 'Build'
         run: |
-          cmake --build ${{github.workspace}}/build --config=RelWithDebInfo
-          cmake --install ${{github.workspace}}/build --config=RelWithDebInfo
+          cmake --build ${{github.workspace}}/build --config RelWithDebInfo
+          cmake --install ${{github.workspace}}/build --config RelWithDebInfo
       
       - name: 'Package'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
-        run: cmake --build ${{github.workspace}}/build --config=RelWithDebInfo --target package
+        run: cmake --build ${{github.workspace}}/build --config RelWithDebInfo --target package
       
       - name: 'Upload'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Waveform_${{github.ref_name}}_MacOS_x86_64
           path: ${{github.workspace}}/build/*.pkg
@@ -132,27 +171,27 @@ jobs:
           sudo apt-get install -y libobs-dev libfftw3-dev
       
       - name: 'Cmake'
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSTATIC_FFTW=ON -DMAKE_DEB=ON -DCMAKE_INSTALL_PREFIX=/usr
+        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSTATIC_FFTW=ON -DMAKE_DEB=ON -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
       
       - name: 'Build'
-        working-directory: ${{github.workspace}}/build
-        run: make
+        run: |
+          cmake --build ${{github.workspace}}/build
+          cmake --install ${{github.workspace}}/build
       
       - name: 'Package'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
-        working-directory: ${{github.workspace}}/build
-        run: make package
+        run: cmake --build ${{github.workspace}}/build --target package
       
       - name: 'Upload'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Waveform_${{github.ref_name}}_Ubuntu_x86_64
           path: ${{github.workspace}}/build/*.deb
 
   publish_release:
     if: ((github.ref_type == 'tag') || (inputs.publish == true)) && github.event_name != 'pull_request'
-    needs: [macosarm64, macos64, ubuntu64]
+    needs: [macosarm64, macos64, ubuntu64, windowsx64]
     name: 'Publish Release'
     runs-on: ubuntu-latest
     steps:
@@ -160,16 +199,17 @@ jobs:
         uses: actions/checkout@v7
       
       - name: 'Download artifacts'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
-          path: ${{github.workspace}}/assets
+          path: ${{github.workspace}}/artifacts
 
       - name: 'Publish'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           files: |
-            ${{github.workspace}}/assets/*/*.deb
-            ${{github.workspace}}/assets/*/*.pkg
+            ${{github.workspace}}/artifacts/*/*.deb
+            ${{github.workspace}}/artifacts/*/*.pkg
+            ${{github.workspace}}/artifacts/*/*_setup.exe
           body_path: ${{github.workspace}}/changelog.md
           tag_name: ${{inputs.publish && inputs.tagname || github.ref_name}}
           name: ${{inputs.publish && inputs.tagname || github.ref_name}}

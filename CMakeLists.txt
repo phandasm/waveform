@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,7 +27,9 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     endif()
 endif()
 
-include(GNUInstallDirs)
+if(UNIX AND NOT APPLE)
+    include(GNUInstallDirs)
+endif()
 
 if(UNIX)
     option(PACKAGED_INSTALL "Use folder structure for package managers and system-wide installs" OFF)
@@ -49,6 +51,11 @@ endif()
 # OSX bundles
 if(APPLE)
     option(MAKE_BUNDLE "Make Mac OSX bundle" OFF)
+endif()
+
+option(CI_BUILD "Build for CI environment" OFF)
+if(CI_BUILD)
+    include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/ci_common.cmake")
 endif()
 
 # link OBS
