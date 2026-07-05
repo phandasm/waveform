@@ -116,11 +116,6 @@ jobs:
         with:
           submodules: recursive
       
-      - name: 'Extract obs-deps'
-        run: |
-          mkdir ${{github.workspace}}/deps/obs-deps
-          tar -C ${{github.workspace}}/deps/obs-deps -x -f ${{github.workspace}}/CI/deps/macos-deps-2022-08-02-x86_64.tar.xz
-      
       - name: 'Checkout obs-studio'
         uses: actions/checkout@v7
         with:
