@@ -8,7 +8,7 @@ include(CheckSymbolExists)
 
 project(waveform)
 
-set(WAVEFORM_VERSION "1.9.0-beta1")
+set(WAVEFORM_VERSION "1.9.0-beta2")
 
 # default to release build
 if(NOT CMAKE_BUILD_TYPE)

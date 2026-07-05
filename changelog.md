@@ -1,3 +1,6 @@
+## Changes in 1.9.0-beta2
+- Build against OBS 32
+
 ## Changes in 1.9.0-beta1
 - Hotfix for possible OOM crash
 - Allow high and low cutoffs to be equal
@@ -27,7 +30,7 @@ or
 Note: Should work for most distros, but do not mix with the .deb package above.
 </details>
 
-### MacOS (11.0+, OBS 28+)
+### MacOS (12.0+, OBS 28+)
 <details>
 <summary>Click for instructions</summary>
 
@@ -38,11 +41,4 @@ Note: Should work for most distros, but do not mix with the .deb package above.
 #### ARM64/Apple Silicon Macs
 - Download Waveform\_v#.#.#\_MacOS\_arm64.pkg and run it.  
 Note: Use the ARM version only if you have a native ARM build of OBS.
-</details>
-
-### [OBS Music Edition 27.2.4 (Windows x64)](https://github.com/pkviet/obs-studio/releases/tag/v27.2.4)
-<details>
-<summary>Click for instructions</summary>
-
-- Extract for\_OBS\_ME\_only.zip to the *root* of your OBS ME folder (e.g. `C:\Program Files\obs-studio-ME`).
 </details>
