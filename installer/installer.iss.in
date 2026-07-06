@@ -15,19 +15,20 @@ AppVersion={#MyAppVersion}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={reg:HKLM\Software\OBS Studio,|{commonpf32}\obs-studio}
+DefaultDirName={reg:HKLM\Software\OBS Studio,|{commonpf64}\obs-studio}
 AppendDefaultDirName=no
 DirExistsWarning=no
 DefaultGroupName={#MyAppName}
 LicenseFile={#SourcePath}\..\LICENSE
 ; Uncomment the following line to run in non administrative install mode (install for current user only.)
 ;PrivilegesRequired=lowest
-OutputBaseFilename=Waveform_v{#MyAppVersion}_setup
+OutputBaseFilename=Waveform_v{#MyAppVersion}_Windows_x86_64_setup
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 Uninstallable=WizardIsTaskSelected('create_uninstaller')
 DisableDirPage=no
+SetupArchitecture=x64
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

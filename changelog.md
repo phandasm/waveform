@@ -12,9 +12,9 @@
 Either  
 - Use the installer and select your OBS folder.  
 or  
-- Extract Waveform\_v#.#.#\_x86\_64.zip to the *root* of your OBS folder (e.g. `C:\Program Files (x86)\obs-studio`).
+- Extract Waveform\_v#.#.#\_Windows\_x86\_64.zip to the *root* of your OBS folder (e.g. `C:\Program Files\obs-studio`).
 
-### Linux (Ubuntu 20.04, Flatpak)
+### Linux (Ubuntu 24.04, Flatpak)
 <details>
 <summary>Click for instructions</summary>
 
@@ -30,9 +30,11 @@ or
 Note: Should work for most distros, but do not mix with the .deb package above.
 </details>
 
-### MacOS (12.0+, OBS 28+)
+### MacOS
 <details>
 <summary>Click for instructions</summary>
+
+**MacOS binaries are not signed, you will need to manually unblock them.**
 
 #### Intel Macs
 - **Uninstall waveform versions prior to 1.6.0**

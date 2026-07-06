@@ -54,14 +54,18 @@ jobs:
       
       - name: 'Package'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
-        run: iscc.exe /O"${{github.workspace}}/installer" "${{github.workspace}}/installer/installer.iss"
+        run: |
+          iscc.exe /O"${{github.workspace}}/installer" "${{github.workspace}}/installer/installer.iss"
+          7z.exe a -r -y -tzip -mx9 "${{github.workspace}}/installer/Waveform_${{github.ref_name}}_Windows_x86_64.zip" "${{github.workspace}}/installer/bin/*"
       
       - name: 'Upload'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: Waveform_${{github.ref_name}}_Windows_x64
-          path: ${{github.workspace}}/installer/Waveform_v*_setup.exe
+          path: |
+            ${{github.workspace}}/installer/Waveform_v*_setup.exe
+            "${{github.workspace}}/installer/Waveform_${{github.ref_name}}_Windows_x86_64.zip"
 
   macosarm64:
     name: 'MacOS Arm64'
@@ -89,7 +93,7 @@ jobs:
           cmake --install ${{github.workspace}}/deps/obs-studio/build --component Development --config Release
       
       - name: 'Cmake'
-        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCI_BUILD=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DENABLE_X86_SIMD=OFF -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs_install;${{github.workspace}}/deps/obs-studio/build/libobs" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
+        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G Xcode -DCI_BUILD=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DENABLE_X86_SIMD=OFF -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs_install;${{github.workspace}}/deps/obs-studio/build/libobs" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
       
       - name: 'Build'
         run: |
@@ -107,9 +111,9 @@ jobs:
           name: Waveform_${{github.ref_name}}_MacOS_arm64
           path: ${{github.workspace}}/build/*.pkg
 
-  macos64:
+  macosx64:
     name: 'MacOS x64'
-    runs-on: macos-26
+    runs-on: macos-26-intel
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v7
@@ -133,7 +137,7 @@ jobs:
           cmake --install ${{github.workspace}}/deps/obs-studio/build --component Development --config Release
       
       - name: 'Cmake'
-        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -DCI_BUILD=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DMAKE_BUNDLE=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs_install;${{github.workspace}}/deps/obs-studio/build/libobs" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
+        run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G Xcode -DCI_BUILD=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DMAKE_BUNDLE=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs_install;${{github.workspace}}/deps/obs-studio/build/libobs" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
       
       - name: 'Build'
         run: |
@@ -151,7 +155,7 @@ jobs:
           name: Waveform_${{github.ref_name}}_MacOS_x86_64
           path: ${{github.workspace}}/build/*.pkg
 
-  ubuntu64:
+  ubuntux64:
     name: 'Ubuntu x64'
     runs-on: ubuntu-latest
     steps:
@@ -186,7 +190,7 @@ jobs:
 
   publish_release:
     if: ((github.ref_type == 'tag') || (inputs.publish == true)) && github.event_name != 'pull_request'
-    needs: [macosarm64, macos64, ubuntu64, windowsx64]
+    needs: [macosarm64, macosx64, ubuntux64, windowsx64]
     name: 'Publish Release'
     runs-on: ubuntu-latest
     steps:
@@ -205,6 +209,7 @@ jobs:
             ${{github.workspace}}/artifacts/*/*.deb
             ${{github.workspace}}/artifacts/*/*.pkg
             ${{github.workspace}}/artifacts/*/*_setup.exe
+            ${{github.workspace}}/artifacts/*/*_Windows_x86_64.zip
           body_path: ${{github.workspace}}/changelog.md
           tag_name: ${{inputs.publish && inputs.tagname || github.ref_name}}
           name: ${{inputs.publish && inputs.tagname || github.ref_name}}
