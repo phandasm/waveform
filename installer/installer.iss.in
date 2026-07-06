@@ -28,7 +28,6 @@ SolidCompression=yes
 WizardStyle=modern
 Uninstallable=WizardIsTaskSelected('create_uninstaller')
 DisableDirPage=no
-SetupArchitecture=x64
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
