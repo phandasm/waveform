@@ -89,8 +89,8 @@ jobs:
       
       - name: 'OBS Build'
         run: |
-          cmake --build ${{github.workspace}}/deps/obs-studio/build --target obs-frontend-api --config Release
-          cmake --install ${{github.workspace}}/deps/obs-studio/build --component Development --config Release
+          cmake --build ${{github.workspace}}/deps/obs-studio/build --target obs-frontend-api --config RelWithDebInfo
+          cmake --install ${{github.workspace}}/deps/obs-studio/build --component Development --config RelWithDebInfo
       
       - name: 'Cmake'
         run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G Xcode -DCI_BUILD=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="arm64" -DMAKE_BUNDLE=ON -DENABLE_X86_SIMD=OFF -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs_install;${{github.workspace}}/deps/obs-studio/build/libobs" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
@@ -133,8 +133,8 @@ jobs:
       
       - name: 'OBS Build'
         run: |
-          cmake --build ${{github.workspace}}/deps/obs-studio/build --target obs-frontend-api --config Release
-          cmake --install ${{github.workspace}}/deps/obs-studio/build --component Development --config Release
+          cmake --build ${{github.workspace}}/deps/obs-studio/build --target obs-frontend-api --config RelWithDebInfo
+          cmake --install ${{github.workspace}}/deps/obs-studio/build --component Development --config RelWithDebInfo
       
       - name: 'Cmake'
         run: cmake -S ${{github.workspace}} -B ${{github.workspace}}/build -G Xcode -DCI_BUILD=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="x86_64" -DMAKE_BUNDLE=ON -DBUILTIN_FFTW=ON -DCMAKE_PREFIX_PATH="${{github.workspace}}/deps/obs_install;${{github.workspace}}/deps/obs-studio/build/libobs" -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/bin"
