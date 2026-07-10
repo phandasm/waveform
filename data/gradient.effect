@@ -65,13 +65,13 @@ float4 PSSolid(VertInOut vert_in) : TARGET
 
 float4 PSGradient(VertGrad vert_in) : TARGET
 {
-    float lerp_t = saturate((distance(vert_in.tex.y, grad_center) - grad_offset) / grad_height);
+    float lerp_t = saturate((abs(vert_in.tex.y - grad_center) - grad_offset) / grad_height);
 	return lerp(color_base, color_crest, lerp_t);
 }
 
 float4 PSRange(VertGrad vert_in) : TARGET
 {
-    float ratio = 1.0 - saturate((distance(vert_in.tex.y, grad_center) - grad_offset) / grad_height);
+    float ratio = 1.0 - saturate((abs(vert_in.tex.y - grad_center) - grad_offset) / grad_height);
     if (ratio > range_middle)
         return color_base;  // Green
     else if (ratio < range_crest)
