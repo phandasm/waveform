@@ -1,7 +1,6 @@
-## Changes in 1.9.0-beta2
-- Build against OBS 32
-
-## Changes in 1.9.0-beta1
+## Changes in 1.9.0
+- Support OBS 32
+- Support Metal renderer on macOS (#87)
 - Hotfix for possible OOM crash
 - Allow high and low cutoffs to be equal
 - Improve render quality in waveform mode
@@ -19,7 +18,7 @@ or
 <summary>Click for instructions</summary>
 
 #### Prebuilt Binaries
-- Download Waveform\_v#.#.#\_Ubuntu\_x86\_64.deb and install it using your distro's package manager (Debian/Ubuntu only).  
+- Download Waveform\_v#.#.#\_Ubuntu\_x86\_64.deb and install it using your distro's package manager.  
 
 #### Flatpak
 - `flatpak install flathub com.obsproject.Studio.Plugin.waveform`  
