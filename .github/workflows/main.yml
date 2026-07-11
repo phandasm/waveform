@@ -65,7 +65,7 @@ jobs:
           name: Waveform_${{github.ref_name}}_Windows_x64
           path: |
             ${{github.workspace}}/installer/Waveform_v*_setup.exe
-            "${{github.workspace}}/installer/Waveform_${{github.ref_name}}_Windows_x86_64.zip"
+            ${{github.workspace}}/installer/Waveform_*_Windows_x86_64.zip
 
   macosarm64:
     name: 'MacOS Arm64'
