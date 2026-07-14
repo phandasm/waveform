@@ -1,3 +1,6 @@
+## Changes in 1.9.1
+- Target OBS 32.1.2 (was 32.2 beta)
+
 ## Changes in 1.9.0
 - Support OBS 32
 - Support Metal renderer on macOS (#87)
