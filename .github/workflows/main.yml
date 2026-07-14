@@ -117,7 +117,7 @@ jobs:
 
   macosx64:
     name: 'MacOS x64'
-    runs-on: macos-26-intel
+    runs-on: macos-26
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v7
