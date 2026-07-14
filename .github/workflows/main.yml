@@ -83,6 +83,7 @@ jobs:
           submodules: recursive
           path: 'deps/obs-studio'
           ref: '32.1.2'
+          fetch-depth: 0
       
       - name: 'Cherry-pick swift fix'
         run: git -C ${{github.workspace}}/deps/obs-studio cherry-pick b8f7a1e3b863b31b72898a8c01722d70772719ad
@@ -130,6 +131,7 @@ jobs:
           submodules: recursive
           path: 'deps/obs-studio'
           ref: '32.1.2'
+          fetch-depth: 0
       
       - name: 'Cherry-pick swift fix'
         run: git -C ${{github.workspace}}/deps/obs-studio cherry-pick b8f7a1e3b863b31b72898a8c01722d70772719ad
