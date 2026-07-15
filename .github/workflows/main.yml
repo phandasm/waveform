@@ -84,9 +84,6 @@ jobs:
           path: 'deps/obs-studio'
           ref: '32.0.4'
           fetch-depth: 0
-      
-      - name: 'Cherry-pick swift fix'
-        run: git -C ${{github.workspace}}/deps/obs-studio cherry-pick b8f7a1e3b863b31b72898a8c01722d70772719ad
 
       - name: 'OBS Cmake'
         run: cmake -S ${{github.workspace}}/deps/obs-studio -B ${{github.workspace}}/deps/obs-studio/build -G Xcode -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_PLUGINS=OFF -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/deps/obs_install"
@@ -133,9 +130,6 @@ jobs:
           path: 'deps/obs-studio'
           ref: '32.0.4'
           fetch-depth: 0
-      
-      - name: 'Cherry-pick swift fix'
-        run: git -C ${{github.workspace}}/deps/obs-studio cherry-pick b8f7a1e3b863b31b72898a8c01722d70772719ad
 
       - name: 'OBS Cmake'
         run: cmake -S ${{github.workspace}}/deps/obs-studio -B ${{github.workspace}}/deps/obs-studio/build -G Xcode -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DENABLE_FRONTEND=OFF -DENABLE_SCRIPTING=OFF -DENABLE_PLUGINS=OFF -DCMAKE_INSTALL_PREFIX="${{github.workspace}}/deps/obs_install"
