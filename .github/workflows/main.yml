@@ -82,7 +82,7 @@ jobs:
           repository: 'obsproject/obs-studio'
           submodules: recursive
           path: 'deps/obs-studio'
-          ref: '32.1.2'
+          ref: '32.0.4'
           fetch-depth: 0
       
       - name: 'Cherry-pick swift fix'
@@ -131,7 +131,7 @@ jobs:
           repository: 'obsproject/obs-studio'
           submodules: recursive
           path: 'deps/obs-studio'
-          ref: '32.1.2'
+          ref: '32.0.4'
           fetch-depth: 0
       
       - name: 'Cherry-pick swift fix'
