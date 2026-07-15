@@ -103,6 +103,7 @@ jobs:
         run: |
           cmake --build ${{github.workspace}}/build --config RelWithDebInfo
           cmake --install ${{github.workspace}}/build --config RelWithDebInfo
+          codesign -v --verbose=4 "${{github.workspace}}/bin/waveform.plugin"
       
       - name: 'Package'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'
@@ -151,6 +152,7 @@ jobs:
         run: |
           cmake --build ${{github.workspace}}/build --config RelWithDebInfo
           cmake --install ${{github.workspace}}/build --config RelWithDebInfo
+          codesign -v --verbose=4 "${{github.workspace}}/bin/waveform.plugin"
       
       - name: 'Package'
         if: success() && ((github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch')) && github.event_name != 'pull_request'

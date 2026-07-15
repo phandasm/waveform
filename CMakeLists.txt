@@ -172,7 +172,7 @@ if(MAKE_BUNDLE)
     # these settings stolen from https://github.com/obsproject/obs-plugintemplate/blob/0f60ca33f95905f248b9dd92b3f504921b823b4d/cmake/ObsPluginHelpers.cmake#L353
     set(CMAKE_MACOSX_RPATH ON)
     set(CMAKE_SKIP_BUILD_RPATH OFF)
-    set(CMAKE_BUILD_WITH_INSTALL_RPATH OFF)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
     set(CMAKE_INSTALL_RPATH "@executable_path/../Frameworks/")
     set(CMAKE_INSTALL_RPATH_USE_LINK_PATH OFF)
 endif()
