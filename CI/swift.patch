@@ -1,0 +1,13 @@
+diff --git a/cmake/macos/compilerconfig.cmake b/cmake/macos/compilerconfig.cmake
+index 2e41fba51..b0bbd245a 100644
+--- a/cmake/macos/compilerconfig.cmake
++++ b/cmake/macos/compilerconfig.cmake
+@@ -9,6 +9,8 @@ if(NOT XCODE)
+   message(FATAL_ERROR "Building OBS Studio on macOS requires Xcode generator.")
+ endif()
+ 
++enable_language(Swift)
++
+ include(ccache)
+ include(compiler_common)
+ 
